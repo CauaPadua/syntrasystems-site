@@ -3,375 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Syntra Systems | Tecnologia que gera resultados</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link600;700;800;900&display=swap" rel="stylesheet">
+://fonts.googleapis.com">
+<link rel="ts.gstatic.com
 
-<style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-:root{
-    --bg:#050505;
-    --card:#0b0b0f;
-    --purple:#7c3aed;
-    --purple-light:#a855f7;
-    --white:#ffffff;
-    --gray:#cfcfcf;
-}
-
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
-
-html{
-    scroll-behavior:smooth;
-}
-
-body{
-    font-family:'Inter',sans-serif;
-    background:var(--bg);
-    color:white;
-    overflow-x:hidden;
-}
-
-body::before{
-    content:"";
-    position:fixed;
-    width:600px;
-    height:600px;
-    background:#7c3aed;
-    filter:blur(250px);
-    opacity:.15;
-    top:-200px;
-    right:-200px;
-    pointer-events:none;
-}
-
-header{
-    width:100%;
-    position:fixed;
-    top:0;
-    left:0;
-    backdrop-filter:blur(15px);
-    background:rgba(0,0,0,.55);
-    border-bottom:1px solid rgba(255,255,255,.05);
-    z-index:1000;
-}
-
-.nav{
-    max-width:1300px;
-    margin:auto;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:20px;
-}
-
-.logo{
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
-
-.logo img{
-    width:48px;
-}
-
-.logo span{
-    font-size:1.1rem;
-    font-weight:700;
-}
-
-.menu{
-    display:flex;
-    gap:30px;
-}
-
-.menu a{
-    color:white;
-    text-decoration:none;
-    transition:.3s;
-}
-
-.menu a:hover{
-    color:var(--purple-light);
-}
-
-.btn{
-    padding:14px 28px;
-    border-radius:12px;
-    background:linear-gradient(
-    45deg,
-    var(--purple),
-    var(--purple-light));
-    color:white;
-    text-decoration:none;
-    font-weight:700;
-    transition:.3s;
-}
-
-.btn:hover{
-    transform:translateY(-3px);
-    box-shadow:0 0 30px rgba(124,58,237,.5);
-}
-
-.hero{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:120px 8%;
-}
-
-.hero-container{
-    width:100%;
-    max-width:1400px;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:80px;
-    align-items:center;
-}
-
-.badge{
-    display:inline-block;
-    padding:10px 18px;
-    border:1px solid rgba(124,58,237,.3);
-    background:rgba(124,58,237,.08);
-    border-radius:30px;
-    margin-bottom:25px;
-    color:#c084fc;
-}
-
-.hero h1{
-    font-size:4.2rem;
-    line-height:1.05;
-    margin-bottom:25px;
-}
-
-.highlight{
-    background:linear-gradient(
-    45deg,
-    #ffffff,
-    #a855f7);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-}
-
-.hero p{
-    color:#b9b9b9;
-    font-size:1.15rem;
-    line-height:1.8;
-    max-width:650px;
-}
-
-.buttons{
-    margin-top:40px;
-    display:flex;
-    gap:20px;
-    flex-wrap:wrap;
-}
-
-.btn-secondary{
-    padding:14px 28px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,.15);
-    text-decoration:none;
-    color:white;
-}
-
-.dashboard{
-    position:relative;
-}
-
-.dashboard::before{
-    content:"";
-    position:absolute;
-    inset:-20px;
-    background:#7c3aed;
-    opacity:.25;
-    filter:blur(100px);
-}
-
-.mockup{
-    position:relative;
-    background:#090909;
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:24px;
-    padding:30px;
-    box-shadow:
-    0 0 50px rgba(124,58,237,.18);
-}
-
-.topbar{
-    display:flex;
-    gap:10px;
-    margin-bottom:30px;
-}
-
-.dot{
-    width:12px;
-    height:12px;
-    border-radius:50%;
-}
-
-.red{background:#ff5f56;}
-.yellow{background:#ffbd2e;}
-.green{background:#27c93f;}
-
-.grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:20px;
-}
-
-.card{
-    background:#121212;
-    border:1px solid rgba(255,255,255,.04);
-    border-radius:18px;
-    padding:20px;
-}
-
-.value{
-    font-size:2rem;
-    font-weight:800;
-    color:#a855f7;
-}
-
-.graph{
-    height:160px;
-    margin-top:15px;
-    border-radius:12px;
-    background:linear-gradient(
-    180deg,
-    rgba(124,58,237,.3),
-    transparent
-    );
-}
-
-.services{
-    padding:120px 8%;
-}
-
-.section-title{
-    text-align:center;
-    font-size:3rem;
-    margin-bottom:70px;
-}
-
-.cards{
-    max-width:1300px;
-    margin:auto;
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-    gap:25px;
-}
-
-.service{
-    background:#0c0c10;
-    padding:30px;
-    border-radius:24px;
-    border:1px solid rgba(255,255,255,.05);
-    transition:.3s;
-}
-
-.service:hover{
-    transform:translateY(-8px);
-    border-color:#7c3aed;
-    box-shadow:0 0 35px rgba(124,58,237,.25);
-}
-
-.service h3{
-    margin-bottom:15px;
-}
-
-.service p{
-    color:#b9b9b9;
-}
-
-footer{
-    padding:60px 20px;
-    text-align:center;
-    border-top:1px solid rgba(255,255,255,.05);
-    color:#888;
-}
-
-@media(max-width:950px){
-
-.hero-container{
-    grid-template-columns:1fr;
-}
-
-.hero h1{
-    font-size:3rem;
-}
-
-.menu{
-    display:none;
-}
-}
-
-</style>
-</head>
-
-<body>
+<link rel=-1"></div>
+<div class="glow glow-2"></div>
 
 <header>
-<div class="nav">
 
-<div class="logo">
-logo.png
-<span>SYNTRA SYSTEMS</span>
+<div class="container navbar">
+
+<div class="brand">
+.png" alt="Syntra Systems">
+<div>
+<h3>SYNTRA SYSTEMS</h3>
+<span>Tecnologia que gera resultados</span>
+</div>
 </div>
 
-<div class="menu">
-#
-#Serviços</a>
-#
-<a hrefo</a>
-</div>
+<nav>
+#servicosServiços</a>
+#sobre
+ato">Contato</a>
+</nav>
 
-https://wa.me/5519999451613" class="btn">
+.me/5519999451613" class="btn">
 Solicitar orçamento
 </a>
 
 </div>
+
 </header>
 
 <section class="hero">
 
-<div class="hero-container">
+<div class="container hero-grid">
 
 <div>
 
 <div class="badge">
-🚀 Tecnologia que gera resultados
+🚀 Software • Automação • Inovação
 </div>
 
 <h1>
 Transformamos ideias em
-<span class="highlight">
-soluções digitais
-</span>
+<span>soluções digitais</span>
 que impulsionam negócios.
 </h1>
 
 <p>
-Desenvolvemos sistemas personalizados,
-sites profissionais, automações e integrações
-sob medida para empresas que buscam inovação,
-eficiência e crescimento.
+Desenvolvemos sistemas, websites,
+automações e integrações sob medida
+para empresas que querem crescer com tecnologia.
 </p>
 
-<div class="buttons">
-5519999451613" class="btn">
-Falar no WhatsApp
-</a>
-
-#servicosbtn-secondary">
-Nossos Serviços
+<div class="hero-buttons">
+<a href="https://wa.me/5519999451613" classtn-outline">
+Conhecer serviços
 </a>
 </div>
 
@@ -379,34 +71,28 @@ Nossos Serviços
 
 <div class="dashboard">
 
-<div class="mockup">
+<div class="screen">
 
-<div class="topbar">
-<div class="dot red"></div>
-<div class="dot yellow"></div>
-<div class="dot green"></div>
-</div>
-
-<div class="grid">
+<div class="stats">
 
 <div class="card">
-<p>Receita</p>
-<div class="value">R$48k</div>
+<h4>Projetos</h4>
+<strong>12+</strong>
 </div>
 
 <div class="card">
-<p>Clientes</p>
-<div class="value">32</div>
+<h4>Soluções</h4>
+<strong>100%</strong>
 </div>
 
 <div class="card">
-<p>Projetos</p>
-<div class="value">12</div>
+<h4>Automações</h4>
+<strong>24/7</strong>
 </div>
 
 <div class="card">
-<p>Crescimento</p>
-<div class="value">+72%</div>
+<h4>Suporte</h4>
+<strong>Ágil</strong>
 </div>
 
 </div>
@@ -421,17 +107,17 @@ Nossos Serviços
 
 </section>
 
-<section id="servicos" class="services">
+<section id="servicos">
 
-<h2 class="section-title">
-O que fazemos
-</h2>
+<div class="container">
 
-<div class="cards">
+<h2>O que fazemos</h2>
+
+<div class="services">
 
 <div class="service">
 <h3>💻 Sistemas Personalizados</h3>
-<p>Desenvolvimento sob medida para empresas.</p>
+<p>Soluções sob medida para sua empresa.</p>
 </div>
 
 <div class="service">
@@ -441,30 +127,73 @@ O que fazemos
 
 <div class="service">
 <h3>⚡ Automações</h3>
-<p>Elimine tarefas repetitivas e aumente produtividade.</p>
+<p>Automatização de processos e tarefas.</p>
 </div>
 
 <div class="service">
 <h3>📊 Dashboards</h3>
-<p>Visualização inteligente de indicadores.</p>
+<p>Dados transformados em decisões.</p>
 </div>
 
 <div class="service">
 <h3>🔗 Integrações</h3>
-<p>Conecte sistemas e APIs sem complicação.</p>
+<p>Conecte sistemas e APIs facilmente.</p>
 </div>
 
 <div class="service">
 <h3>🛠️ Suporte Técnico</h3>
-<p>Suporte especializado para sua operação.</p>
+<p>Atendimento especializado para empresas.</p>
+</div>
+
 </div>
 
 </div>
 
 </section>
 
-<footer>
-© 2026 Syntra Systems • Tecnologia que gera resultados.
+<section id="sobre">
+
+<div class="container center">
+
+<h2>Por que escolher a Syntra?</h2>
+
+<p>
+Mais que tecnologia. Entregamos soluções
+que geram resultados reais para nossos clientes.
+</p>
+
+</div>
+
+</section>
+
+<section class="cta">
+
+<div class="container center">
+
+<h2>
+Seu projeto merece mais do que código.
+</h2>
+
+<h3>Merece Syntra.</h3>
+
+9451613" class="btn">
+Solicite um orçamento
+</a>
+
+</div>
+
+</section>
+
+<footer id="contato">
+
+<div class="container footer">
+
+<p>📱 (19) 99945-1613</p>
+<p>📸 @syntrasystemss</p>
+<p>🌐 syntrasystems.com.br</p>
+
+</div>
+
 </footer>
 
 </body>
