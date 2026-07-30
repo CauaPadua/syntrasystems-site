@@ -10,9 +10,20 @@ Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
 
 <style>
+<script>
+const glow = document.querySelector('.cursor-glow');
 
-<style>
+document.addEventListener('mousemove', (e) => {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
+});
+</script>
+
+</body>
 body{
+    <body>
+
+<div class="cursor-glow"></div>
     margin:0;
     background:#050505;
     color:white;
@@ -34,7 +45,9 @@ body{
     transform:translate(-50%,-50%);
 }
 </style>
-.hero-bg{
+
+    
+    .hero-bg{
 position:fixed;
 width:100%;
 height:100%;
