@@ -3,18 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Syntra Systems | Soluções Digitais</title>
-
-<meta name="description" content="A Syntra Systems desenvolve sites, sistemas web, automações, dashboards e soluções digitais para empresas.">
-<meta name="theme-color" content="#050505">
+<title>Syntra Systems</title>
 
 <style>
 *{
 margin:0;
 padding:0;
 box-sizing:border-box;
-font-family:Segoe UI, Arial, sans-serif;
+font-family:Segoe UI,sans-serif;
 }
 
 html{
@@ -25,7 +21,6 @@ body{
 background:#050505;
 color:white;
 overflow-x:hidden;
-min-height:100vh;
 }
 
 body::before{
@@ -56,11 +51,6 @@ color:inherit;
 text-decoration:none;
 }
 
-img{
-max-width:100%;
-display:block;
-}
-
 .cursor-glow{
 position:fixed;
 width:600px;
@@ -68,9 +58,9 @@ height:600px;
 border-radius:50%;
 background:radial-gradient(
 circle,
-rgba(139,92,246,.22) 0%,
-rgba(139,92,246,.08) 38%,
-transparent 72%
+rgba(139,92,246,.20) 0%,
+rgba(139,92,246,.06) 40%,
+transparent 90%
 );
 pointer-events:none;
 transform:translate(-50%,-50%);
@@ -87,64 +77,38 @@ z-index:-2;
 pointer-events:none;
 }
 
-/* HEADER */
-
 header{
 position:fixed;
 top:0;
-left:0;
 width:100%;
-padding:18px 8%;
+padding:20px 8%;
 display:flex;
 justify-content:space-between;
 align-items:center;
 background:rgba(0,0,0,.72);
 backdrop-filter:blur(15px);
-border-bottom:1px solid rgba(255,255,255,.08);
+border-bottom:1px solid rgba(255,255,255,.05);
 z-index:999;
 }
 
 .logo{
 display:flex;
-align-items:center;
-gap:14px;
+flex-direction:column;
+line-height:1.15;
+}
+
+.logo strong{
+font-size:1.35rem;
+font-weight:800;
+letter-spacing:.03em;
 color:white;
 }
 
-.logo img{
-width:54px;
-height:54px;
-object-fit:contain;
-filter:drop-shadow(0 0 18px rgba(168,85,247,.45));
-}
-
-.logo-text strong{
-display:block;
-font-size:1.1rem;
-letter-spacing:.08em;
-}
-
-.logo-text span{
-display:block;
-font-size:.82rem;
-color:#aaa;
-margin-top:3px;
-}
-
-nav{
-display:flex;
-gap:25px;
-align-items:center;
-}
-
-nav a{
-color:white;
-font-weight:500;
-transition:.3s;
-}
-
-nav a:hover{
-color:#c084fc;
+.logo span{
+font-size:.9rem;
+font-weight:400;
+color:#bdbdbd;
+margin-top:4px;
 }
 
 .btn{
@@ -154,11 +118,12 @@ justify-content:center;
 padding:12px 25px;
 border-radius:12px;
 background:linear-gradient(45deg,#7c3aed,#a855f7);
+text-decoration:none;
 color:white;
 font-weight:bold;
+border:1px solid rgba(255,255,255,.08);
 box-shadow:0 0 25px rgba(124,58,237,.25);
 transition:.3s;
-border:1px solid rgba(255,255,255,.08);
 }
 
 .btn:hover{
@@ -173,6 +138,7 @@ justify-content:center;
 padding:12px 25px;
 border:1px solid rgba(255,255,255,.15);
 border-radius:12px;
+text-decoration:none;
 color:white;
 transition:.3s;
 }
@@ -182,8 +148,6 @@ border-color:#a855f7;
 background:rgba(168,85,247,.08);
 transform:translateY(-3px);
 }
-
-/* HERO */
 
 .hero{
 min-height:100vh;
@@ -238,13 +202,12 @@ margin-top:30px;
 display:flex;
 gap:15px;
 flex-wrap:wrap;
+align-items:center;
 }
 
-/* DASHBOARD */
-
 .dashboard{
-background:rgba(18,18,24,.85);
-border:1px solid rgba(255,255,255,.08);
+background:rgba(18,18,24,.88);
+border:1px solid rgba(255,255,255,.07);
 border-radius:25px;
 padding:25px;
 box-shadow:0 0 50px rgba(124,58,237,.20);
@@ -269,9 +232,17 @@ height:12px;
 border-radius:50%;
 }
 
-.red{background:#ff5f57;}
-.yellow{background:#ffbd2e;}
-.green{background:#28c840;}
+.red{
+background:#ff5f57;
+}
+
+.yellow{
+background:#ffbd2e;
+}
+
+.green{
+background:#28c840;
+}
 
 .live{
 font-size:.85rem;
@@ -329,8 +300,6 @@ opacity:.6;
 clip-path:polygon(0 80%,15% 55%,30% 70%,45% 30%,60% 50%,75% 15%,100% 35%,100% 100%,0 100%);
 }
 
-/* SECTIONS */
-
 section{
 padding:120px 8%;
 position:relative;
@@ -351,8 +320,6 @@ margin:0 auto 50px;
 line-height:1.7;
 }
 
-/* SERVICES */
-
 .services{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
@@ -360,10 +327,10 @@ gap:25px;
 }
 
 .service{
-background:rgba(18,18,24,.85);
+background:rgba(18,18,24,.88);
 padding:30px;
 border-radius:20px;
-border:1px solid rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.05);
 transition:.3s;
 backdrop-filter:blur(18px);
 }
@@ -383,8 +350,6 @@ color:#bdbdbd;
 line-height:1.7;
 }
 
-/* DIFFERENTIALS */
-
 .diferenciais{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
@@ -392,16 +357,18 @@ gap:25px;
 }
 
 .diferencial{
-background:rgba(18,18,24,.85);
+background:rgba(18,18,24,.88);
 padding:26px;
 border-radius:20px;
 border:1px solid rgba(255,255,255,.06);
 transition:.3s;
+backdrop-filter:blur(18px);
 }
 
 .diferencial:hover{
 transform:translateY(-8px);
 border-color:rgba(168,85,247,.45);
+box-shadow:0 0 30px rgba(124,58,237,.22);
 }
 
 .diferencial p{
@@ -409,8 +376,6 @@ color:#bdbdbd;
 line-height:1.7;
 margin-top:10px;
 }
-
-/* TECHNOLOGIES */
 
 .techs{
 display:flex;
@@ -435,8 +400,6 @@ border-color:rgba(168,85,247,.45);
 transform:translateY(-4px);
 }
 
-/* PORTFOLIO */
-
 .portfolio{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
@@ -446,12 +409,13 @@ gap:25px;
 .project{
 min-height:340px;
 padding:28px 28px 135px;
-background:rgba(18,18,24,.85);
+background:rgba(18,18,24,.88);
 border:1px solid rgba(255,255,255,.06);
 border-radius:22px;
 position:relative;
 overflow:hidden;
 transition:.3s;
+backdrop-filter:blur(18px);
 }
 
 .project:hover{
@@ -493,8 +457,6 @@ linear-gradient(135deg,rgba(168,85,247,.35),rgba(255,255,255,.03));
 border:1px solid rgba(255,255,255,.08);
 }
 
-/* ABOUT */
-
 .about{
 display:grid;
 grid-template-columns:.9fr 1.1fr;
@@ -502,21 +464,22 @@ gap:50px;
 align-items:center;
 }
 
-.about-logo{
+.about-card{
 min-height:380px;
 border-radius:26px;
 background:
 radial-gradient(circle,rgba(168,85,247,.22),transparent 50%),
-rgba(18,18,24,.85);
+rgba(18,18,24,.88);
 border:1px solid rgba(255,255,255,.08);
 display:flex;
 align-items:center;
 justify-content:center;
-}
-
-.about-logo img{
-width:220px;
-filter:drop-shadow(0 0 40px rgba(168,85,247,.4));
+text-align:center;
+padding:30px;
+font-size:2rem;
+font-weight:800;
+letter-spacing:.04em;
+color:#d8b4fe;
 }
 
 .about-text h2{
@@ -530,8 +493,6 @@ color:#bdbdbd;
 line-height:1.8;
 margin-bottom:18px;
 }
-
-/* CTA */
 
 .cta{
 text-align:center;
@@ -555,8 +516,6 @@ line-height:1.7;
 margin-bottom:30px;
 }
 
-/* FOOTER */
-
 footer{
 padding:60px 8%;
 color:#9f9f9f;
@@ -569,17 +528,10 @@ z-index:1;
 }
 
 .footer-logo{
-display:flex;
-align-items:center;
-gap:14px;
-margin-bottom:15px;
 color:white;
-}
-
-.footer-logo img{
-width:48px;
-height:48px;
-object-fit:contain;
+margin-bottom:15px;
+font-weight:800;
+letter-spacing:.06em;
 }
 
 footer h4{
@@ -591,13 +543,12 @@ footer a{
 display:block;
 color:#bdbdbd;
 margin-bottom:10px;
+text-decoration:none;
 }
 
 footer a:hover{
 color:#d8b4fe;
 }
-
-/* WHATSAPP */
 
 .whatsapp{
 position:fixed;
@@ -620,16 +571,10 @@ transition:.3s;
 transform:scale(1.08) translateY(-4px);
 }
 
-/* RESPONSIVE */
-
 @media(max-width:900px){
 
 header{
 padding:16px 6%;
-}
-
-nav{
-display:none;
 }
 
 .hero-content,
@@ -642,7 +587,7 @@ padding-top:130px;
 }
 
 .hero h1{
-font-size:3.2rem;
+font-size:3rem;
 }
 
 section{
@@ -657,13 +602,12 @@ grid-template-columns:1fr;
 
 @media(max-width:600px){
 
-.logo-text span{
-display:none;
+.logo strong{
+font-size:1rem;
 }
 
-.logo img{
-width:44px;
-height:44px;
+.logo span{
+font-size:.75rem;
 }
 
 .hero h1{
@@ -688,34 +632,26 @@ font-size:3rem;
 <canvas id="particles"></canvas>
 
 <header>
-  <anicio
-    <img src="logo.png" alt="Logo-text">
-      <strong>SYNTRA SYSTEMS</strong>
-      <span>Soluções digitais</span>
-    </div>
-  </a>
 
-  <nav>
-    #inicioInício</a>
-    #servicosServiços</a>
-    <aiferenciaisDiferenciais</a>
-    #tecnologiasTecnologias</a>
-    #portfolioPortfólio</a>
-    #sobreSobre</a>
-    #contatoContato</a>
-  </nav>
+<div class="logo">
+<strong>SYNTRA SYSTEMS</strong>
+<span>Soluções digitais</span>
+</div>
 
-  <a class="btn" href="https://wa.me/5519999451613" target="_blank">
-    Solicitar orçamento
-  </a>
+<a class="btn" href="https://wa.me/5519999451613" target="_blank">
+Solicitar orçamento
+</a>
+
 </header>
 
 <main id="inicio">
 
 <section class="hero">
+
 <div class="hero-content">
 
 <div>
+
 <div class="badge">
 🚀 Tecnologia • Automação • Inovação
 </div>
@@ -731,6 +667,7 @@ em vantagem competitiva para empresas que querem crescer com tecnologia.
 </p>
 
 <div class="buttons">
+
 <a class="btn" href="https://wa.me/5519999451613" target="_blank">
 Falar no WhatsApp
 </a>
@@ -738,12 +675,15 @@ Falar no WhatsApp
 #servicos
 Conhecer serviços
 </a>
+
 </div>
+
 </div>
 
 <div class="dashboard">
 
 <div class="dashboard-top">
+
 <div class="dots">
 <span class="red"></span>
 <span class="yellow"></span>
@@ -753,6 +693,7 @@ Conhecer serviços
 <div class="live">
 Sistema em tempo real
 </div>
+
 </div>
 
 <div class="stats">
@@ -784,9 +725,11 @@ Sistema em tempo real
 </div>
 
 </div>
+
 </section>
 
 <section id="servicos">
+
 <h2 class="section-title">O que fazemos</h2>
 <p class="section-subtitle">
 Criamos soluções digitais para empresas que precisam de presença online,
@@ -826,9 +769,11 @@ sistemas eficientes, automações e suporte técnico confiável.
 </div>
 
 </div>
+
 </section>
 
 <section id="diferenciais">
+
 <h2 class="section-title">Por que escolher a Syntra?</h2>
 <p class="section-subtitle">
 Mais que código. Estratégia, cuidado e resultado para transformar ideias em soluções úteis.
@@ -857,9 +802,11 @@ Mais que código. Estratégia, cuidado e resultado para transformar ideias em so
 </div>
 
 </div>
+
 </section>
 
 <section id="tecnologias">
+
 <h2 class="section-title">Tecnologias</h2>
 <p class="section-subtitle">
 Ferramentas modernas para desenvolver projetos digitais funcionais e escaláveis.
@@ -877,9 +824,11 @@ Ferramentas modernas para desenvolver projetos digitais funcionais e escaláveis
 <span class="tech">Azure</span>
 <span class="tech">Automação</span>
 </div>
+
 </section>
 
 <section id="portfolio">
+
 <h2 class="section-title">Portfólio</h2>
 <p class="section-subtitle">
 Projetos demonstrativos que mostram o que podemos construir para empresas.
@@ -916,13 +865,15 @@ Projetos demonstrativos que mostram o que podemos construir para empresas.
 </div>
 
 </div>
+
 </section>
 
 <section id="sobre">
+
 <div class="about">
 
-<div class="about-logo">
-logo.png
+<div class="about-card">
+SYNTRA SYSTEMS
 </div>
 
 <div class="about-text">
@@ -945,9 +896,11 @@ de outras regiões do Brasil.
 </div>
 
 </div>
+
 </section>
 
 <section class="cta">
+
 <h2>Seu próximo projeto começa aqui.</h2>
 <h3>Merece Syntra.</h3>
 <p>Vamos transformar sua ideia em uma solução digital moderna, funcional e preparada para gerar valor.</p>
@@ -955,6 +908,7 @@ de outras regiões do Brasil.
 <a class="btn" href="https://wa.me/5519999451613" target="_blank">
 Solicitar orçamento
 </a>
+
 </section>
 
 </main>
@@ -962,10 +916,7 @@ Solicitar orçamento
 <footer id="contato">
 
 <div>
-<div class="footer-logo">
-logo.png
-<strong>SYNTRA SYSTEMS</strong>
-</div>
+<div class="footer-logo">SYNTRA SYSTEMS</div>
 <p>Soluções digitais construídas para o próximo nível.</p>
 </div>
 
@@ -1022,10 +973,10 @@ for(let i = 0; i < amount; i++){
 particles.push({
 x: Math.random() * width,
 y: Math.random() * height,
-radius: Math.random() * 1.8 + 0.5,
+radius: Math.random() * 2.2 + 0.8,
 vx: (Math.random() - 0.5) * 0.25,
 vy: (Math.random() - 0.5) * 0.25,
-alpha: Math.random() * 0.45 + 0.15
+alpha: Math.random() * 0.55 + 0.25
 });
 }
 }
@@ -1062,8 +1013,8 @@ if(distance < 120){
 ctx.beginPath();
 ctx.moveTo(p.x, p.y);
 ctx.lineTo(p2.x, p2.y);
-ctx.strokeStyle = "rgba(168,85,247," + (0.18 * (1 - distance / 130)) + ")";
-ctx.lineWidth = 1.5;
+ctx.strokeStyle = "rgba(168,85,247," + (0.18 * (1 - distance / 120)) + ")";
+ctx.lineWidth = 1.3;
 ctx.stroke();
 }
 }
@@ -1077,7 +1028,7 @@ if(distanceMouse < 150){
 ctx.beginPath();
 ctx.moveTo(p.x, p.y);
 ctx.lineTo(mouse.x, mouse.y);
-ctx.strokeStyle = "rgba(216,180,254," + (0.22 * (1 - distanceMouse / 150)) + ")";
+ctx.strokeStyle = "rgba(216,180,254," + (0.30 * (1 - distanceMouse / 150)) + ")";
 ctx.lineWidth = 1.5;
 ctx.stroke();
 }
