@@ -1063,8 +1063,8 @@ if(distance < 120){
 ctx.beginPath();
 ctx.moveTo(p.x, p.y);
 ctx.lineTo(p2.x, p2.y);
-ctx.strokeStyle = "rgba(168,85,247," + (0.08 * (1 - distance / 120)) + ")";
-ctx.lineWidth = 1;
+ctx.strokeStyle = "rgba(168,85,247," + (0.18 * (1 - distance / 130)) + ")";
+ctx.lineWidth = 1.5;
 ctx.stroke();
 }
 }
@@ -1078,8 +1078,8 @@ if(distanceMouse < 150){
 ctx.beginPath();
 ctx.moveTo(p.x, p.y);
 ctx.lineTo(mouse.x, mouse.y);
-ctx.strokeStyle = "rgba(216,180,254," + (0.12 * (1 - distanceMouse / 150)) + ")";
-ctx.lineWidth = 1;
+ctx.strokeStyle = "rgba(216,180,254," + (0.22 * (1 - distanceMouse / 150)) + ")";
+ctx.lineWidth = 1.5;
 ctx.stroke();
 }
 }
