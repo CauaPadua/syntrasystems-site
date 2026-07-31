@@ -6,7 +6,6 @@
 <title>Syntra Systems</title>
 
 <style>
-
 *{
 margin:0;
 padding:0;
@@ -28,7 +27,7 @@ overflow-x:hidden;
 position:fixed;
 width:600px;
 height:600px;
-border-radius:60%;
+border-radius:50%;
 background:radial-gradient(
 circle,
 rgba(139,92,246,.20) 0%,
@@ -44,20 +43,42 @@ header{
 position:fixed;
 top:0;
 width:100%;
-padding:20px 8%;
+padding:18px 8%;
 display:flex;
 justify-content:space-between;
 align-items:center;
-background:rgba(0,0,0,.6);
+background:rgba(0,0,0,.72);
 backdrop-filter:blur(15px);
-border-bottom:1px solid rgba(255,255,255,.05);
+border-bottom:1px solid rgba(255,255,255,.08);
 z-index:999;
 }
 
 .logo{
-font-size:1.6rem;
-font-weight:700;
-color:#a855f7;
+display:flex;
+align-items:center;
+gap:14px;
+text-decoration:none;
+color:white;
+}
+
+.logo img{
+width:52px;
+height:52px;
+object-fit:contain;
+filter:drop-shadow(0 0 18px rgba(168,85,247,.45));
+}
+
+.logo-text strong{
+display:block;
+font-size:1.1rem;
+letter-spacing:.08em;
+}
+
+.logo-text span{
+display:block;
+font-size:.82rem;
+color:#aaa;
+margin-top:3px;
 }
 
 nav{
@@ -68,6 +89,12 @@ gap:25px;
 nav a{
 color:white;
 text-decoration:none;
+transition:.3s;
+font-weight:500;
+}
+
+nav a:hover{
+color:#c084fc;
 }
 
 .btn{
@@ -77,6 +104,13 @@ background:linear-gradient(45deg,#7c3aed,#a855f7);
 text-decoration:none;
 color:white;
 font-weight:bold;
+box-shadow:0 0 25px rgba(124,58,237,.25);
+transition:.3s;
+}
+
+.btn:hover{
+transform:translateY(-3px);
+box-shadow:0 0 35px rgba(168,85,247,.45);
 }
 
 .hero{
@@ -84,7 +118,7 @@ min-height:100vh;
 display:flex;
 justify-content:center;
 align-items:center;
-padding:0 8%;
+padding:130px 8% 80px;
 position:relative;
 z-index:1;
 }
@@ -105,22 +139,26 @@ border:1px solid #7c3aed;
 border-radius:50px;
 margin-bottom:25px;
 color:#c084fc;
+background:rgba(124,58,237,.08);
 }
 
 .hero h1{
 font-size:5rem;
 line-height:1;
 margin-bottom:20px;
+letter-spacing:-.05em;
 }
 
 .hero h1 span{
 color:#a855f7;
+text-shadow:0 0 30px rgba(168,85,247,.28);
 }
 
 .hero p{
 font-size:1.1rem;
 line-height:1.8;
 color:#bdbdbd;
+max-width:620px;
 }
 
 .buttons{
@@ -136,14 +174,53 @@ border:1px solid rgba(255,255,255,.15);
 border-radius:12px;
 text-decoration:none;
 color:white;
+transition:.3s;
+}
+
+.btn-outline:hover{
+border-color:#a855f7;
+background:rgba(168,85,247,.08);
+transform:translateY(-3px);
 }
 
 .dashboard{
-background:#121218;
-border:1px solid rgba(255,255,255,.05);
+background:rgba(18,18,24,.85);
+border:1px solid rgba(255,255,255,.08);
 border-radius:25px;
 padding:25px;
 box-shadow:0 0 50px rgba(124,58,237,.20);
+backdrop-filter:blur(18px);
+}
+
+.dashboard-top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:22px;
+}
+
+.dots{
+display:flex;
+gap:8px;
+}
+
+.dots span{
+width:12px;
+height:12px;
+border-radius:50%;
+}
+
+.red{background:#ff5f57;}
+.yellow{background:#ffbd2e;}
+.green{background:#28c840;}
+
+.live{
+font-size:.85rem;
+color:#d8b4fe;
+border:1px solid rgba(168,85,247,.3);
+border-radius:20px;
+padding:8px 12px;
+background:rgba(168,85,247,.08);
 }
 
 .stats{
@@ -156,6 +233,7 @@ gap:15px;
 background:#1b1b22;
 padding:20px;
 border-radius:15px;
+border:1px solid rgba(255,255,255,.06);
 }
 
 .card h3{
@@ -163,15 +241,33 @@ font-size:2rem;
 color:#a855f7;
 }
 
+.card p{
+color:#aaa;
+margin-top:5px;
+}
+
 .graph{
 margin-top:20px;
 height:180px;
 border-radius:15px;
-background:linear-gradient(
-180deg,
-rgba(168,85,247,.8),
-transparent
-);
+background:
+repeating-linear-gradient(to right,rgba(255,255,255,.05) 0 1px,transparent 1px 45px),
+repeating-linear-gradient(to bottom,rgba(255,255,255,.05) 0 1px,transparent 1px 45px),
+linear-gradient(180deg,rgba(168,85,247,.8),transparent);
+position:relative;
+overflow:hidden;
+}
+
+.graph::after{
+content:"";
+position:absolute;
+bottom:0;
+left:25px;
+right:25px;
+height:90px;
+background:linear-gradient(90deg,#7c3aed,#a855f7,#d8b4fe);
+opacity:.6;
+clip-path:polygon(0 80%,15% 55%,30% 70%,45% 30%,60% 50%,75% 15%,100% 35%,100% 100%,0 100%);
 }
 
 section{
@@ -183,7 +279,15 @@ z-index:1;
 .section-title{
 font-size:3rem;
 text-align:center;
-margin-bottom:50px;
+margin-bottom:20px;
+}
+
+.section-subtitle{
+text-align:center;
+color:#bdbdbd;
+max-width:760px;
+margin:0 auto 50px;
+line-height:1.7;
 }
 
 .services{
@@ -193,16 +297,18 @@ gap:25px;
 }
 
 .service{
-background:#121218;
+background:rgba(18,18,24,.85);
 padding:30px;
 border-radius:20px;
-border:1px solid rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.06);
 transition:.3s;
+backdrop-filter:blur(18px);
 }
 
 .service:hover{
 transform:translateY(-10px);
 box-shadow:0 0 30px rgba(124,58,237,.25);
+border-color:rgba(168,85,247,.45);
 }
 
 .service h3{
@@ -211,10 +317,144 @@ margin-bottom:15px;
 
 .service p{
 color:#bdbdbd;
+line-height:1.7;
+}
+
+.diferenciais{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:25px;
+}
+
+.diferencial{
+background:rgba(18,18,24,.85);
+padding:26px;
+border-radius:20px;
+border:1px solid rgba(255,255,255,.06);
+transition:.3s;
+}
+
+.diferencial:hover{
+transform:translateY(-8px);
+border-color:rgba(168,85,247,.45);
+}
+
+.techs{
+display:flex;
+justify-content:center;
+flex-wrap:wrap;
+gap:14px;
+}
+
+.tech{
+padding:13px 18px;
+border-radius:50px;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.08);
+color:#e6e6ef;
+font-weight:600;
+transition:.3s;
+}
+
+.tech:hover{
+color:#d8b4fe;
+border-color:rgba(168,85,247,.45);
+transform:translateY(-4px);
+}
+
+.portfolio{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+gap:25px;
+}
+
+.project{
+min-height:280px;
+background:rgba(18,18,24,.85);
+border:1px solid rgba(255,255,255,.06);
+border-radius:22px;
+padding:28px;
+position:relative;
+overflow:hidden;
+transition:.3s;
+}
+
+.project:hover{
+transform:translateY(-10px);
+box-shadow:0 0 30px rgba(124,58,237,.25);
+border-color:rgba(168,85,247,.45);
+}
+
+.project span{
+display:inline-block;
+padding:8px 12px;
+border-radius:20px;
+background:rgba(168,85,247,.1);
+border:1px solid rgba(168,85,247,.25);
+color:#d8b4fe;
+font-size:.85rem;
+margin-bottom:18px;
+}
+
+.project p{
+color:#bdbdbd;
+line-height:1.7;
+margin-top:12px;
+}
+
+.mock{
+position:absolute;
+left:28px;
+right:28px;
+bottom:25px;
+height:80px;
+border-radius:16px;
+background:
+repeating-linear-gradient(to right,rgba(255,255,255,.05) 0 1px,transparent 1px 45px),
+linear-gradient(135deg,rgba(168,85,247,.35),rgba(255,255,255,.03));
+border:1px solid rgba(255,255,255,.08);
+}
+
+.about{
+display:grid;
+grid-template-columns:.9fr 1.1fr;
+gap:50px;
+align-items:center;
+}
+
+.about-logo{
+min-height:380px;
+border-radius:26px;
+background:
+radial-gradient(circle,rgba(168,85,247,.22),transparent 50%),
+rgba(18,18,24,.85);
+border:1px solid rgba(255,255,255,.08);
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+.about-logo img{
+width:220px;
+filter:drop-shadow(0 0 40px rgba(168,85,247,.4));
+}
+
+.about-text h2{
+font-size:3.2rem;
+line-height:1.05;
+margin-bottom:24px;
+}
+
+.about-text p{
+color:#bdbdbd;
+line-height:1.8;
+margin-bottom:18px;
 }
 
 .cta{
 text-align:center;
+background:
+radial-gradient(circle at center,rgba(168,85,247,.20),transparent 55%);
 }
 
 .cta h2{
@@ -227,29 +467,105 @@ color:#a855f7;
 margin:20px 0;
 }
 
+.cta p{
+color:#bdbdbd;
+line-height:1.7;
+margin-bottom:30px;
+}
+
 footer{
-padding:50px;
-text-align:center;
+padding:60px 8%;
 color:#9f9f9f;
 border-top:1px solid rgba(255,255,255,.05);
+display:grid;
+grid-template-columns:1fr 1fr 1fr;
+gap:30px;
+}
+
+.footer-logo{
+display:flex;
+align-items:center;
+gap:14px;
+margin-bottom:15px;
+color:white;
+}
+
+.footer-logo img{
+width:48px;
+height:48px;
+object-fit:contain;
+}
+
+footer h4{
+color:white;
+margin-bottom:15px;
+}
+
+footer a{
+display:block;
+color:#bdbdbd;
+text-decoration:none;
+margin-bottom:10px;
+}
+
+footer a:hover{
+color:#d8b4fe;
+}
+
+.whatsapp{
+position:fixed;
+right:24px;
+bottom:24px;
+width:64px;
+height:64px;
+background:#25d366;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:30px;
+text-decoration:none;
+z-index:9999;
+box-shadow:0 0 25px rgba(37,211,102,.45);
+transition:.3s;
+}
+
+.whatsapp:hover{
+transform:scale(1.08) translateY(-4px);
 }
 
 @media(max-width:900px){
 
-.hero-content{
-grid-template-columns:1fr;
-}
-
-.hero h1{
-font-size:3rem;
+header{
+padding:16px 6%;
 }
 
 nav{
 display:none;
 }
 
+.hero-content,
+.about{
+grid-template-columns:1fr;
 }
 
+.hero{
+padding-top:130px;
+}
+
+.hero h1{
+font-size:3.2rem;
+}
+
+section{
+padding:90px 6%;
+}
+
+footer{
+grid-template-columns:1fr;
+}
+
+}
 </style>
 </head>
 
@@ -258,79 +574,92 @@ display:none;
 <div class="cursor-glow"></div>
 
 <header>
-
-<div class="logo">
-SYNTRA SYSTEMS
+<a icio
+<img src="logo.png" alt="Syntra Systemsg>SYNTRA SYSTEMS</strong>
+<span>Soluções digitais</span>
 </div>
+</a>
 
 <nav>
-icos">Serviços</a>
-#sobre>
-#contato
+#inicioInício</a>
+<a hrefosServiços</a>
+<a hrefnciaisDiferenciais</a>
+<a hrefogiasTecnologias</a>
+#portfolioPortfólio</a>
+#sobreSobre</a>
+<a hrefoContato</a>
 </nav>
 
 <a class="btn" href="https://wa.me/5519999451613" target="_blank">
-Orçamento
+Solicitar orçamento
 </a>
-
 </header>
 
-<section class="hero">
+<main id="inicio">
 
+<section class="hero">
 <div class="hero-content">
 
 <div>
-
 <div class="badge">
 🚀 Tecnologia • Automação • Inovação
 </div>
 
 <h1>
-Transformamos
-<span>ideias</span>
-em soluções digitais.
+Soluções digitais construídas
+<span>para o próximo nível.</span>
 </h1>
 
 <p>
-Desenvolvemos sistemas, sites,
-automações e soluções tecnológicas
-para empresas que querem crescer.
+Desenvolvemos sistemas, websites e automações que transformam desafios
+em vantagem competitiva para empresas que querem crescer com tecnologia.
 </p>
 
 <div class="buttons">
-
-https://wa.me/5519999451613" target="_blank">
+<a class="btn" href="https://wa.me/5519999451613" target="_blank">
 Falar no WhatsApp
 </a>
 
 #servicos
-
+Conhecer serviços
+</a>
 </div>
-
 </div>
 
 <div class="dashboard">
 
+<div class="dashboard-top">
+<div class="dots">
+<span class="red"></span>
+<span class="yellow"></span>
+<span class="green"></span>
+</div>
+
+<div class="live">
+Sistema em tempo real
+</div>
+</div>
+
 <div class="stats">
 
 <div class="card">
-<h3>+50</h3>
-<p>Projetos</p>
+<h3>100%</h3>
+<p>Projetos personalizados</p>
 </div>
 
 <div class="card">
-<h3>99%</h3>
-<p>Disponibilidade</p>
+<h3>Remoto</h3>
+<p>Atendimento</p>
 </div>
 
 <div class="card">
 <h3>24/7</h3>
-<p>Suporte</p>
+<p>Suporte técnico</p>
 </div>
 
 <div class="card">
-<h3>100%</h3>
-<p>Customizado</p>
+<h3>Web</h3>
+<p>Soluções modernas</p>
 </div>
 
 </div>
@@ -340,79 +669,218 @@ Falar no WhatsApp
 </div>
 
 </div>
-
 </section>
 
 <section id="servicos">
-
 <h2 class="section-title">O que fazemos</h2>
+<p class="section-subtitle">
+Criamos soluções digitais para empresas que precisam de presença online,
+sistemas eficientes, automações e suporte técnico confiável.
+</p>
 
 <div class="services">
 
 <div class="service">
-<h3>💻 Sistemas</h3>
-<p>Desenvolvimento de sistemas personalizados.</p>
+<h3>🌐 Desenvolvimento Web</h3>
+<p>Criação de sites modernos, rápidos, responsivos e pensados para transmitir credibilidade.</p>
 </div>
 
 <div class="service">
-<h3>🌐 Sites</h3>
-<p>Websites profissionais de alta performance.</p>
+<h3>💻 Sistemas Sob Medida</h3>
+<p>Plataformas e sistemas web desenvolvidos para atender necessidades específicas do negócio.</p>
 </div>
 
 <div class="service">
-<h3>⚡ Automações</h3>
-<p>Automatização de processos e tarefas.</p>
+<h3>⚡ Automações Inteligentes</h3>
+<p>Automatização de tarefas repetitivas para reduzir retrabalho e aumentar produtividade.</p>
 </div>
 
 <div class="service">
-<h3>📊 Dashboards</h3>
-<p>Visualização inteligente de indicadores.</p>
+<h3>🛠️ Modernização de Sites</h3>
+<p>Melhorias visuais, técnicas e estruturais em sites existentes.</p>
 </div>
 
 <div class="service">
-<h3>🔗 Integrações</h3>
-<p>Integração entre APIs e plataformas.</p>
+<h3>📊 Dashboards e Relatórios</h3>
+<p>Organização de dados em painéis visuais para facilitar decisões estratégicas.</p>
 </div>
 
 <div class="service">
-<h3>🛡️ Suporte</h3>
-<p>Suporte especializado para empresas.</p>
+<h3>🧩 Suporte Técnico</h3>
+<p>Acompanhamento técnico para empresas que precisam de suporte e melhorias contínuas.</p>
 </div>
 
 </div>
-
 </section>
 
-<section id="sobre" class="cta">
+<section id="diferenciais">
+<h2 class="section-title">Por que escolher a Syntra?</h2>
+<p class="section-subtitle">
+Mais que código. Estratégia, cuidado e resultado para transformar ideias em soluções úteis.
+</p>
 
-<h2>Seu projeto merece mais do que código.</h2>
+<div class="diferenciais">
+
+<div class="diferencial">
+<h3>🚀 Tecnologia Moderna</h3>
+<p>Interfaces atuais, responsivas e preparadas para diferentes dispositivos.</p>
+</div>
+
+<div class="diferencial">
+<h3>🎯 Foco em Resultado</h3>
+<p>Cada solução é pensada para resolver problemas reais e gerar valor.</p>
+</div>
+
+<div class="diferencial">
+<h3>🤝 Atendimento Próximo</h3>
+<p>Comunicação clara, acompanhamento e suporte durante o desenvolvimento.</p>
+</div>
+
+<div class="diferencial">
+<h3>📈 Soluções Escaláveis</h3>
+<p>Projetos preparados para crescer junto com a empresa.</p>
+</div>
+
+</div>
+</section>
+
+<section id="tecnologias">
+<h2 class="section-title">Tecnologias</h2>
+<p class="section-subtitle">
+Ferramentas modernas para desenvolver projetos digitais funcionais e escaláveis.
+</p>
+
+<div class="techs">
+<span class="tech">HTML5</span>
+<span class="tech">CSS3</span>
+<span class="tech">JavaScript</span>
+<span class="tech">Python</span>
+<span class="tech">Node.js</span>
+<span class="tech">GitHub</span>
+<span class="tech">Microsoft 365</span>
+<span class="tech">Power BI</span>
+<span class="tech">Azure</span>
+<span class="tech">Automação</span>
+</div>
+</section>
+
+<section id="portfolio">
+<h2 class="section-title">Portfólio</h2>
+<p class="section-subtitle">
+Projetos demonstrativos que mostram o que podemos construir para empresas.
+</p>
+
+<div class="portfolio">
+
+<div class="project">
+<span>Sistema Web</span>
+<h3>Portal Administrativo</h3>
+<p>Ambiente para controle interno, cadastro de informações e organização operacional.</p>
+<div class="mock"></div>
+</div>
+
+<div class="project">
+<span>Dados</span>
+<h3>Dashboard Comercial</h3>
+<p>Painel visual para acompanhar vendas, clientes, metas e indicadores importantes.</p>
+<div class="mock"></div>
+</div>
+
+<div class="project">
+<span>Gestão</span>
+<h3>Sistema de Gestão</h3>
+<p>Solução para organizar rotinas, tarefas, registros e fluxos internos.</p>
+<div class="mock"></div>
+</div>
+
+<div class="project">
+<span>Web</span>
+<h3>Landing Page Empresarial</h3>
+<p>Página moderna para divulgar serviços, captar contatos e fortalecer a presença digital.</p>
+<div class="mock"></div>
+</div>
+
+</div>
+</section>
+
+<section id="sobre">
+<div class="about">
+
+<div class="about-logo">
+logo.png
+</div>
+
+<div class="about-text">
+<h2>Transformamos desafios em soluções digitais inteligentes.</h2>
+
+<p>
+A Syntra Systems nasceu para ajudar empresas a evoluírem com tecnologia,
+criando soluções digitais modernas, funcionais e alinhadas aos objetivos de cada negócio.
+</p>
+
+<p>
+Desenvolvemos websites, sistemas web, automações e melhorias técnicas com foco em
+performance, escalabilidade, organização e resultado.
+</p>
+
+<p>
+Atuamos em Araras - SP, Porto Ferreira - SP e também de forma remota para empresas
+de outras regiões do Brasil.
+</p>
+</div>
+
+</div>
+</section>
+
+<section class="cta">
+<h2>Seu próximo projeto começa aqui.</h2>
 <h3>Merece Syntra.</h3>
+<p>Vamos transformar sua ideia em uma solução digital moderna, funcional e preparada para gerar valor.</p>
 
 <a class="btn" href="https://wa.me/5519999451613" target="_blank">
 Solicitar orçamento
 </a>
-
 </section>
+
+</main>
 
 <footer id="contato">
 
-<p>📞 (19) 99945-1613</p>
-<p>📸 @syntrasystemss</p>
-<p>🌐 syntrasystems.com.br</p>
+<div>
+<div class="footer-logo">
+logo.png
+<strong>SYNTRA SYSTEMS</strong>
+</div>
+<p>Soluções digitais construídas para o próximo nível.</p>
+</div>
+
+<div>
+<h4>Contato</h4>
+<a href="https://wa.me/5519999451613" target="_blank">📞 (19) 99945-1613</a>
+<a href="mailto:contato@syntrasystems.com.br">📧 contato@syntrasystems.com.br</a>
+https://instagram.com/syntrasystemss📸 @syntrasystemss</a>
+</div>
+
+<div>
+<h4>Atendimento</h4>
+<p>Araras - SP</p>
+<p>Porto Ferreira - SP</p>
+<p>Atendimento remoto em todo o Brasil</p>
+</div>
 
 </footer>
 
-<script>
+<a class="whatsapp" href="https://wa.me/5519999451613" target="_blank">
+💬
+</a>
 
+<script>
 const glow = document.querySelector('.cursor-glow');
 
-document.addEventListener('mousemove',(e)=>{
-
-glow.style.left=e.clientX+'px';
-glow.style.top=e.clientY+'px';
-
+document.addEventListener('mousemove', function(e){
+glow.style.left = e.clientX + 'px';
+glow.style.top = e.clientY + 'px';
 });
-
 </script>
 
 </body>
