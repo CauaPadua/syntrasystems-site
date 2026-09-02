@@ -21,11 +21,18 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           port: 21
+
           server-dir: /htdocs/
           local-dir: ./
+
+          state-name: ftp-deploy-sync-state.json
+
           exclude: |
             **/.git*
             **/.git*/**
             **/.github/**
             **/README.md
+            **/CNAME
             **/reference/**
+            **/validation/**
+            **/docs/**
