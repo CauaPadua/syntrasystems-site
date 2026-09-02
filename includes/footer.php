@@ -31,6 +31,6 @@
 
   <div class="container site-footer__bottom">
     <p>&copy; <?php echo date('Y'); ?> <?php aq_out(AQ_SITE_NAME); ?>. Todos os direitos reservados.</p>
-    <p><?php aq_out(AQ_SITE_TAGLINE); ?> · teste de deploy automático #1</p>
+    <p><?php aq_out(AQ_SITE_TAGLINE); ?></p>
   </div>
 </footer>
