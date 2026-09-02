@@ -1,0 +1,13 @@
+# Aquapulse — o diretório backend/ nunca deve ser acessado diretamente pela web.
+# Ele é incluído pelos pontos de entrada em api/. Vale para Apache/XAMPP.
+
+<IfModule mod_authz_core.c>
+    # Apache 2.4+
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    # Apache 2.2
+    Order deny,allow
+    Deny from all
+</IfModule>

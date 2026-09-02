@@ -1,0 +1,166 @@
+======================================================================
+ Aquapulse - Etapa 2: resultados dos testes de autenticacao
+ Data: 2026-09-02 08:28:23
+ Servidor: PHP 8.0.30 (servidor embutido, 127.0.0.1:8123)
+ Repositorio: MockUserRepository (simulado, sem banco de dados)
+======================================================================
+
+--- 1. Abrir login.php ---
+GET /login.php -> HTTP 200 (12625 bytes)
+RESULTADO: OK (sem avisos PHP)
+
+--- 2/3/4. Login com credenciais corretas ---
+POST /login.php -> HTTP 200
+corpo: {"data":{"user":{"id":1,"name":"Usuário de demonstração","email":"demo@aquapulse.local","role":"admin"}}}
+cookie: Set-Cookie: AQUAPULSE_SESSION=9oo00t24nf16dspiifk2lac9ct; path=/; HttpOnly; SameSite=Lax
+RESULTADO: OK (200 e sessao criada)
+
+--- 5. GET /me.php com sessao ---
+GET /me.php -> HTTP 200
+corpo: {"data":{"user":{"id":1,"name":"Usuário de demonstração","email":"demo@aquapulse.local","role":"admin"}}}
+RESULTADO: OK (usuario devolvido)
+
+--- 6. Sessao permanece apos nova requisicao (equivale a atualizar a pagina) ---
+consulta 1 -> HTTP 200 | consulta 2 -> HTTP 200
+RESULTADO: OK (sessao persiste)
+
+--- 7. Logout ---
+POST /logout.php -> HTTP 200
+corpo: {"data":{"message":"Sessão encerrada."}}
+RESULTADO: OK
+
+--- 8. GET /me.php apos o logout ---
+GET /me.php -> HTTP 401
+corpo: {"error":{"code":"UNAUTHENTICATED","message":"Sessão não encontrada ou expirada."}}
+RESULTADO: OK (401 como esperado)
+
+--- 9. Senha incorreta ---
+POST /login.php {email valido, senha errada}
+  HTTP 401 (esperado 401)
+  corpo: {"error":{"code":"INVALID_CREDENTIALS","message":"E-mail ou senha inválidos."}}
+  RESULTADO: OK
+
+--- 10. E-mail inexistente ---
+POST /login.php {email inexistente}
+  HTTP 401 (esperado 401)
+  corpo: {"error":{"code":"INVALID_CREDENTIALS","message":"E-mail ou senha inválidos."}}
+  RESULTADO: OK
+
+  Observacao: mensagem identica a do teste 9 - a API nao revela se o e-mail existe.
+
+--- 11. Campos vazios ---
+POST /login.php {email:'', password:''}
+  HTTP 422 (esperado 422)
+  corpo: {"error":{"code":"VALIDATION_ERROR","message":"Verifique os campos informados.","details":{"email":"Informe o e-mail.","password":"Informe a senha."}}}
+  RESULTADO: OK
+
+POST /login.php {sem os campos}
+  HTTP 422 (esperado 422)
+  corpo: {"error":{"code":"VALIDATION_ERROR","message":"Verifique os campos informados.","details":{"email":"Informe o e-mail.","password":"Informe a senha."}}}
+  RESULTADO: OK
+
+POST /login.php {e-mail com formato invalido}
+  HTTP 422 (esperado 422)
+  corpo: {"error":{"code":"VALIDATION_ERROR","message":"Verifique os campos informados.","details":{"email":"Informe um e-mail válido."}}}
+  RESULTADO: OK
+
+--- 12. JSON invalido ---
+POST /login.php {corpo malformado}
+  HTTP 400 (esperado 400)
+  corpo: {"error":{"code":"INVALID_JSON","message":"Corpo da requisição não é um JSON válido."}}
+  RESULTADO: OK
+
+POST /login.php {corpo vazio}
+  HTTP 400 (esperado 400)
+  corpo: {"error":{"code":"INVALID_JSON","message":"Corpo da requisição não é um JSON válido."}}
+  RESULTADO: OK
+
+POST /login.php {Content-Type incorreto}
+  HTTP 400 (esperado 400)
+  corpo: {"error":{"code":"INVALID_CONTENT_TYPE","message":"Envie os dados com Content-Type: application/json."}}
+  RESULTADO: OK
+
+--- 13. Metodo HTTP incorreto ---
+GET /login.php
+  HTTP 405 (esperado 405)
+  corpo: {"error":{"code":"METHOD_NOT_ALLOWED","message":"Método não permitido para este endpoint."}}
+  Allow: POST
+  RESULTADO: OK
+
+GET /logout.php
+  HTTP 405 (esperado 405)
+  corpo: {"error":{"code":"METHOD_NOT_ALLOWED","message":"Método não permitido para este endpoint."}}
+  Allow: POST
+  RESULTADO: OK
+
+POST /me.php
+  HTTP 405 (esperado 405)
+  corpo: {"error":{"code":"METHOD_NOT_ALLOWED","message":"Método não permitido para este endpoint."}}
+  Allow: GET
+  RESULTADO: OK
+
+DELETE /login.php
+  HTTP 405 (esperado 405)
+  corpo: {"error":{"code":"METHOD_NOT_ALLOWED","message":"Método não permitido para este endpoint."}}
+  Allow: POST
+  RESULTADO: OK
+
+--- 14. Erros PHP e JavaScript ---
+  Lint PHP: 21 arquivos, todos sem erros de sintaxe.
+  index.php com E_ALL: 29616 bytes | avisos PHP: nenhum
+  login.php com E_ALL: 12626 bytes | avisos PHP: nenhum
+  Console do navegador (login.php em 1440/1024/768/375): ERROS_JS=nenhum
+  Console do navegador (index.php em 1920/1440/768/375): ERROS_JS=nenhum
+  RESULTADO: OK
+
+--- 15/16. Responsividade e overflow horizontal (login.php) ---
+  1440px -> OVERFLOW_X=nao | 5 imagens ok | ancoras ok | ERROS_JS=nenhum
+  1024px -> OVERFLOW_X=nao | 5 imagens ok | ancoras ok | ERROS_JS=nenhum
+  768px  -> OVERFLOW_X=nao | 5 imagens ok | ancoras ok | ERROS_JS=nenhum
+  375px  -> OVERFLOW_X=nao | 5 imagens ok | ancoras ok | ERROS_JS=nenhum
+  RESULTADO: OK
+
+--- 17. Landing page continua funcionando ---
+  1920px -> OVERFLOW_X=nao | 11 imagens ok | ancoras ok | ERROS_JS=nenhum
+  1440px -> OVERFLOW_X=nao | 11 imagens ok | ancoras ok | ERROS_JS=nenhum
+  768px  -> OVERFLOW_X=nao | 11 imagens ok | ancoras ok | ERROS_JS=nenhum
+  375px  -> OVERFLOW_X=nao | 11 imagens ok | ancoras ok | ERROS_JS=nenhum
+  GET / -> HTTP 200
+  Botao 'Entrar' do cabecalho aponta para login.php: 1 ocorrencia(s)
+  RESULTADO: OK
+
+--- 18. Fluxo completo no navegador (Chrome headless, iframe de mesma origem) ---
+  A. estado inicial ................ formulario visivel, estado autenticado oculto
+  B. submit com campos vazios ...... erros por campo, aria-invalid=true, API nao chamada
+  C. senha incorreta ............... alerta com mensagem generica, permanece no formulario
+  D. mostrar/esconder senha ........ type alterna password<->text, aria-pressed acompanha
+  E. login correto ................. botao disabled + aria-busy durante a requisicao
+                                     estado 'Acesso validado' com nome, e-mail e perfil
+                                     campo de senha limpo apos o sucesso
+                                     localStorage=0 itens | sessionStorage=0 itens
+  F. recarregar a pagina ........... estado autenticado restaurado por me.php
+  G. logout ........................ retorna ao formulario
+  H. me.php apos logout ............ HTTP 401
+  ERROS_JS=nenhum
+  RESULTADO: OK
+
+--- 19. Seguranca ---
+  Resposta do login contem hash ou senha? nao
+  Resposta do me.php contem hash?        nao
+  Senha pura em arquivo de codigo?       nao
+  users.php guarda somente o hash?       sim
+  Cookie de sessao: AQUAPULSE_SESSION=c23q66b60bt3maammf3lh7it5m; path=/; HttpOnly; SameSite=Lax
+  Cabecalhos da API:
+    Content-Type: application/json; charset=utf-8
+    Cache-Control: no-store, no-cache, must-revalidate
+    Pragma: no-cache
+    X-Content-Type-Options: nosniff
+  backend/.htaccess bloqueando acesso direto: sim
+  Codigo-fonte do backend exposto pela web? 0 bytes retornados (0 = nao expoe)
+  RESULTADO: OK
+
+======================================================================
+ CONCLUSAO: os 17 testes exigidos passaram.
+ Autenticacao SIMULADA (MockUserRepository), sem banco de dados.
+ NAO adequada para producao - ver docs/login-stage.md.
+======================================================================
