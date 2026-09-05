@@ -1,0 +1,157 @@
+/* =========================================================================
+   Aquapulse — responsividade do sistema interno
+
+   Referência desktop: 1536 × 1024 (composição idêntica às capturas).
+   Abaixo disso o layout se reorganiza sem cortar conteúdo e sem gerar
+   rolagem horizontal na página inteira. Tabelas usam wrapper próprio.
+
+   Ordem no celular: título, filtros, KPIs, visualizações principais, detalhes.
+   ========================================================================= */
+
+/* ------------------------------------------------- 1440px: leve compressão */
+@media (max-width: 1500px) {
+  .aq-content { padding-left: 22px; padding-right: 22px; }
+  .aq-topbar { padding-left: 22px; padding-right: 22px; }
+  .aq-kpi__value { font-size: 1.7rem; }
+}
+
+/* ------------------------- 1280px: mantém sidebar, reduz colunas dos KPIs */
+@media (max-width: 1340px) {
+  :root { --aq-sidebar-width: 236px; }
+
+  .aq-sidebar__brand img { width: 168px; }
+  .aq-topbar__title h1 { font-size: 1.42rem; }
+  .aq-topbar__meta { gap: 14px; }
+
+  /* faixas de 5, 6 e 7 KPIs quebram em duas linhas em vez de espremer */
+  .aq-grid--5, .aq-grid--6, .aq-grid--7 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .aq-kpi__value { font-size: 1.55rem; }
+  .aq-kpi__icon { width: 40px; height: 40px; }
+  .aq-select, .aq-input { min-width: 180px; }
+}
+
+/* ---------------------------------- 1180px: grades de 4 viram 2 colunas */
+@media (max-width: 1180px) {
+  .aq-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aq-grid--3-2, .aq-grid--2-1, .aq-grid--1-2,
+  .aq-grid--7-3 { grid-template-columns: minmax(0, 1fr); }
+  .aq-map--lg { height: 480px; }
+}
+
+/* ------------------- 1024px e tablet: sidebar recolhível + 2 colunas */
+@media (max-width: 1024px) {
+  .aq-sidebar {
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    box-shadow: 0 0 40px rgba(3, 30, 73, 0.3);
+  }
+  .aq-sidebar.is-open { transform: none; }
+
+  .aq-main { margin-left: 0; }
+
+  .aq-menu-toggle { display: inline-flex; }
+
+  .aq-backdrop {
+    display: block;
+    position: fixed; inset: 0; z-index: 55;
+    background: rgba(3, 30, 73, 0.4);
+  }
+  .aq-backdrop[hidden] { display: none; }
+  body.aq-nav-open { overflow: hidden; }
+
+  .aq-grid--3, .aq-grid--5, .aq-grid--6, .aq-grid--7,
+  .aq-grid--5-4-7, .aq-grid--3-3-3-4-8,
+  .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* com duas colunas quem fica na borda direita é o item par: a bolha da
+     dica precisa abrir para a esquerda para não sair da tela */
+  .aq-grid > *:nth-child(even) .aq-tip::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  .aq-context { gap: 16px; }
+  .aq-context__label { border-right: 0; padding-right: 0; }
+  .aq-context__note { display: none; }
+}
+
+/* ------------------------------------- 768px: drawer + cards reorganizados */
+@media (max-width: 860px) {
+  :root { --aq-header-height: 76px; --aq-content-gap: 14px; }
+
+  .aq-topbar { flex-wrap: wrap; padding: 14px 18px; row-gap: 12px; }
+  .aq-topbar__title h1 { font-size: 1.28rem; }
+  .aq-topbar__title p { font-size: 0.84rem; }
+  .aq-topbar__meta { width: 100%; justify-content: space-between; gap: 10px; }
+  .aq-meta-item--date { display: none; }
+
+  .aq-content { padding: 14px 18px 22px; }
+
+  .aq-grid--2, .aq-grid--3, .aq-grid--4,
+  .aq-grid--5, .aq-grid--6, .aq-grid--7,
+  .aq-grid--5-4-7, .aq-grid--3-3-3-4-8,
+  .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .aq-select, .aq-input { min-width: 0; width: 100%; }
+  .aq-field { width: 100%; }
+  .aq-context { flex-direction: column; align-items: stretch; }
+
+  .aq-map--lg { height: 400px; }
+  .aq-chart--xl { height: 260px; }
+
+  .aq-user__info { display: none; }
+  .aq-user { padding: 0; }
+}
+
+/* -------------------------------------------- 375px: uma coluna completa */
+@media (max-width: 620px) {
+  :root { --aq-content-gap: 12px; }
+
+  .aq-topbar { padding: 12px 14px; }
+  .aq-content { padding: 12px 14px 20px; }
+
+  /* tudo em uma coluna: KPIs, gráficos e painéis */
+  .aq-grid--2, .aq-grid--3, .aq-grid--4,
+  .aq-grid--5, .aq-grid--6, .aq-grid--7,
+  .aq-grid--5-4-7, .aq-grid--3-3-3-4-8,
+  .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: minmax(0, 1fr); }
+
+  /* coluna única: nenhuma borda direita, a dica volta a ser centralizada */
+  .aq-grid > *:last-child .aq-tip::after,
+  .aq-grid > *:nth-child(even) .aq-tip::after {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .aq-card { padding: 15px 16px; }
+  .aq-card__head { flex-wrap: wrap; }
+
+  .aq-kpi__value { font-size: 1.6rem; }
+
+  .aq-chart--sm { height: 180px; }
+  .aq-chart--md { height: 200px; }
+  .aq-chart--lg { height: 220px; }
+  .aq-chart--xl { height: 240px; }
+
+  .aq-map--sm { height: 220px; }
+  .aq-map--lg { height: 340px; }
+
+  /* tabelas rolam dentro do próprio wrapper, nunca na página */
+  .aq-table { min-width: 560px; }
+  .aq-table-wrap { -webkit-overflow-scrolling: touch; }
+
+  .aq-legend { gap: 12px; font-size: 0.78rem; }
+  .aq-pagination { justify-content: center; }
+
+  .aq-tabs { gap: 0; }
+  .aq-tab { padding: 12px 13px; font-size: 0.85rem; }
+  .aq-tab span { display: none; }
+  .aq-tab .aq-icon { width: 20px; height: 20px; }
+
+  .aq-toast { right: 12px; left: 12px; bottom: 12px; max-width: none; }
+
+  .aq-sidebar { width: min(280px, 86vw); }
+}

@@ -187,8 +187,8 @@ $aq_api_base = 'api/v1/auth';
           <span class="login-box__badge" aria-hidden="true"><?php aq_the_icon('check-circle'); ?></span>
 
           <h2 class="login-box__title">Acesso validado</h2>
-          <p class="login-box__subtitle">
-            Sua sessão está ativa. O painel do sistema será construído na próxima etapa.
+          <p class="login-box__subtitle" data-auth-status>
+            Sua sessão está ativa. Redirecionando para o painel…
           </p>
 
           <dl class="session-card">
@@ -206,7 +206,12 @@ $aq_api_base = 'api/v1/auth';
             </div>
           </dl>
 
-          <button class="btn btn--primary btn--block login-submit" type="button" data-logout>
+          <a class="btn btn--primary btn--block" href="dashboard/index.php" data-go-dashboard>
+            <?php aq_the_icon('layers-list'); ?>
+            <span>Ir para o painel</span>
+          </a>
+
+          <button class="btn btn--outline btn--block login-submit" type="button" data-logout>
             <span class="login-submit__spinner" aria-hidden="true"></span>
             <span class="login-submit__icon" aria-hidden="true"><?php aq_the_icon('log-out'); ?></span>
             <span data-logout-label>Encerrar sessão</span>

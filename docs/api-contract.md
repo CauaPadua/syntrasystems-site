@@ -1,5 +1,9 @@
 # Contrato da API — Autenticação (v1)
 
+> O contrato do sistema interno (visão geral, monitoramento, alertas,
+> relatórios, mapas e configurações) está em
+> [`api-monitoring.md`](api-monitoring.md).
+
 Documento compartilhado entre front-end e back-end. Enquanto este contrato for
 respeitado, cada lado pode ser alterado de forma independente — inclusive a
 troca do repositório simulado por um banco de dados.

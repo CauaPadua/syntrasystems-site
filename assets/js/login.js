@@ -101,14 +101,41 @@
 
   /* ------------------------------------------------- alternância entre as vistas */
 
+  /**
+   * Destino após a autenticação.
+   *
+   * O único valor que o Guard do dashboard produz hoje é `?redirect=dashboard`
+   * (ver backend/src/Support/Guard.php), mas também aceitamos um caminho
+   * relativo dentro de `dashboard/` para permitir voltar à página exata que
+   * pediu login. Nunca aceitamos uma URL absoluta ou de outro domínio — isso
+   * seria um redirecionamento aberto.
+   */
+  function destinoPainel() {
+    var params;
+    try {
+      params = new URLSearchParams(window.location.search);
+    } catch (e) {
+      return 'dashboard/index.php';
+    }
+
+    var alvo = params.get('redirect');
+    if (alvo === 'dashboard') return 'dashboard/index.php';
+    if (alvo && /^dashboard\/[a-z0-9_/-]+\.php$/i.test(alvo)) return alvo;
+    return 'dashboard/index.php';
+  }
+
   function mostrarAutenticado(user) {
     var nome = document.querySelector('[data-session-name]');
     var email = document.querySelector('[data-session-email]');
     var perfil = document.querySelector('[data-session-role]');
+    var linkPainel = document.querySelector('[data-go-dashboard]');
 
     if (nome) nome.textContent = user.name || '—';
     if (email) email.textContent = user.email || '—';
     if (perfil) perfil.textContent = user.role || '—';
+
+    var destino = destinoPainel();
+    if (linkPainel) linkPainel.setAttribute('href', destino);
 
     if (vistaForm) vistaForm.hidden = true;
     if (vistaAuth) {
@@ -116,6 +143,14 @@
       vistaAuth.setAttribute('tabindex', '-1');
       vistaAuth.focus({ preventScroll: true });
     }
+
+    // O painel (etapa 3) já existe: a sessão validada segue direto para lá.
+    // O cartão fica visível por um instante (para o anúncio de acessibilidade
+    // e como confirmação visual) e também serve de saída manual — via
+    // data-go-dashboard — caso o redirecionamento automático seja bloqueado.
+    window.setTimeout(function () {
+      window.location.href = destino;
+    }, 500);
   }
 
   function mostrarFormulario() {
