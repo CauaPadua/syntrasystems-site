@@ -105,6 +105,17 @@ window.AqMap = (function () {
       });
 
       marker.bindPopup(popupHtml(m));
+
+      // rótulo sempre visível: identifica a represa e a situação sem exigir
+      // clique. O conteúdo fica no DOM, então também é lido por leitor de tela.
+      if (o.tooltip) {
+        var e = window.AqShell.esc;
+        marker.bindTooltip(
+          '<strong>' + e(m.name) + '</strong><br>Situação: ' + e(m.status.label),
+          { permanent: true, direction: 'top', offset: [0, -32], className: 'aq-map-tip' }
+        );
+      }
+
       marker.on('click', function () {
         if (typeof o.onSelect === 'function') o.onSelect(m);
       });

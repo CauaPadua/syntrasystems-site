@@ -124,35 +124,24 @@
     return 'dashboard/index.php';
   }
 
-  function mostrarAutenticado(user) {
-    var nome = document.querySelector('[data-session-name]');
-    var email = document.querySelector('[data-session-email]');
-    var perfil = document.querySelector('[data-session-role]');
-    var linkPainel = document.querySelector('[data-go-dashboard]');
-
-    if (nome) nome.textContent = user.name || '—';
-    if (email) email.textContent = user.email || '—';
-    if (perfil) perfil.textContent = user.role || '—';
-
-    var destino = destinoPainel();
-    if (linkPainel) linkPainel.setAttribute('href', destino);
-
-    if (vistaForm) vistaForm.hidden = true;
-    if (vistaAuth) {
-      vistaAuth.hidden = false;
-      vistaAuth.setAttribute('tabindex', '-1');
-      vistaAuth.focus({ preventScroll: true });
-    }
-
-    // O painel (etapa 3) já existe: a sessão validada segue direto para lá.
-    // O cartão fica visível por um instante (para o anúncio de acessibilidade
-    // e como confirmação visual) e também serve de saída manual — via
-    // data-go-dashboard — caso o redirecionamento automático seja bloqueado.
-    window.setTimeout(function () {
-      window.location.href = destino;
-    }, 500);
+  /**
+   * Login validado — nada de tela intermediária: segue direto para o painel.
+   *
+   * O anúncio para leitores de tela usa a região `[data-status]` já existente
+   * no formulário (visualmente oculta), então a navegação acontece sem
+   * nenhum flash de conteúdo na tela.
+   */
+  function irParaPainel() {
+    anunciar('Acesso validado. Abrindo o painel…');
+    window.location.replace(destinoPainel());
   }
 
+  function mostrarFormulario() {
+    if (vistaAuth) vistaAuth.hidden = true;
+    if (vistaForm) vistaForm.hidden = false;
+    form.reset();
+    limparErros();
+  }
   function mostrarFormulario() {
     if (vistaAuth) vistaAuth.hidden = true;
     if (vistaForm) vistaForm.hidden = false;
@@ -173,7 +162,7 @@
     })
     .then(function (corpo) {
       if (corpo && corpo.data && corpo.data.user) {
-        mostrarAutenticado(corpo.data.user);
+        irParaPainel();
       }
     })
     .catch(function () {
@@ -268,8 +257,7 @@
       .then(function (resultado) {
         if (resultado.ok && resultado.corpo.data && resultado.corpo.data.user) {
           campoSenha.value = '';
-          anunciar('Acesso validado.');
-          mostrarAutenticado(resultado.corpo.data.user);
+          irParaPainel();
           return;
         }
 

@@ -66,6 +66,31 @@ final class StatusRules
         }
     }
 
+    /**
+     * Frase que explica a situação operacional de uma represa.
+     *
+     * Fica aqui, junto das faixas, para que a mensagem nunca contradiga o
+     * status exibido no mesmo cartão — era o caso de um texto fixo dizendo
+     * "todas as condições dentro dos limites" mesmo com o nível em atenção.
+     */
+    public static function levelNote(string $status): string
+    {
+        switch ($status) {
+            case 'critical':
+                return 'Nível acima de ' . self::pct(self::LEVEL_CRITICAL) . '; ação imediata recomendada';
+            case 'attention':
+                return 'Nível acima de ' . self::pct(self::LEVEL_ATTENTION) . '; acompanhamento recomendado';
+            default:
+                return 'Todas as condições dentro dos limites';
+        }
+    }
+
+    /** Formata um limite percentual sem casas decimais desnecessárias. */
+    private static function pct(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 1, ',', '.'), '0'), ',') . '%';
+    }
+
     /** Rótulo em português para severidade de alerta. */
     public static function severityLabel(string $severity): string
     {

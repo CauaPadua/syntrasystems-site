@@ -329,6 +329,16 @@
 }
 .btn--outline:hover { border-color: var(--blue-300); background: var(--blue-50); }
 
+/* `.login-submit` (usada no botão "Encerrar sessão") sempre define um fundo
+   azul sólido, para o botão de envio principal — sem esta regra mais
+   específica, uma variante `.btn--outline` combinada com ela herdava esse
+   fundo e ficava com texto azul sobre fundo azul. */
+.login-submit.btn--outline {
+  background: #fff;
+  color: var(--login-cta);
+}
+.login-submit.btn--outline:hover { background: var(--blue-50); }
+
 .login-link {
   padding: 2px;
   border: 0;

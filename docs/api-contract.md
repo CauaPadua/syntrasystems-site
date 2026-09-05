@@ -73,7 +73,7 @@ Autentica o usuário e cria a sessão.
   "data": {
     "user": {
       "id": 1,
-      "name": "Usuário de demonstração",
+      "name": "Ana Silva",
       "email": "demo@aquapulse.local",
       "role": "admin"
     }
@@ -133,7 +133,7 @@ existe sessão: o cookie é `HttpOnly` e não pode ser lido por JavaScript.
   "data": {
     "user": {
       "id": 1,
-      "name": "Usuário de demonstração",
+      "name": "Ana Silva",
       "email": "demo@aquapulse.local",
       "role": "admin"
     }

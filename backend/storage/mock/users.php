@@ -18,7 +18,7 @@ declare(strict_types=1);
 return [
     [
         'id'            => 1,
-        'name'          => 'Usuário de demonstração',
+        'name'          => 'Ana Silva',
         'email'         => 'demo@aquapulse.local',
         'role'          => 'admin',
         'password_hash' => '$2y$10$4t4v7IbdN0wwnjU5ITX.i.AUA9CkfUd63mZGZKWDO0U3/mhyj9Sd.',

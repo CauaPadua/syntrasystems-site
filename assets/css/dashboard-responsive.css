@@ -29,6 +29,8 @@
   .aq-kpi__value { font-size: 1.55rem; }
   .aq-kpi__icon { width: 40px; height: 40px; }
   .aq-select, .aq-input { min-width: 180px; }
+  /* o seletor compacto do cabeçalho de gráfico continua do tamanho do texto */
+  .aq-select--sm { min-width: 0; }
 }
 
 /* ---------------------------------- 1180px: grades de 4 viram 2 colunas */
@@ -95,6 +97,7 @@
   .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .aq-select, .aq-input { min-width: 0; width: 100%; }
+  .aq-select--sm { width: auto; }
   .aq-field { width: 100%; }
   .aq-context { flex-direction: column; align-items: stretch; }
 

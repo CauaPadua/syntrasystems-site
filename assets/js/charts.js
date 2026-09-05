@@ -21,7 +21,7 @@ window.AqCharts = (function () {
     warning:   '#f59e0b',
     danger:    '#ef4444',
     grid:      'rgba(32, 79, 146, 0.09)',
-    axis:      '#7f90af',
+    axis:      '#62759a',
     text:      '#09245a'
   };
 

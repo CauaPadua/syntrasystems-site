@@ -36,8 +36,10 @@
   --aq-primary-soft: #eaf2ff;
   --aq-primary-lighter: #f3f7ff;
   --aq-text: #09245a;
-  --aq-text-secondary: #536b96;
-  --aq-text-muted: #7f90af;
+  /* contraste sobre o branco: 5,9:1 e 4,6:1 — ambos passam no AA (4,5:1)
+     para os textos pequenos de tabelas, legendas e descrições */
+  --aq-text-secondary: #48608f;
+  --aq-text-muted: #62759a;
   --aq-border: #e2eaf4;
   --aq-grid: rgba(32, 79, 146, 0.10);
   --aq-success: #16a34a;
@@ -129,7 +131,7 @@ body.aq-app {
 .aq-sidebar__brand {
   display: flex;
   align-items: center;
-  padding: 22px 20px 26px;
+  padding: 19px 20px 21px;
 }
 .aq-sidebar__brand img { width: 190px; height: auto; }
 
@@ -141,14 +143,14 @@ body.aq-app {
 .aq-sidebar__nav::-webkit-scrollbar { width: 6px; }
 .aq-sidebar__nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 3px; }
 
-.aq-nav__item { margin-bottom: 4px; }
+.aq-nav__item { margin-bottom: 3px; }
 
 .aq-nav__link {
   display: flex;
   align-items: center;
   gap: 14px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 11px 14px;
   border: 0;
   border-radius: 11px;
   background: none;
@@ -191,8 +193,10 @@ body.aq-app {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 14px 9px 18px;
-  margin: 2px 0;
+  /* recuo maior à esquerda: deixa claro que estes itens pertencem ao
+     "Monitoramento" logo acima, sem precisar de linha-guia */
+  padding: 8px 14px 8px 30px;
+  margin: 1px 0;
   border-radius: 9px;
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.88rem;
@@ -211,7 +215,7 @@ body.aq-app {
 .aq-nav__sublink.is-active { background: var(--aq-primary); color: #fff; }
 .aq-nav__sublink.is-active::before { background: #fff; }
 
-.aq-sidebar__footer { padding: 14px 18px 20px; }
+.aq-sidebar__footer { padding: 12px 18px 14px; }
 
 .aq-secure {
   display: flex;
@@ -356,8 +360,8 @@ body.aq-app {
 .aq-context {
   display: flex;
   align-items: center;
-  gap: 26px;
-  padding: 16px 20px;
+  gap: 20px;
+  padding: 12px 18px;
   border: 1px solid var(--aq-border);
   border-radius: var(--aq-radius-card);
   background: var(--aq-surface);
@@ -393,7 +397,7 @@ body.aq-app {
   color: var(--aq-text);
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23536b96' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2348608f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 17px;
@@ -413,16 +417,34 @@ body.aq-app {
 }
 .aq-select:disabled { background-color: var(--aq-bg); color: var(--aq-text-muted); cursor: not-allowed; }
 
+/* variante compacta: cabe no cabeçalho de um cartão, ao lado do título */
+.aq-select--sm {
+  height: 32px;
+  min-width: 0;
+  padding: 0 30px 0 11px;
+  font-size: 0.81rem;
+  background-position: right 9px center;
+  background-size: 15px;
+}
+
+/* textos auxiliares empilhados à direita: informam sem roubar altura da barra */
+.aq-context__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+
 .aq-context__note {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 0.83rem;
-  line-height: 1.4;
-  color: var(--aq-text-secondary);
-  max-width: 260px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--aq-text-muted);
+  max-width: 250px;
 }
-.aq-context__note .aq-icon { width: 18px; height: 18px; color: var(--aq-text-muted); flex: none; margin-top: 1px; }
+.aq-context__note .aq-icon { width: 15px; height: 15px; color: var(--aq-text-muted); flex: none; }
 .aq-context__spacer { flex: 1 1 auto; }
 
 .aq-context__pill {
@@ -477,6 +499,10 @@ body.aq-app {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* em cartões estreitos as ações (ex.: o seletor de período) descem para a
+     linha de baixo em vez de disputar espaço com o título */
+  flex-wrap: wrap;
+  row-gap: 8px;
   margin-bottom: 14px;
 }
 .aq-card__title {
@@ -486,7 +512,9 @@ body.aq-app {
   font-size: 1.02rem;
   font-weight: 700;
   flex: 1 1 auto;
-  min-width: 0;
+  /* `min-content` deixa o título encolher, mas nunca abaixo da maior palavra:
+     com `0` o texto vazava da própria caixa e passava por baixo das ações */
+  min-width: min-content;
 }
 .aq-card__title > .aq-icon { color: var(--aq-primary); width: 19px; height: 19px; }
 .aq-card__sub { font-size: 0.82rem; color: var(--aq-text-secondary); margin-top: 2px; }
@@ -859,6 +887,21 @@ body.aq-app {
 .aq-marker--normal { background: var(--aq-success); }
 .aq-marker--attention { background: var(--aq-warning); }
 .aq-marker--critical { background: var(--aq-danger); }
+
+/* rótulo permanente ao lado do marcador (Visão geral de uma represa) */
+.aq-map .aq-map-tip {
+  padding: 6px 10px;
+  border: 1px solid var(--aq-border);
+  border-radius: 9px;
+  background: var(--aq-surface);
+  box-shadow: 0 4px 14px rgba(8, 37, 86, 0.14);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--aq-text);
+  white-space: nowrap;
+}
+.aq-map .aq-map-tip strong { font-weight: 700; }
+.aq-map .aq-map-tip::before { border-top-color: var(--aq-border); }
 
 .aq-map-legend {
   display: flex; flex-direction: column; gap: 8px;

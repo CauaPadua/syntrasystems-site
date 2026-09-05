@@ -236,6 +236,27 @@ function aq_select(array $o): string
     return $html;
 }
 
+/**
+ * Seletor compacto de período, para o cabeçalho de um gráfico.
+ *
+ * Os valores seguem a allowlist da API (Validator::PERIODS); quem reage à
+ * troca é o script da tela, que recarrega os dados pelo mesmo endpoint.
+ */
+function aq_period_picker(string $id, string $value = '7d'): string
+{
+    $options = ['24h' => '24 horas', '7d' => '7 dias', '30d' => '30 dias', '90d' => '90 dias'];
+
+    $html = '<label class="aq-visually-hidden" for="' . aq_h($id) . '">Período do gráfico</label>'
+          . '<select class="aq-select aq-select--sm" id="' . aq_h($id) . '" data-period-picker>';
+
+    foreach ($options as $v => $text) {
+        $selected = ((string) $v === $value) ? ' selected' : '';
+        $html .= '<option value="' . aq_h((string) $v) . '"' . $selected . '>' . aq_h($text) . '</option>';
+    }
+
+    return $html . '</select>';
+}
+
 /** Abre um wrapper de tabela responsiva (rolagem própria, nunca da página). */
 function aq_table_open(string $label): string
 {

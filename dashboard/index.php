@@ -34,17 +34,19 @@ aq_page_start([
   <?php echo aq_select(['id' => 'filtro-empresa', 'label' => 'Empresa', 'options' => ['all' => 'Todas as empresas']]); ?>
   <?php echo aq_select(['id' => 'filtro-represa', 'label' => 'Represa', 'options' => ['all' => 'Todas as represas']]); ?>
 
-  <p class="aq-context__note">
-    <?php aq_the_icon('info'); ?>
-    <span>A seleção da empresa determina as represas disponíveis.</span>
-  </p>
-
   <span class="aq-context__spacer"></span>
 
-  <p class="aq-context__note">
-    <?php aq_the_icon('refresh'); ?>
-    <span>Contexto atualizado <span data-context-updated>há 2 min</span></span>
-  </p>
+  <!-- textos auxiliares: discretos, para não competir com os dois seletores -->
+  <div class="aq-context__aside">
+    <p class="aq-context__note">
+      <?php aq_the_icon('info'); ?>
+      <span>A empresa determina as represas disponíveis.</span>
+    </p>
+    <p class="aq-context__note">
+      <?php aq_the_icon('refresh'); ?>
+      <span>Atualizado <span data-context-updated>há 2 min</span></span>
+    </p>
+  </div>
 </section>
 
 <!-- ============================ MODO: TODAS AS REPRESAS ================== -->
@@ -183,7 +185,7 @@ aq_page_start([
           'title'   => 'Nível do reservatório',
           'icon'    => 'chart-bars',
           'tip'     => 'Cota observada no período, comparada com a cota de vertimento.',
-          'actions' => '<span class="aq-card__sub">Período: 7 dias</span>',
+          'actions' => aq_period_picker('periodo-nivel'),
       ]); ?>
       <div data-content="level-chart" hidden>
         <?php echo aq_chart(['id' => 'grafico-nivel', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Histórico da cota do reservatório.']); ?>
@@ -199,14 +201,14 @@ aq_page_start([
     <article class="aq-card">
       <?php echo aq_card_head([
           'title' => 'Comparativo de vazão',
-          'tip'   => 'Vazão do dia atual comparada com a média dos dias anteriores.',
-          'actions' => '<span class="aq-card__sub">Período: 7 dias</span>',
+          'tip'   => 'Vazão do período selecionado comparada com a média do período anterior.',
+          'actions' => aq_period_picker('periodo-vazao'),
       ]); ?>
       <div data-content="flow-chart" hidden>
         <?php echo aq_chart(['id' => 'grafico-vazao-comparativo', 'size' => 'md', 'axis' => 'Vazão (m³/s)', 'desc' => 'Comparativo de vazão entre o dia atual e os dias anteriores.']); ?>
         <?php echo aq_legend([
-            ['label' => 'Dia atual', 'color' => '#0b5bea'],
-            ['label' => 'Dias anteriores (média)', 'color' => '#7f90af', 'style' => 'dashed'],
+            ['label' => 'Período atual', 'color' => '#0b5bea'],
+            ['label' => 'Período anterior (média)', 'color' => '#9ec5fe', 'style' => 'dashed'],
         ]); ?>
       </div>
       <?php echo aq_states('flow-chart'); ?>

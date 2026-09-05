@@ -160,8 +160,14 @@
   }
 
   function renderUsers() {
+    // o nome vem do cabeçalho, que já recebeu o usuário da sessão pelo PHP —
+    // repetir o nome aqui faria a tela discordar do topo da página
+    var nome = document.querySelector('.aq-user__name');
+    var topo = document.querySelector('[data-user-email]');
+
     document.querySelector('[data-users]').innerHTML =
-      '<tr><td>Usuário de demonstração</td><td>demo@aquapulse.local</td>'
+      '<tr><td>' + S.esc(nome ? nome.textContent.trim() : 'Usuário da sessão') + '</td>'
+      + '<td>' + S.esc(topo ? topo.getAttribute('data-user-email') : '—') + '</td>'
       + '<td>Administrador</td><td>' + S.badge('Ativo', 'normal') + '</td></tr>';
   }
 

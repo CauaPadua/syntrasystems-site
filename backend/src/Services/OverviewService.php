@@ -74,7 +74,7 @@ final class OverviewService
                 'ph'           => ['value' => $r['ph'], 'unit' => '', 'status' => StatusRules::describe(StatusRules::fromPh((float) $r['ph'])), 'note' => 'Neutro'],
                 'rain'         => ['value' => $r['rain_24h_mm'], 'unit' => 'mm', 'trend' => 15, 'trend_label' => 'vs ontem', 'note' => 'Na bacia'],
                 'duration'     => ['value' => $r['duration_days'], 'unit' => 'dias', 'note' => 'Com o volume atual'],
-                'operation'    => ['status' => StatusRules::describe($status), 'note' => 'Todas as condições dentro dos limites'],
+                'operation'    => ['status' => StatusRules::describe($status), 'note' => StatusRules::levelNote($status)],
             ],
             'level_chart' => [
                 'labels'   => $levelSeries['labels'],

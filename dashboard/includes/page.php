@@ -217,7 +217,8 @@ function aq_page_start(array $o): void
           <span data-updated-label>Atualizado há 2 min</span>
         </button>
 
-        <button class="aq-user" type="button" data-user-toggle aria-expanded="false" aria-controls="aq-user-menu">
+        <button class="aq-user" type="button" data-user-toggle aria-expanded="false" aria-controls="aq-user-menu"
+                data-user-email="<?php aq_e($AQ_USER['email']); ?>">
           <span class="aq-user__avatar" aria-hidden="true"><?php aq_e(Guard::initials($AQ_USER['name'])); ?></span>
           <span class="aq-user__info">
             <span class="aq-user__name"><?php aq_e($AQ_USER['name']); ?></span>

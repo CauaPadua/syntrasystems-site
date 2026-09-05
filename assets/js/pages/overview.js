@@ -23,6 +23,17 @@
 
   var reservoirCache = [];
 
+  /** Ajusta o círculo do ícone de um KPI à situação apurada. */
+  function tonalizarIcone(kpiId, statusKey) {
+    var icone = document.querySelector('[data-kpi="' + kpiId + '"] .aq-kpi__icon');
+    if (!icone) return;
+
+    var tom = { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'success';
+    ['success', 'warning', 'danger'].forEach(function (t) {
+      icone.classList.toggle('aq-kpi__icon--' + t, t === tom);
+    });
+  }
+
   /* ------------------------------------------------------------ filtros */
 
   function fillSelect(select, items, allLabel) {
@@ -222,6 +233,10 @@
 
     S.setRing('one.storage', k.storage.occupancy);
 
+    // o ícone do cartão também segue a situação: com o nível em atenção, um
+    // ícone verde fixo contradiria o valor âmbar logo ao lado
+    tonalizarIcone('one.operation', k.operation.status.key);
+
     // gráfico de nível (cota) com linha de vertimento
     var lc = d.level_chart;
     var ctxLevel = document.getElementById('grafico-nivel').getContext('2d');
@@ -258,8 +273,10 @@
       data: {
         labels: fc.labels,
         datasets: [
-          G.line('Dia atual', fc.current, G.colors.primary, { points: false }),
-          G.line('Dias anteriores (média)', fc.previous, '#7f90af', { dashed: true, points: false, width: 1.8 })
+          G.line('Período atual', fc.current, G.colors.primary, { points: false }),
+          // azul-claro tracejado: distingue a série anterior sem competir com
+          // o azul royal sólido do período atual
+          G.line('Período anterior (média)', fc.previous, '#9ec5fe', { dashed: true, points: false, width: 1.8 })
         ]
       },
       options: {
@@ -277,7 +294,7 @@
       window.AqMap.render('mapa-represa', [{
         lat: d.reservoir.lat, lng: d.reservoir.lng, name: d.reservoir.name,
         city: d.reservoir.city, level: k.level.value, flow: k.flow.value, status: d.reservoir.status
-      }], { zoomControl: true });
+      }], { zoomControl: true, tooltip: true });
     }
 
     // alertas recentes
@@ -351,6 +368,18 @@
   selReservoir.addEventListener('change', function () {
     Ctx.set({ reservoir_id: selReservoir.value });
     load();
+  });
+
+  // os dois gráficos da represa compartilham o mesmo período do contexto:
+  // trocar em um seletor reflete no outro e recarrega uma única vez
+  var seletoresPeriodo = document.querySelectorAll('[data-period-picker]');
+  seletoresPeriodo.forEach(function (sel) {
+    sel.value = Ctx.get().period;
+    sel.addEventListener('change', function () {
+      Ctx.set({ period: sel.value });
+      seletoresPeriodo.forEach(function (outro) { outro.value = sel.value; });
+      load();
+    });
   });
 
   SCOPES_ALL.concat(SCOPES_ONE).forEach(function (s) {
