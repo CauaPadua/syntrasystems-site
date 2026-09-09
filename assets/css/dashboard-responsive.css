@@ -102,7 +102,7 @@
   .aq-context { flex-direction: column; align-items: stretch; }
 
   .aq-map--lg { height: 400px; }
-  .aq-chart--xl { height: 260px; }
+  .aq-chart--xl { height: 300px; }
 
   .aq-user__info { display: none; }
   .aq-user { padding: 0; }
@@ -134,10 +134,10 @@
 
   .aq-kpi__value { font-size: 1.6rem; }
 
-  .aq-chart--sm { height: 180px; }
-  .aq-chart--md { height: 200px; }
-  .aq-chart--lg { height: 220px; }
-  .aq-chart--xl { height: 240px; }
+  .aq-chart--sm { height: 210px; }
+  .aq-chart--md { height: 220px; }
+  .aq-chart--lg { height: 240px; }
+  .aq-chart--xl { height: 260px; }
 
   .aq-map--sm { height: 220px; }
   .aq-map--lg { height: 340px; }

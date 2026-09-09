@@ -62,11 +62,14 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Média diária — últimos 7 dias', 'tip' => 'Média das leituras de cada dia.']); ?>
+    <div data-content="daily" hidden>
     <?php echo aq_chart(['id' => 'grafico-ph-diario', 'size' => 'md', 'axis' => 'pH', 'desc' => 'Média diária de pH nos últimos sete dias.']); ?>
     <?php echo aq_legend([
         ['label' => 'pH médio diário', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Faixa ideal (6,5 – 8,5)', 'color' => '#16a34a', 'style' => 'dashed'],
     ]); ?>
+    </div>
+    <?php echo aq_states('daily'); ?>
   </article>
 
   <article class="aq-card">

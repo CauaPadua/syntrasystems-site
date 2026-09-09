@@ -18,33 +18,6 @@ const AQ_NAV = [
     ['label' => 'Contato',     'href' => '#solicitar-demonstracao'],
 ];
 
-/** Destaques exibidos abaixo do conteúdo principal da hero. */
-const AQ_HERO_HIGHLIGHTS = [
-    [
-        'icon'  => 'shield-check',
-        'title' => 'Mais segurança',
-        'text'  => 'Alertas inteligentes para prevenir riscos e eventos críticos.',
-    ],
-    [
-        'icon'  => 'chart-up',
-        'title' => 'Decisões melhores',
-        'text'  => 'Dados confiáveis para uma gestão eficiente e responsável.',
-    ],
-    [
-        'icon'  => 'leaf',
-        'title' => 'Sustentabilidade',
-        'text'  => 'Preserve a água, proteja comunidades e garanta o futuro.',
-    ],
-];
-
-/** Faixa de atributos no rodapé da hero. */
-const AQ_HERO_BADGES = [
-    ['icon' => 'signal',  'label' => 'Monitoramento contínuo'],
-    ['icon' => 'clock',   'label' => 'Dados em tempo real'],
-    ['icon' => 'bell',    'label' => 'Alertas inteligentes'],
-    ['icon' => 'leaf',    'label' => 'Gestão sustentável'],
-];
-
 /** Cartões da seção "Informações". */
 const AQ_INFO_CARDS = [
     [

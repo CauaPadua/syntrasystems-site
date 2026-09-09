@@ -36,6 +36,53 @@ if (!defined('AQ_DEPTH')) {
     define('AQ_DEPTH', 1);
 }
 
+/**
+ * Versão dos assets, para quebrar o cache do navegador.
+ *
+ * Antes era a constante '2.0.0' escrita à mão em dois lugares: qualquer
+ * alteração em CSS/JS continuava sendo servida com a MESMA URL, e navegadores
+ * que já tinham a página em cache seguiam executando o JavaScript antigo
+ * contra a API nova — a origem dos gráficos "vazios" após uma atualização.
+ *
+ * Agora a versão vem da data de modificação mais recente entre os assets, de
+ * modo que a URL muda sozinha sempre que um arquivo muda. É calculada uma vez
+ * por requisição.
+ */
+function aq_asset_version(): string
+{
+    static $versao = null;
+    if ($versao !== null) {
+        return $versao;
+    }
+
+    $raiz = dirname(__DIR__, 2);
+    $maisRecente = 0;
+
+    foreach ([$raiz . '/assets/css', $raiz . '/assets/js'] as $pasta) {
+        if (!is_dir($pasta)) {
+            continue;
+        }
+        $itens = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($pasta, FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($itens as $arquivo) {
+            /** @var SplFileInfo $arquivo */
+            if (!$arquivo->isFile()) {
+                continue;
+            }
+            $ext = strtolower($arquivo->getExtension());
+            if ($ext !== 'css' && $ext !== 'js') {
+                continue;
+            }
+            $maisRecente = max($maisRecente, (int) $arquivo->getMTime());
+        }
+    }
+
+    // sem assets legíveis, cai para um valor fixo em vez de quebrar a página
+    $versao = $maisRecente > 0 ? (string) $maisRecente : '2.0.0';
+    return $versao;
+}
+
 /** Caminho relativo até a raiz do projeto. */
 function aq_base(): string
 {
@@ -96,7 +143,7 @@ function aq_page_start(array $o): void
     $subtitle = $o['subtitle'] ?? '';
     $base     = aq_base();
     $dash     = aq_dash();
-    $version  = '2.0.0';
+    $version  = aq_asset_version();
 
     $isMonitoring = strpos($route, 'monitoring') === 0;
 
@@ -246,7 +293,7 @@ function aq_page_start(array $o): void
 function aq_page_end(array $o = []): void
 {
     $base = aq_base();
-    $version = '2.0.0';
+    $version = aq_asset_version();
     ?>
     </main>
   </div>

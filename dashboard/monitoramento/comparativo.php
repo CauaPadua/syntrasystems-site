@@ -78,11 +78,14 @@ $ranges = [
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Afluência x defluência', 'tip' => 'Médias de entrada e saída no período atual.']); ?>
+    <div data-content="inout" hidden>
     <?php echo aq_chart(['id' => 'grafico-afl-defl', 'size' => 'md', 'axis' => 'm³/s', 'desc' => 'Afluência e defluência médias do período atual.']); ?>
     <?php echo aq_legend([
         ['label' => 'Afluência média (atual)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Defluência média (atual)', 'color' => '#b6d3fe', 'style' => 'square'],
     ]); ?>
+    </div>
+    <?php echo aq_states('inout'); ?>
   </article>
 
   <article class="aq-card">

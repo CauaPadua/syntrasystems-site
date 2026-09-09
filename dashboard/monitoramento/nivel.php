@@ -69,11 +69,14 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Tendência para os próximos 7 dias', 'tip' => 'Projeção demonstrativa baseada na variação recente.']); ?>
+    <div data-content="forecast" hidden>
     <?php echo aq_chart(['id' => 'grafico-tendencia-nivel', 'size' => 'md', 'axis' => '% da capacidade', 'desc' => 'Tendência projetada do nível para os próximos sete dias.']); ?>
     <?php echo aq_legend([
         ['label' => 'Observado', 'color' => '#0b5bea'],
         ['label' => 'Previsão', 'color' => '#6ea8fe', 'style' => 'dashed'],
     ]); ?>
+    </div>
+    <?php echo aq_states('forecast'); ?>
   </article>
 
   <article class="aq-card">

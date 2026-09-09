@@ -7,7 +7,7 @@
   var G = window.AqCharts;
 
   window.AqMonitorPage({
-    scopes: ['realtime', 'condition'],
+    scopes: ['realtime', 'condition', 'daily'],
     fetch: function (p) { return window.AqApi.flow(p); },
 
     render: function (d) {

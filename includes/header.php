@@ -6,12 +6,19 @@
 <header class="site-header" id="topo" data-header>
   <div class="container site-header__inner">
 
+    <?php /* duas versões do logotipo: a clara vale sobre a hero, a escura depois dela */ ?>
     <a class="brand" href="#inicio" aria-label="Aquapulse — página inicial">
       <img
-        class="brand__logo"
+        class="brand__logo brand__logo--light"
+        src="<?php aq_out(aq_asset('images/logo-aquapulse-branco.png')); ?>"
+        width="760" height="292"
+        alt="Aquapulse — monitoramento de represas"
+        decoding="async">
+      <img
+        class="brand__logo brand__logo--dark"
         src="<?php aq_out(aq_asset('images/logo-aquapulse.png')); ?>"
         width="560" height="215"
-        alt="Aquapulse — monitoramento de represas"
+        alt="" aria-hidden="true"
         decoding="async">
     </a>
 
@@ -27,14 +34,11 @@
       </ul>
 
       <div class="site-nav__actions">
-        <a class="btn btn--ghost" href="login.php">
-          <?php aq_the_icon('user'); ?>
-          <span>Entrar</span>
-        </a>
+        <a class="site-nav__enter" href="login.php">Entrar</a>
 
-        <a class="btn btn--primary" href="#solicitar-demonstracao">
-          <span>Solicitar demonstração</span>
-          <?php aq_the_icon('arrow-right'); ?>
+        <a class="btn btn--cyan" href="#sistema">
+          <span>Conheça a solução</span>
+          <?php aq_the_icon('arrow-up-right'); ?>
         </a>
       </div>
     </nav>

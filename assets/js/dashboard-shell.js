@@ -325,3 +325,16 @@ window.AqShell = (function () {
     closeSidebar: closeSidebar
   };
 })();
+
+/* ---------------------------------------------------------------------------
+   Encerramento da tela
+
+   Ao sair da página, as instâncias do Chart.js, os observadores de tamanho e
+   as requisições em voo são descartados. Sem isso, uma resposta que chegava
+   depois da navegação tentava desenhar em um canvas que já não existia mais.
+   `pagehide` cobre também o cache de retorno (voltar/avançar) do navegador.
+   --------------------------------------------------------------------------- */
+window.addEventListener('pagehide', function () {
+  if (window.AqApi && window.AqApi.abortAll) window.AqApi.abortAll();
+  if (window.AqCharts && window.AqCharts.destroyAll) window.AqCharts.destroyAll();
+});

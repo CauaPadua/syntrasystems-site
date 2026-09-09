@@ -55,11 +55,14 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Média diária — últimos 7 dias', 'tip' => 'Média de afluência e defluência por dia.']); ?>
+    <div data-content="daily" hidden>
     <?php echo aq_chart(['id' => 'grafico-media-diaria', 'size' => 'md', 'axis' => 'm³/s', 'desc' => 'Média diária de afluência e defluência.']); ?>
     <?php echo aq_legend([
         ['label' => 'Afluência (média)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Defluência (média)', 'color' => '#b6d3fe', 'style' => 'square'],
     ]); ?>
+    </div>
+    <?php echo aq_states('daily'); ?>
   </article>
 
   <article class="aq-card">

@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "section": "por-que-monitorar",
+  "assetBaseDestination": "assets/images/monitorar/",
+  "autoplayMs": 5000,
+  "transitionMs": 700,
+  "loop": true,
+  "reducedMotionAutoplay": false,
+  "slides": [
+    {
+      "id": "monitoramento",
+      "width": 1774,
+      "height": 887,
+      "source": "imagens/01-monitoramento.webp",
+      "original": "originais/01-monitoramento.png",
+      "alt": "Imagem ilustrativa de profissional operando uma estação de monitoramento junto a um reservatório.",
+      "objectPosition": "50% 50%"
+    },
+    {
+      "id": "vista-aerea",
+      "width": 1774,
+      "height": 887,
+      "source": "imagens/02-vista-aerea.webp",
+      "original": "originais/02-vista-aerea.png",
+      "alt": "Imagem ilustrativa de vista aérea de um reservatório azul cercado por morros e vegetação.",
+      "objectPosition": "50% 50%"
+    },
+    {
+      "id": "barragem",
+      "width": 1774,
+      "height": 887,
+      "source": "imagens/03-barragem.webp",
+      "original": "originais/03-barragem.png",
+      "alt": "Imagem ilustrativa de uma barragem com escoamento controlado e vegetação nas margens.",
+      "objectPosition": "50% 50%"
+    },
+    {
+      "id": "reservatorio",
+      "width": 1774,
+      "height": 887,
+      "source": "imagens/04-reservatorio.webp",
+      "original": "originais/04-reservatorio.png",
+      "alt": "Imagem ilustrativa de estação de monitoramento com painel solar próxima a um reservatório.",
+      "objectPosition": "50% 50%"
+    }
+  ],
+  "sideImage": {
+    "width": 1122,
+    "height": 1402,
+    "source": "imagens/agua-lateral.webp",
+    "original": "originais/agua-lateral.png",
+    "alt": "",
+    "decorative": true,
+    "objectPosition": "50% 50%"
+  }
+}

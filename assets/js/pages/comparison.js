@@ -23,7 +23,7 @@
 
   var page = window.AqMonitorPage({
     periodId: null,
-    scopes: ['chart', 'diff'],
+    scopes: ['chart', 'diff', 'inout'],
 
     // os dois períodos são parâmetros próprios desta tela
     extraParams: function () {

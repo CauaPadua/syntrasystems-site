@@ -101,9 +101,22 @@ window.AqApi = (function () {
     return error && (error.name === 'AbortError' || error.code === 20);
   }
 
+  /** Cancela tudo que ainda estiver em voo (usado ao sair da página). */
+  function abortAll() {
+    Object.keys(controllers).forEach(function (scope) {
+      try {
+        controllers[scope].abort();
+      } catch (e) {
+        console.warn('[AqApi] não foi possível cancelar o escopo "' + scope + '": ' + e.message);
+      }
+      delete controllers[scope];
+    });
+  }
+
   return {
     get: get,
     isAbort: isAbort,
+    abortAll: abortAll,
     ApiError: ApiError,
 
     /* atalhos por recurso — mantêm os caminhos em um único lugar */

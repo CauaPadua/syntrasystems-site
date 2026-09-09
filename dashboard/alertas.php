@@ -149,6 +149,7 @@ aq_page_start([
 <div class="aq-grid aq-grid--2-1">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Alertas nos últimos 7 dias', 'tip' => 'Distribuição diária por severidade.']); ?>
+    <div data-content="chart" hidden>
     <?php echo aq_chart(['id' => 'grafico-alertas', 'size' => 'md', 'desc' => 'Alertas por dia agrupados por severidade.']); ?>
     <?php echo aq_legend([
         ['label' => 'Críticos', 'color' => '#ef4444', 'style' => 'square'],
@@ -156,6 +157,8 @@ aq_page_start([
         ['label' => 'Informação', 'color' => '#3b82f6', 'style' => 'square'],
         ['label' => 'Resolvidos', 'color' => '#16a34a', 'style' => 'square'],
     ]); ?>
+    </div>
+    <?php echo aq_states('chart'); ?>
   </article>
 
   <article class="aq-card">

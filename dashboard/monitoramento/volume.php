@@ -53,11 +53,14 @@ echo aq_monitor_bar(['periods' => ['30d' => 'Últimos 30 dias', '7d' => 'Último
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Balanço hídrico diário', 'tip' => 'Entradas e saídas de água por dia no período.']); ?>
+    <div data-content="balance" hidden>
     <?php echo aq_chart(['id' => 'grafico-balanco', 'size' => 'md', 'axis' => 'Volume (hm³)', 'desc' => 'Balanço hídrico diário com entradas e saídas.']); ?>
     <?php echo aq_legend([
         ['label' => 'Entrada (hm³)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Saída (hm³)', 'color' => '#b6d3fe', 'style' => 'square'],
     ]); ?>
+    </div>
+    <?php echo aq_states('balance'); ?>
   </article>
 
   <article class="aq-card">

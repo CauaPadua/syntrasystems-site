@@ -7,7 +7,7 @@
   var G = window.AqCharts;
 
   window.AqMonitorPage({
-    scopes: ['history', 'capacity'],
+    scopes: ['history', 'capacity', 'forecast'],
     fetch: function (p) { return window.AqApi.level(p); },
 
     render: function (d) {

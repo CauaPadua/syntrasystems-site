@@ -348,7 +348,19 @@
       reservoir_id: ctx.reservoir_id,
       period: ctx.period
     }).then(function (r) {
-      if (isAll) renderAll(r.data); else renderSingle(r.data);
+      // uma exceção aqui deixava os canvases seguintes em branco; agora só os
+      // cartões que ficaram sem gráfico entram em estado de erro
+      try {
+        if (isAll) renderAll(r.data); else renderSingle(r.data);
+      } catch (e) {
+        console.error('[Visão geral] falha ao montar a tela:', e);
+        scopes.forEach(function (s) {
+          if (!G.scopeReady(s)) {
+            S.setState(s, 'error', 'Não foi possível carregar este bloco.');
+          }
+        });
+      }
+
       S.setUpdated(r.meta.generated_at, r.meta.updated_label);
       var el = document.querySelector('[data-context-updated]');
       if (el) el.textContent = r.meta.updated_label || F.relative(r.meta.generated_at);

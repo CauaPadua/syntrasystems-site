@@ -14,6 +14,7 @@ window.AqMonitorPage = function (config) {
   var S = window.AqShell;
   var Api = window.AqApi;
   var Ctx = window.AqContext;
+  var G = window.AqCharts;
 
   var selReservoir = document.getElementById('filtro-represa');
   var selPeriod = document.getElementById(config.periodId || 'filtro-periodo');
@@ -69,7 +70,20 @@ window.AqMonitorPage = function (config) {
       // dentro de um contêiner oculto nasce com tamanho zero.
       scopes.forEach(function (s) { S.setState(s, 'ready'); });
 
-      config.render(d, r.meta);
+      // Uma exceção no meio do render() deixava todos os escopos em "ready"
+      // com os canvases seguintes em branco. Agora a falha é registrada e
+      // apenas os cartões que ficaram sem gráfico passam para o estado de erro.
+      try {
+        config.render(d, r.meta);
+      } catch (e) {
+        console.error('[AqMonitorPage] falha ao montar a tela:', e);
+        scopes.forEach(function (s) {
+          if (!G.scopeReady(s)) {
+            S.setState(s, 'error', 'Não foi possível carregar este bloco.');
+          }
+        });
+      }
+
       S.setUpdated(r.meta.generated_at, r.meta.updated_label);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;

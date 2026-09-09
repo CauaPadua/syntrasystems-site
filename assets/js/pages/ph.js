@@ -7,7 +7,7 @@
   var G = window.AqCharts;
 
   window.AqMonitorPage({
-    scopes: ['variation', 'scale'],
+    scopes: ['variation', 'scale', 'daily'],
     fetch: function (p) { return window.AqApi.ph(p); },
 
     render: function (d) {

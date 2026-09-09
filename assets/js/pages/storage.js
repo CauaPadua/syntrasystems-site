@@ -7,7 +7,7 @@
   var G = window.AqCharts;
 
   window.AqMonitorPage({
-    scopes: ['evolution', 'occupancy'],
+    scopes: ['evolution', 'occupancy', 'balance'],
     fetch: function (p) { return window.AqApi.storage(p); },
 
     render: function (d) {

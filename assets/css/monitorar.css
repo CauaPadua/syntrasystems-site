@@ -1,0 +1,428 @@
+/* ==========================================================================
+   Aquapulse — seção "Por que monitorar"
+
+   Estilos exclusivos desta seção. Ficam fora de style.css porque aquele
+   arquivo também é servido para a tela de login; aqui nada é global e todos os
+   seletores começam por .aq-monitorar.
+   ========================================================================== */
+
+.aq-monitorar {
+  position: relative;
+  padding-block: clamp(56px, 6vw, 96px);
+  background: var(--bg, #fff);
+  /* compensa o cabeçalho fixo quando o menu rola até esta âncora */
+  scroll-margin-top: calc(var(--header-h, 110px) + 16px);
+}
+
+/*
+   Sem bloco colorido: a seção é branca como o resto da página e o conteúdo
+   acompanha a largura do container, sem recuo extra nas laterais.
+*/
+.aq-monitorar__quadro {
+  --mon-radius: clamp(14px, 1.3vw, 20px);
+
+  /* revelação lateral: duração e desaceleração suave (o script pode zerar) */
+  --mon-transicao: 650ms;
+  --mon-ease: cubic-bezier(.33, 1, .68, 1);
+}
+
+/* --------------------------------------------------------------- topo */
+/*
+   Duas colunas: a lateral estreita com selo e chamada, a principal com
+   título, parágrafo e botão. A chamada lateral fica ancorada na base para
+   acompanhar a linha do botão, como na referência.
+*/
+.aq-monitorar__topo {
+  display: grid;
+  grid-template-columns: minmax(0, 32fr) minmax(0, 68fr);
+  gap: clamp(24px, 3.4vw, 56px);
+  align-items: start;
+  margin-bottom: clamp(28px, 3.2vw, 44px);
+}
+
+.aq-monitorar__lateral {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.aq-monitorar__selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  padding: 9px 18px 9px 14px;
+  border-radius: 999px;
+  background: #e1f1ff;
+  color: #0752ef;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.aq-monitorar__selo-ponto {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: #1f8fe0;
+}
+
+/* a chamada desce até perto da base da coluna de textos */
+.aq-monitorar__chamada {
+  margin-top: auto;
+  padding-top: clamp(28px, 4vw, 72px);
+  color: #0b204d;
+  font-size: clamp(1.9rem, 3.2vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+}
+
+.aq-monitorar__apoio {
+  margin-top: clamp(12px, 1.2vw, 18px);
+  color: #52678e;
+  font-size: clamp(.68rem, .75vw, .78rem);
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.aq-monitorar__titulo {
+  margin: 0;
+  color: #0b204d;
+  font-size: clamp(2.05rem, 4.5vw, 5rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.026em;
+  text-wrap: balance;
+}
+
+.aq-monitorar__paragrafo {
+  max-width: 62ch;
+  margin-top: clamp(16px, 1.6vw, 26px);
+  color: #52678e;
+  font-size: clamp(1.02rem, 1.2vw, 1.38rem);
+  line-height: 1.6;
+}
+
+.aq-monitorar__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: clamp(20px, 2.2vw, 34px);
+  padding: 15px 26px;
+  border-radius: 12px;
+  background: #0752ef;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 12px 26px rgba(7, 82, 239, .26);
+  transition:
+    background-color var(--dur, .28s) var(--ease, ease),
+    box-shadow var(--dur, .28s) var(--ease, ease),
+    transform var(--dur, .28s) var(--ease, ease);
+}
+.aq-monitorar__cta:hover {
+  background: #0a45c4;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(7, 82, 239, .3);
+}
+.aq-monitorar__cta:active { transform: translateY(0); }
+.aq-monitorar__cta .aq-icon {
+  width: 18px;
+  height: 18px;
+  transition: transform var(--dur, .28s) var(--ease, ease);
+}
+.aq-monitorar__cta:hover .aq-icon { transform: translate(3px, -3px); }
+
+/* ----------------------------------------------------------- painéis */
+/*
+   Carrossel à esquerda e painel editorial à direita. O recorte assimétrico da
+   fotografia vem do container, não dos arquivos: canto superior esquerdo e
+   inferior direito generosos, os outros discretos.
+*/
+.aq-monitorar__paineis {
+  display: grid;
+  grid-template-columns: minmax(0, 68fr) minmax(0, 32fr);
+  gap: clamp(24px, 2.6vw, 40px);
+  align-items: stretch;
+}
+
+/* coluna do carrossel: painel em cima, controles logo abaixo */
+.aq-monitorar__carrossel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.aq-monitorar__palco {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--mon-radius);
+  background: #dbe9f4;
+  /* a proporção reserva a altura antes de a fotografia carregar: sem salto */
+  aspect-ratio: 1774 / 887;
+}
+
+.aq-monitorar__quadros {
+  position: absolute;
+  inset: 0;
+}
+
+/* -------------------------------------------- revelação lateral do slide */
+/*
+   Todos os slides ficam empilhados e opacos; quem controla a visibilidade é o
+   clip-path. Em repouso só a fotografia `is-base` está aberta — as outras têm
+   o recorte fechado à direita, então nada aparece e nada empilha.
+
+   Na troca, a que entra vai para cima com o recorte fechado e o abre da
+   direita para a esquerda. A anterior continua preenchendo o painel embaixo
+   durante toda a transição, então não existe nenhum instante de fundo vazio.
+*/
+.aq-monitorar__slide {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(0 0 0 100%);
+}
+
+.aq-monitorar__slide.is-base { clip-path: inset(0); }
+
+.aq-monitorar__slide.is-entrando { z-index: 2; }
+
+.aq-monitorar__slide.is-entrando.is-revelada {
+  clip-path: inset(0);
+  transition: clip-path var(--mon-transicao, 650ms) var(--mon-ease);
+}
+
+.aq-monitorar__foto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* zoom discreto: só a fotografia que está entrando assenta de 1.025 para 1 */
+.aq-monitorar__slide.is-entrando .aq-monitorar__foto { transform: scale(1.025); }
+.aq-monitorar__slide.is-entrando.is-revelada .aq-monitorar__foto {
+  transform: scale(1);
+  transition: transform var(--mon-transicao, 650ms) var(--mon-ease);
+}
+
+/* ------------------------------------------------- painel editorial fixo */
+/*
+   Conteúdo fixo ao lado do carrossel: não acompanha o slide ativo. Sem
+   cartões soltos e sem sombra — só tipografia e divisórias finas.
+*/
+.aq-monitorar__acao {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: clamp(2px, .6vw, 10px);
+}
+
+.aq-monitorar__acao-titulo {
+  margin: 0 0 clamp(18px, 1.8vw, 30px);
+  color: #0b204d;
+  font-size: clamp(1.5rem, 2.05vw, 2.15rem);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -.018em;
+  text-wrap: balance;
+}
+
+.aq-monitorar__passos {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aq-monitorar__passo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(12px, 1vw, 18px);
+  padding-block: clamp(14px, 1.5vw, 22px);
+  border-top: 1px solid #d5e6f3;
+}
+.aq-monitorar__passo:first-child { padding-top: 0; border-top: 0; }
+.aq-monitorar__passo:last-child { padding-bottom: 0; }
+
+.aq-monitorar__passo-numero {
+  color: #0752ef;
+  font-size: clamp(.95rem, 1.05vw, 1.1rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.aq-monitorar__passo-corpo { min-width: 0; }
+
+.aq-monitorar__passo-titulo {
+  margin: 0;
+  color: #0b204d;
+  font-size: clamp(1rem, 1.1vw, 1.16rem);
+  font-weight: 700;
+  line-height: 1.34;
+}
+
+.aq-monitorar__passo-texto {
+  margin: 6px 0 0;
+  color: #52678e;
+  font-size: clamp(.92rem, .98vw, 1.02rem);
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------- controles */
+/*
+   Sobre o branco a pílula sumiria, então os controles ficam soltos: só as
+   setas e os indicadores, alinhados à esquerda sob a fotografia.
+*/
+.aq-monitorar__controles {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  align-self: flex-start;
+  margin-left: -10px; /* alinha o ícone, não a caixa do botão, com a foto */
+  color: #0b204d;
+}
+.aq-monitorar__controles[hidden] { display: none; }
+
+.aq-monitorar__botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color var(--dur, .28s) var(--ease, ease);
+}
+.aq-monitorar__botao:hover { background: #e1f1ff; color: #0752ef; }
+.aq-monitorar__botao .aq-icon { width: 18px; height: 18px; }
+
+.aq-monitorar__pontos {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/*
+   O alvo de toque tem 44px, mas a marca visível é pequena. O estado atual não
+   depende só de cor: a marca ativa fica mais larga e ganha contorno.
+*/
+.aq-monitorar__ponto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.aq-monitorar__ponto-marca {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #9dc2e4;
+  border-radius: 999px;
+  background: #d7e8f7;
+  transition:
+    width var(--dur, .28s) var(--ease, ease),
+    background-color var(--dur, .28s) var(--ease, ease);
+}
+.aq-monitorar__ponto:hover .aq-monitorar__ponto-marca { background: #9dc2e4; }
+.aq-monitorar__ponto.is-ativo .aq-monitorar__ponto-marca {
+  width: 24px;
+  border-color: #0752ef;
+  background: #0752ef;
+}
+
+.aq-monitorar :focus-visible { outline-offset: 2px; }
+
+/* --------------------------------------------------------- tablet */
+@media (max-width: 1024px) {
+  .aq-monitorar__topo {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(20px, 3vw, 32px);
+  }
+
+  /* a ordem de leitura passa a ser selo, título, parágrafo, CTA e chamada */
+  .aq-monitorar__lateral { display: contents; }
+  /* com display:contents o selo vira item do grid: precisa de justify-self */
+  .aq-monitorar__selo { order: 1; justify-self: start; margin-bottom: 4px; }
+  .aq-monitorar__texto { order: 2; }
+  .aq-monitorar__chamada {
+    order: 3;
+    margin-top: 0;
+    padding-top: 0;
+    font-size: clamp(1.7rem, 4.4vw, 2.4rem);
+  }
+  .aq-monitorar__apoio { order: 4; margin-top: 10px; }
+}
+
+/* ------------------------------------------------ tablet e telas estreitas */
+@media (min-width: 901px) {
+  /* os três passos dividem a altura da fotografia: sem sobra no rodapé */
+  .aq-monitorar__passo { flex: 1 0 auto; }
+}
+
+/*
+   Abaixo de 900px a coluna de 32% ficaria estreita demais para o painel
+   editorial, então ele desce para baixo do carrossel, com altura natural.
+*/
+@media (max-width: 900px) {
+  .aq-monitorar__paineis {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(22px, 3.2vw, 32px);
+  }
+  .aq-monitorar__acao { padding-top: 0; }
+  .aq-monitorar__acao-titulo { font-size: clamp(1.45rem, 3.2vw, 1.8rem); }
+}
+
+/* --------------------------------------------------------- celular */
+@media (max-width: 767px) {
+  .aq-monitorar__quadro { --mon-radius: 12px; }
+
+  .aq-monitorar__palco { aspect-ratio: 16 / 9; }
+
+  .aq-monitorar__cta {
+    width: 100%;
+    justify-content: center;
+    padding-inline: 18px;
+  }
+
+  /* no celular os controles ficam centrados sob o painel */
+  .aq-monitorar__controles {
+    align-self: center;
+    gap: 0;
+    padding: 3px 6px;
+  }
+  .aq-monitorar__botao { width: 40px; height: 40px; }
+  .aq-monitorar__ponto { width: 22px; height: 40px; }
+}
+
+/* ------------------------------------------------- movimento reduzido */
+/*
+   Sem revelação e sem zoom: a troca é instantânea. O autoplay também não
+   arranca — quem cuida disso é o script — mas a navegação manual continua.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .aq-monitorar__slide.is-entrando.is-revelada,
+  .aq-monitorar__slide.is-entrando.is-revelada .aq-monitorar__foto { transition: none; }
+  .aq-monitorar__slide.is-entrando .aq-monitorar__foto { transform: none; }
+  .aq-monitorar__cta:hover { transform: none; }
+}

@@ -98,11 +98,21 @@
   }
 
   /* --------------------------------------------- estado do cabecalho na rolagem */
+  // Sobre a hero o cabecalho e uma barra flutuante escura; depois dela vira a
+  // barra clara encostada no topo. O limite e o fim da hero, nao 8px, para a
+  // troca de tema nao acontecer ainda por cima da fotografia.
   if (header) {
     var ticking = false;
+    var heroSection = document.querySelector('.hero');
+
+    var switchPoint = function () {
+      if (!heroSection) return 8;
+      // troca um pouco antes do fim da hero, para a barra ja chegar legivel
+      return Math.max(8, heroSection.offsetTop + heroSection.offsetHeight - header.offsetHeight - 24);
+    };
 
     var updateHeader = function () {
-      header.classList.toggle('is-scrolled', window.scrollY > 8);
+      header.classList.toggle('is-scrolled', window.scrollY > switchPoint());
       ticking = false;
     };
 
@@ -112,8 +122,70 @@
       window.requestAnimationFrame(updateHeader);
     }, { passive: true });
 
+    window.addEventListener('resize', updateHeader, { passive: true });
     updateHeader();
   }
+
+  /* --------------------------- revelacao escalonada das palavras do titulo */
+  /*
+   * Equivalente em JavaScript puro ao <WordsStagger> do Spell UI (React).
+   * O texto completo ja existe no HTML; aqui cada palavra e envolvida por um
+   * <span> e revelada em sequencia. O estado inicial escondido so e aplicado
+   * pela classe `is-staggering`, adicionada por este script: se ele nao rodar,
+   * o titulo continua totalmente visivel.
+   */
+  function initWordsStagger() {
+    var alvos = document.querySelectorAll('[data-words-stagger]');
+
+    Array.prototype.forEach.call(alvos, function (alvo) {
+      if (alvo.getAttribute('data-words-ready') === 'true') return; // nao repete
+      alvo.setAttribute('data-words-ready', 'true');
+
+      var hero = alvo.closest('.hero');
+
+      // Sem movimento: nao marca nada. Como o estado escondido depende das
+      // classes aplicadas aqui, o conteudo simplesmente continua visivel.
+      if (reduceMotion.matches) return;
+
+      var texto = alvo.textContent.replace(/\s+/g, ' ').trim();
+      var palavras = texto.split(' ');
+      var fragmento = document.createDocumentFragment();
+      var spans = [];
+
+      palavras.forEach(function (palavra, i) {
+        var span = document.createElement('span');
+        span.className = 'hero__word';
+        span.textContent = palavra;
+        fragmento.appendChild(span);
+        spans.push(span);
+        // o espaco entre palavras continua sendo texto comum: a quebra de
+        // linha do navegador nao muda e nenhuma palavra e cortada
+        if (i < palavras.length - 1) {
+          fragmento.appendChild(document.createTextNode(' '));
+        }
+      });
+
+      alvo.textContent = '';
+      alvo.appendChild(fragmento);
+      alvo.classList.add('is-staggering');
+      if (hero) hero.classList.add('is-entering');
+
+      // o atraso por palavra fica no proprio span: uma unica passada de estilo
+      spans.forEach(function (span, i) {
+        span.style.transitionDelay = (180 + (i * 135)) + 'ms';
+      });
+
+      // proximo quadro: o estado inicial ja foi pintado, entao a transicao roda
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          if (hero) hero.classList.add('is-ready');
+          spans.forEach(function (span) { span.classList.add('is-visible'); });
+        });
+      });
+    });
+  }
+
+  initWordsStagger();
 
   /* ------------------------------------------------------------ rolagem suave */
   // A rolagem suave e feita por CSS (scroll-behavior). Aqui apenas garantimos o

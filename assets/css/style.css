@@ -26,6 +26,10 @@
   --blue-100: #d8e6fd;
   --blue-50:  #eaf2ff;
 
+  /* ciano de destaque da hero (botões sobre a fotografia) */
+  --cyan-400: #4fd5ef;
+  --cyan-500: #35c6e4;
+
   --ink:      #45577a;
   --ink-soft: #64749a;
 
@@ -45,6 +49,21 @@
   --page-gutter: clamp(20px, 4.2vw, 80px);
   --header-h: 110px;
   --section-y: 112px;
+
+  /* hero: moldura, respiros internos e altura mínima da primeira dobra */
+  --hero-gap: 0px;   /* a hero sangra ate as bordas da janela */
+  --hero-radius: 0px;
+  --hero-min-h: 760px;
+  --hero-pad-x: clamp(24px, 3.6vw, 56px);
+  /* a barra flutuante ocupa o recuo do topo + a altura da pílula: o conteúdo
+     da hero começa sempre abaixo dela, em qualquer largura */
+  --hero-bar-offset: 24px;
+  --hero-bar-h: 76px;
+  --hero-pad-top: calc(var(--hero-bar-offset) + var(--hero-bar-h) + clamp(24px, 2.6vw, 44px));
+  --hero-pad-bottom: clamp(36px, 4vw, 64px);
+
+  /* curva usada na revelação das palavras do título */
+  --ease-stagger: cubic-bezier(.22, 1, .36, 1);
 
   /* raios */
   --r-sm: 10px;
@@ -209,6 +228,22 @@ button { font: inherit; color: inherit; }
 .btn--link .aq-icon { width: 16px; height: 16px; transition: transform var(--dur) var(--ease); }
 .btn--link:hover .aq-icon { transform: translateX(3px); }
 
+/* ciano da hero: usado sobre a fotografia, com texto azul-marinho */
+.btn--cyan {
+  background: var(--cyan-400);
+  border-color: var(--cyan-400);
+  color: var(--navy-900);
+  box-shadow: 0 10px 26px rgba(12, 60, 96, .28);
+}
+.btn--cyan:hover {
+  background: var(--cyan-500);
+  border-color: var(--cyan-500);
+  transform: translateY(-2px);
+}
+.btn--cyan:active { transform: translateY(0); }
+.btn--cyan .aq-icon { transition: transform var(--dur) var(--ease); }
+.btn--cyan:hover .aq-icon { transform: translate(3px, -3px); }
+
 .btn--lg { padding: 16px 30px; font-size: 1rem; border-radius: var(--r-md); }
 
 /* selos de icone */
@@ -263,31 +298,107 @@ button { font: inherit; color: inherit; }
 }
 
 /* ---------------------------------------------------- 4. cabecalho/navegacao */
+/*
+   Sobre a hero o cabeçalho é uma barra flutuante azul-marinho translúcida,
+   afastada do topo e das laterais. Ao rolar para além da primeira dobra ele
+   assume o tema claro e encosta no topo, continuando disponível na página
+   inteira — a classe `is-scrolled` é aplicada pelo main.js.
+*/
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, .92);
-  backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-}
-.site-header.is-scrolled {
-  border-bottom-color: var(--border);
-  box-shadow: 0 6px 24px rgba(11, 35, 80, .06);
+  padding-top: calc(var(--hero-gap) + var(--hero-bar-offset));
+  background: transparent;
+  transition: padding-top var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 
+/*
+   `.site-header__inner` também tem a classe `.container`; sobre a hero a
+   largura é redefinida para acompanhar a moldura da fotografia (afastamento
+   lateral de ~56px), e volta ao container padrão quando a barra encosta.
+*/
 .site-header__inner {
+  position: relative; /* ancora o painel do menu mobile */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: var(--header-h);
+  min-height: var(--hero-bar-h);
+  width: calc(100% - (2 * (var(--hero-gap) + var(--hero-pad-x))));
+  max-width: none;
+  padding-inline: clamp(18px, 1.6vw, 26px);
+  border-radius: 14px;
+  border: 1px solid rgba(126, 183, 255, .22);
+  background: rgba(4, 42, 82, .88);
+  box-shadow: 0 12px 34px rgba(4, 20, 46, .22);
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    min-height var(--dur) var(--ease);
+}
+@supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
+  .site-header__inner {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }
 
-.brand { display: inline-flex; align-items: center; flex: none; }
+/* estado sobre a fotografia: textos claros */
+.site-header .site-nav__link { color: rgba(233, 243, 255, .88); }
+.site-header .site-nav__link::after { background: var(--cyan-400); }
+.site-header .site-nav__link:hover,
+.site-header .site-nav__link.is-active { color: #fff; }
+
+.site-nav__enter {
+  padding: 8px 6px;
+  color: rgba(233, 243, 255, .9);
+  font-size: .95rem;
+  font-weight: 600;
+  transition: color var(--dur) var(--ease);
+}
+.site-nav__enter:hover { color: #fff; }
+
+/* passada a hero: barra clara encostada no topo, ocupando toda a largura */
+.site-header.is-scrolled {
+  padding-top: 0;
+  background: rgba(255, 255, 255, .94);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 6px 24px rgba(11, 35, 80, .06);
+}
+@supports (backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px)) {
+  .site-header.is-scrolled {
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+}
+.site-header.is-scrolled .site-header__inner {
+  min-height: var(--header-h);
+  width: min(var(--container-max), calc(100% - (2 * var(--page-gutter))));
+  border-radius: 0;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  padding-inline: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.site-header.is-scrolled .site-nav__link { color: var(--navy-700); }
+.site-header.is-scrolled .site-nav__link::after { background: var(--blue-600); }
+.site-header.is-scrolled .site-nav__link:hover,
+.site-header.is-scrolled .site-nav__link.is-active { color: var(--blue-600); }
+.site-header.is-scrolled .site-nav__enter { color: var(--navy-700); }
+.site-header.is-scrolled .site-nav__enter:hover { color: var(--blue-600); }
+
+.brand { position: relative; display: inline-flex; align-items: center; flex: none; }
 .brand__logo { width: clamp(172px, 10.6vw, 204px); height: auto; }
+/* as duas versões ocupam o mesmo lugar; só a do estado atual fica visível */
+.brand__logo--dark { position: absolute; left: 0; top: 50%; transform: translateY(-50%); opacity: 0; }
+.site-header.is-scrolled .brand__logo--light { opacity: 0; }
+.site-header.is-scrolled .brand__logo--dark { opacity: 1; }
 
 .site-nav {
   position: relative;
@@ -376,214 +487,189 @@ button { font: inherit; color: inherit; }
 .nav-backdrop { display: none; }
 
 /* ------------------------------------------------------------------ 5. hero */
+/*
+   Hero editorial: a fotografia sangra ate as bordas da janela e ocupa toda a
+   primeira dobra, sem moldura branca. O conteudo fica por cima em tres
+   ancoras: texto de apoio no alto a direita, selo + titulo no rodape a
+   esquerda e a chamada principal no rodape a direita.
+*/
 .hero {
   position: relative;
   isolation: isolate;
-  padding-top: clamp(48px, 5vw, 76px);
-  padding-bottom: clamp(28px, 3.4vw, 46px);
-  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 60%);
-  overflow: hidden;
+  padding: var(--hero-gap) var(--hero-gap) 0;
+  background: var(--bg);
 }
 
-.hero__media {
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: 68%;
-  z-index: 0;
-  pointer-events: none;
-}
-.hero__photo {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  object-position: 62% 45%;
-}
-.hero__overlay {
-  position: absolute;
-  right: -4%;
-  top: 6%;
-  width: 94%;
-  opacity: .82;
-}
-.hero__fade {
-  position: absolute;
-  inset: -1px;
-  background:
-    linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,.96) 24%, rgba(255,255,255,.68) 44%, rgba(255,255,255,.16) 68%, rgba(255,255,255,0) 86%),
-    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 20%),
-    linear-gradient(0deg, #ffffff 0%, rgba(255,255,255,.92) 8%, rgba(255,255,255,.4) 24%, rgba(255,255,255,0) 42%);
-}
-
-.hero__inner {
+.hero__frame {
   position: relative;
-  z-index: 2;
+  overflow: hidden;
+  border-radius: var(--hero-radius);
+  min-height: var(--hero-min-h);
+  height: calc(100svh - (2 * var(--hero-gap)));
+  max-height: 1080px;
+}
+
+/* a fotografia é o elemento LCP: entra como <img> com fetchpriority alto */
+.hero__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/*
+   Camada azul-marinho de contraste, em três faixas: uma vertical (densa no
+   rodapé, moderada no topo, transparente no meio do céu), uma horizontal à
+   esquerda — onde ficam selo e título — e uma diagonal no canto superior
+   direito, atrás do texto de apoio. Sem esta última o texto branco cai para
+   ~2,9:1 sobre o céu claro; com ela fica acima de 4,5:1. O centro da
+   fotografia continua sem véu.
+*/
+.hero__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(200deg,
+      rgba(4, 20, 46, .66) 0%,
+      rgba(4, 20, 46, .52) 26%,
+      rgba(4, 20, 46, .12) 46%,
+      rgba(4, 20, 46, 0) 58%),
+    linear-gradient(180deg,
+      rgba(6, 26, 58, .58) 0%,
+      rgba(6, 26, 58, .20) 16%,
+      rgba(6, 26, 58, 0) 34%,
+      rgba(6, 26, 58, 0) 48%,
+      rgba(5, 22, 50, .40) 74%,
+      rgba(5, 22, 50, .74) 100%),
+    linear-gradient(90deg,
+      rgba(5, 22, 50, .60) 0%,
+      rgba(5, 22, 50, .26) 26%,
+      rgba(5, 22, 50, 0) 52%);
+}
+
+.hero__layout {
+  position: absolute;
+  inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(0, .78fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 24px clamp(24px, 4vw, 72px);
+  padding: var(--hero-pad-top) var(--hero-pad-x) var(--hero-pad-bottom);
+}
+
+/* texto de apoio: metade superior, lado direito */
+.hero__lead {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  max-width: 22ch;
+  color: #fff;
+  font-size: clamp(1.05rem, 1.32vw, 1.45rem);
+  font-weight: 500;
+  line-height: 1.42;
+  text-shadow: 0 1px 18px rgba(4, 20, 46, .45);
+}
+
+/* selo + título: rodapé esquerdo */
+.hero__intro {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: end;
+  min-width: 0;
+}
+
+.hero__eyebrow {
+  display: inline-flex;
   align-items: center;
-  gap: 40px;
-  min-height: 560px;
-}
-
-.hero__content { max-width: 640px; }
-
-.hero__title {
-  font-size: clamp(2.2rem, 1.15rem + 3.3vw, 3.5rem);
-  line-height: 1.1;
-  letter-spacing: -.03em;
-}
-.hero__title-accent { display: block; color: var(--blue-600); }
-
-.hero__rule {
-  display: block;
-  width: 78px; height: 5px;
-  margin-top: 26px;
-  border-radius: 4px;
-  background: var(--blue-600);
-}
-
-.hero__text {
-  margin-top: 26px;
-  max-width: 545px;
-  font-size: clamp(1rem, .95rem + .3vw, 1.1rem);
-  color: var(--ink);
-}
-
-.hero__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px 22px;
-  margin-top: 34px;
-}
-
-.hero__highlights {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
-  margin-top: 48px;
-  max-width: 610px;
-}
-.hero-highlight { display: flex; align-items: flex-start; gap: 12px; }
-.hero-highlight__body { display: block; }
-.hero-highlight__title {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--navy-800);
-  font-size: .93rem;
-  font-weight: 800;
-  letter-spacing: -.01em;
-}
-.hero-highlight__text {
-  display: block;
+  gap: 10px;
+  padding: 8px 18px 8px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(8, 40, 84, .78);
+  border: 1px solid rgba(159, 214, 255, .28);
+  color: #eaf4ff;
   font-size: .82rem;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-
-/* cartao flutuante de nivel */
-.hero__aside { display: flex; justify-content: flex-end; }
-
-.level-card {
-  width: min(330px, 100%);
-  margin: 0;
-  padding: 24px 26px 20px;
-  border: 1px solid rgba(255, 255, 255, .8);
-  border-radius: var(--r-xl);
-  background: rgba(255, 255, 255, .84);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  box-shadow: var(--sh-lg);
-}
-.level-card__label {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--ink-soft);
-  font-size: .72rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: .09em;
   text-transform: uppercase;
 }
-.level-card__dot {
-  width: 10px; height: 10px;
+.hero__eyebrow-dot {
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--blue-600);
-}
-.level-card__value {
-  margin-top: 14px;
-  color: var(--navy-800);
-  font-size: 2.65rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -.03em;
-}
-.level-card__value span { font-size: .62em; }
-.level-card__caption { margin-top: 6px; color: var(--ink-soft); font-size: .88rem; }
-.level-card__chart { width: 100%; height: auto; margin-top: 14px; }
-.level-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  font-size: .78rem;
-  color: var(--ink-soft);
-}
-.level-card__status { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
-.level-card__status::before {
-  content: "";
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--ok);
+  background: var(--cyan-400);
+  box-shadow: 0 0 0 4px rgba(79, 213, 239, .22);
+  flex: none;
 }
 
-/* Em telas muito largas o bloco textual acompanha o container ampliado,
-   sem esticar a medida de leitura do paragrafo. */
-@media (min-width: 1600px) {
-  .hero__content { max-width: 700px; }
-  .hero__title { font-size: 3.8rem; }
-  .hero__text { max-width: 600px; }
-  .hero__highlights { max-width: 670px; }
+.hero__title {
+  margin-top: clamp(16px, 1.7vw, 26px);
+  max-width: 15ch;
+  color: #fff;
+  font-size: clamp(3.5rem, 5.4vw, 5.9rem);
+  font-weight: 700;
+  line-height: .99;
+  letter-spacing: -.028em;
+  text-shadow: 0 2px 30px rgba(4, 20, 46, .34);
 }
 
-/* faixa de atributos da hero — painel de vidro sobre a fotografia */
-.hero__badges {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px 20px;
-  margin-top: clamp(28px, 3.5vw, 48px);
-  padding: 18px 28px;
-  border: 1px solid rgba(255, 255, 255, .78);
-  border-radius: var(--r-lg);
-  background: rgba(255, 255, 255, .78);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  box-shadow: var(--sh-md);
+/* chamada principal: rodapé direito */
+.hero__cta {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
 }
 
-/* No desktop a faixa nao atravessa a pagina: fica ancorada a direita, sobre a
-   parte inferior da fotografia, alinhada a borda direita do container. */
-@media (min-width: 1025px) {
-  .hero__badges {
-    width: min(790px, 66%);
-    margin-left: auto;
-  }
+/* ------------------------------- revelação escalonada das palavras do título */
+/*
+   O estado inicial só existe quando o JavaScript marca o título com
+   `is-staggering`. Sem script, ou se ele falhar antes disso, o texto
+   permanece visível — nada some da página.
+*/
+.hero__word { display: inline-block; will-change: opacity, transform; }
+
+.hero__title.is-staggering .hero__word {
+  opacity: 0;
+  transform: translateY(34px);
+  filter: blur(10px);
+}
+.hero__title.is-staggering .hero__word.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+  transition:
+    opacity 1150ms var(--ease-stagger),
+    transform 1150ms var(--ease-stagger),
+    filter 1150ms var(--ease-stagger);
 }
 
-.hero-badge {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--navy-800);
-  font-size: .9rem;
-  font-weight: 600;
-  line-height: 1.35;
+/*
+   Selo, texto lateral e botão entram com um fade/slide discreto: o selo
+   primeiro, depois o título (palavra a palavra) e por fim estes dois.
+   Como no título, o estado inicial depende de `is-entering`, aplicada pelo
+   script — sem JavaScript nada fica escondido.
+*/
+.hero.is-entering .hero__eyebrow,
+.hero.is-entering .hero__lead,
+.hero.is-entering .hero__cta {
+  opacity: 0;
+  transform: translateY(22px);
 }
-.hero-badge .aq-icon { color: var(--blue-600); width: 22px; height: 22px; }
-.hero-badge span { text-wrap: balance; }
+
+.hero.is-entering.is-ready .hero__eyebrow,
+.hero.is-entering.is-ready .hero__lead,
+.hero.is-entering.is-ready .hero__cta {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 1000ms var(--ease-stagger),
+    transform 1000ms var(--ease-stagger);
+}
+.hero.is-entering.is-ready .hero__eyebrow { transition-delay: 0ms; }
+.hero.is-entering.is-ready .hero__lead    { transition-delay: 1180ms; }
+.hero.is-entering.is-ready .hero__cta     { transition-delay: 1380ms; }
 
 /* ---------------------------------------------------------- 6. informacoes */
 .section--info {
@@ -883,52 +969,63 @@ button { font: inherit; color: inherit; }
 
 /* ---------------------------------------------------- 11. responsividade */
 
+/* ------------------------------------------------------------ hero: tablet */
+/*
+   Abaixo de 1200px a composição da referência é mantida, apenas em escala
+   menor. O texto de apoio troca de coluna e sobe para a esquerda: à direita a
+   fotografia mostra a barragem, que não deve ficar coberta por texto.
+*/
+@media (max-width: 1199px) {
+  :root {
+    --hero-min-h: 620px;
+    --hero-pad-bottom: clamp(32px, 4.4vw, 48px);
+  }
+
+
+  /* o texto de apoio mudou para a esquerda: o canto escuro acompanha */
+  .hero__scrim {
+    background:
+      linear-gradient(160deg,
+        rgba(4, 20, 46, .64) 0%,
+        rgba(4, 20, 46, .50) 28%,
+        rgba(4, 20, 46, .12) 48%,
+        rgba(4, 20, 46, 0) 60%),
+      linear-gradient(180deg,
+        rgba(6, 26, 58, .46) 0%,
+        rgba(6, 26, 58, .18) 20%,
+        rgba(6, 26, 58, 0) 40%,
+        rgba(5, 22, 50, .40) 74%,
+        rgba(5, 22, 50, .76) 100%),
+      linear-gradient(90deg,
+        rgba(5, 22, 50, .58) 0%,
+        rgba(5, 22, 50, .24) 28%,
+        rgba(5, 22, 50, 0) 54%);
+  }
+
+  .hero__layout { gap: 20px clamp(20px, 3.2vw, 44px); }
+
+  .hero__lead {
+    grid-column: 1;
+    justify-self: start;
+    max-width: 30ch;
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+  }
+
+  .hero__title {
+    max-width: 13ch;
+    font-size: clamp(2.9rem, 6vw, 4.2rem);
+  }
+}
+
 /* laptops mais estreitos */
 @media (max-width: 1180px) {
   :root { --section-y: 96px; }
-  .hero__inner { min-height: 500px; gap: 28px; }
-  .hero__media { width: 62%; }
   .site-nav__list { gap: 20px; }
 }
 
 /* tablet paisagem */
 @media (max-width: 1024px) {
   :root { --section-y: 88px; }
-
-  /* O conteudo textual vem primeiro; a fotografia passa a ocupar a faixa abaixo. */
-  .hero {
-    display: flex;
-    flex-direction: column;
-    padding-top: 44px;
-  }
-  .hero__inner { order: 1; }
-  .hero__media { order: 2; }
-  .hero > .container:last-child { order: 3; }
-
-  .hero__media {
-    position: relative;
-    width: min(var(--container-max), calc(100% - (2 * var(--page-gutter))));
-    height: clamp(280px, 42vw, 400px);
-    margin: 36px auto 0;
-    border-radius: var(--r-xl);
-    overflow: hidden;
-  }
-  .hero__photo { object-position: 60% 50%; }
-  .hero__overlay { top: 4%; width: 96%; opacity: .55; }
-  .hero__fade {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.3) 0%, rgba(255,255,255,0) 34%),
-      linear-gradient(0deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 30%);
-  }
-  .hero__inner {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    min-height: 0;
-    gap: 34px;
-  }
-  .hero__content { max-width: 680px; }
-  .hero__aside { justify-content: flex-start; }
-  .level-card { width: min(330px, 100%); }
 
   .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .advantages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -956,27 +1053,46 @@ button { font: inherit; color: inherit; }
 }
 
 /* menu mobile */
+/*
+   O painel deixa de ser fixo no topo da janela e passa a nascer logo abaixo da
+   barra flutuante, acompanhando-a nos dois estados (sobre a hero e depois
+   dela). Dentro do painel o fundo é branco, então os textos voltam ao tema
+   escuro mesmo enquanto a barra ainda está sobre a fotografia.
+*/
 @media (max-width: 960px) {
   :root { --header-h: 74px; }
 
-  .brand__logo { width: 132px; }
+  .brand__logo { width: clamp(124px, 26vw, 150px); }
 
   .nav-toggle { display: inline-flex; }
 
+  /* botão de menu integrado à barra escura enquanto ela está sobre a hero */
+  .site-header .nav-toggle {
+    border-color: rgba(126, 183, 255, .34);
+    background: rgba(255, 255, 255, .08);
+    color: #eaf4ff;
+  }
+  .site-header.is-scrolled .nav-toggle {
+    border-color: var(--border);
+    background: #fff;
+    color: var(--navy-800);
+  }
+
   .site-nav {
-    position: fixed;
-    top: var(--header-h);
+    position: absolute;
+    top: calc(100% + 10px);
     left: 0;
     right: 0;
     z-index: 99;
     display: block;
-    max-height: calc(100vh - var(--header-h));
-    max-height: calc(100dvh - var(--header-h));
+    max-height: calc(100vh - 150px);
+    max-height: calc(100svh - 150px);
     overflow-y: auto;
-    padding: 22px var(--page-gutter) 30px;
+    padding: 18px 20px 24px;
     background: #fff;
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 24px 40px rgba(11, 35, 80, .12);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: 0 24px 44px rgba(11, 35, 80, .18);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
@@ -995,8 +1111,16 @@ button { font: inherit; color: inherit; }
   }
   .site-nav__link::after { display: none; }
 
+  /* fundo branco do painel: os links voltam ao tema escuro nos dois estados */
+  .site-header .site-nav__link,
+  .site-header .site-nav__enter { color: var(--navy-700); }
+  .site-header .site-nav__link:hover,
+  .site-header .site-nav__link.is-active,
+  .site-header .site-nav__enter:hover { color: var(--blue-600); }
+
   .site-nav__actions { display: grid; gap: 10px; margin-top: 22px; }
   .site-nav__actions .btn { width: 100%; }
+  .site-nav__enter { padding: 12px 4px; text-align: center; }
 
   .nav-backdrop {
     display: block;
@@ -1010,13 +1134,78 @@ button { font: inherit; color: inherit; }
   body.nav-open { overflow: hidden; }
 }
 
+/* ------------------------------------------------------------ hero: celular */
+/*
+   Coluna única e altura definida pelo conteúdo — nada é cortado. A fotografia
+   continua ao fundo, deslocada para manter a água e a barragem reconhecíveis.
+*/
+@media (max-width: 767px) {
+  :root {
+    --hero-pad-x: 22px;
+    --hero-bar-offset: 16px;
+    --hero-bar-h: 64px;
+  }
+
+
+  .hero__frame {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .hero__photo { object-position: 62% 52%; }
+
+  /* com texto sobre toda a fotografia, o véu fica mais uniforme */
+  .hero__scrim {
+    background: linear-gradient(180deg,
+      rgba(6, 26, 58, .60) 0%,
+      rgba(6, 26, 58, .40) 30%,
+      rgba(5, 22, 50, .60) 68%,
+      rgba(5, 22, 50, .82) 100%);
+  }
+
+  .hero__layout {
+    position: relative;
+    inset: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-height: 82svh;
+    padding: var(--hero-pad-top) var(--hero-pad-x) 38px;
+  }
+
+  /* no eixo transversal do flex, os alinhamentos do grid não valem mais */
+  .hero__intro,
+  .hero__lead,
+  .hero__cta { align-self: stretch; }
+
+  .hero__intro { margin-top: auto; } /* ancora o bloco no rodapé da fotografia */
+
+  .hero__eyebrow {
+    padding: 7px 14px 7px 12px;
+    font-size: .72rem;
+    letter-spacing: .07em;
+  }
+
+  .hero__title {
+    margin-top: 16px;
+    max-width: 14ch;
+    font-size: clamp(2.35rem, 9.6vw, 3.05rem);
+    line-height: 1.02;
+  }
+
+  .hero__lead {
+    grid-column: auto;
+    max-width: 34ch;
+    font-size: 1.02rem;
+  }
+
+  .hero__cta .btn { width: 100%; justify-content: center; }
+}
+
 /* tablet retrato */
 @media (max-width: 860px) {
   :root { --section-y: 76px; }
-
-  .hero__inner { grid-template-columns: minmax(0, 1fr); align-items: start; }
-  .hero__highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 520px; }
-  .hero__badges { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 20px 24px; }
 
   .cta { flex-wrap: wrap; padding: 32px 28px; }
   .cta__body { flex-basis: 100%; }
@@ -1045,19 +1234,6 @@ button { font: inherit; color: inherit; }
   :root { --section-y: 64px; }
 
   body { font-size: 15.5px; }
-
-  .brand__logo { width: 112px; }
-
-  .hero { padding-top: 34px; }
-  .hero__media { height: clamp(220px, 56vw, 300px); margin-top: 30px; border-radius: var(--r-lg); }
-  .hero__actions { gap: 12px; }
-  .hero__actions .btn--primary { width: 100%; }
-  .hero__actions .btn--link { padding-left: 0; }
-  .hero__highlights { grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 36px; }
-  .hero__badges { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px 20px; }
-
-  .level-card { padding: 20px 22px 18px; }
-  .level-card__value { font-size: 2.3rem; }
 
   .info-grid, .advantages-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .info-card { padding: 32px 24px; }

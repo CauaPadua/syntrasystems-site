@@ -96,12 +96,15 @@ aq_page_start([
 
     <article class="aq-card">
       <?php echo aq_card_head(['title' => 'Tendência para 7 dias', 'tip' => 'Projeção demonstrativa do nível.']); ?>
-      <p style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-        <span class="aq-kpi__icon aq-kpi__icon--success" aria-hidden="true"><?php aq_the_icon('chart-up'); ?></span>
-        <span><strong style="font-size:1.2rem" data-field="trend.value">—</strong>
-        <span style="display:block;font-size:.82rem;color:var(--aq-text-secondary)">Variação projetada</span></span>
-      </p>
-      <?php echo aq_chart(['id' => 'grafico-tendencia', 'size' => 'sm', 'axis' => 'Cota (m)', 'desc' => 'Projeção do nível para os próximos sete dias.']); ?>
+      <div data-content="trend" hidden>
+        <p style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="aq-kpi__icon aq-kpi__icon--success" aria-hidden="true"><?php aq_the_icon('chart-up'); ?></span>
+          <span><strong style="font-size:1.2rem" data-field="trend.value">—</strong>
+          <span style="display:block;font-size:.82rem;color:var(--aq-text-secondary)">Variação projetada</span></span>
+        </p>
+        <?php echo aq_chart(['id' => 'grafico-tendencia', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Projeção do nível para os próximos sete dias.']); ?>
+      </div>
+      <?php echo aq_states('trend'); ?>
     </article>
   </div>
 </div>
@@ -131,13 +134,16 @@ aq_page_start([
 
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Comparativo mensal', 'tip' => 'Cota máxima, média e mínima por mês.']); ?>
-    <?php echo aq_chart(['id' => 'grafico-mensal', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Comparativo mensal de cota máxima, média, mínima e atual.']); ?>
-    <?php echo aq_legend([
-        ['label' => 'Máxima', 'color' => '#38bdf8', 'style' => 'dashed'],
-        ['label' => 'Média', 'color' => '#16a34a', 'style' => 'dashed'],
-        ['label' => 'Mínima', 'color' => '#fb923c', 'style' => 'dashed'],
-        ['label' => 'Atual', 'color' => '#0b5bea'],
-    ]); ?>
+    <div data-content="monthly" hidden>
+      <?php echo aq_chart(['id' => 'grafico-mensal', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Comparativo mensal de cota máxima, média, mínima e atual.']); ?>
+      <?php echo aq_legend([
+          ['label' => 'Máxima', 'color' => '#38bdf8', 'style' => 'dashed'],
+          ['label' => 'Média', 'color' => '#16a34a', 'style' => 'dashed'],
+          ['label' => 'Mínima', 'color' => '#fb923c', 'style' => 'dashed'],
+          ['label' => 'Atual', 'color' => '#0b5bea'],
+      ]); ?>
+    </div>
+    <?php echo aq_states('monthly'); ?>
   </article>
 
   <article class="aq-card">

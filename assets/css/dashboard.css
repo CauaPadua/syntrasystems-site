@@ -686,10 +686,14 @@ body.aq-app {
   width: 100%;
   min-height: 0;
 }
-.aq-chart--sm  { height: 170px; }
-.aq-chart--md  { height: 215px; }
-.aq-chart--lg  { height: 255px; }
-.aq-chart--xl  { height: 300px; }
+/* Alturas do contêiner (não do canvas): o Chart.js só ocupa o espaço que o
+   wrapper reserva. As medidas seguem a especificação — gráfico secundário
+   entre 220 e 280px, principal entre 300 e 360px — para que eixos e legendas
+   continuem legíveis em vez de espremidos. */
+.aq-chart--sm  { height: 220px; }
+.aq-chart--md  { height: 250px; }
+.aq-chart--lg  { height: 300px; }
+.aq-chart--xl  { height: 340px; }
 
 .aq-chart canvas { display: block; }
 

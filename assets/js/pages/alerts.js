@@ -145,6 +145,7 @@
   function load() {
     S.setState('alerts', 'loading');
     S.setState('detail', 'loading');
+    S.setState('chart', 'loading');
 
     var ctx = Ctx.get();
     return Api.alerts({
@@ -169,6 +170,8 @@
       renderRows();
 
       /* -------------------------- alertas dos últimos 7 dias (empilhado) */
+      S.setState('chart', 'ready');
+      G.guard('grafico-alertas', function () {
       var c = d.chart;
       G.create('grafico-alertas', {
         type: 'bar',
@@ -191,6 +194,7 @@
           plugins: G.plugins('', 0)
         }
       });
+      });
 
       /* --------------------------------------- canais de notificação */
       document.querySelector('[data-channels]').innerHTML = (d.channels || []).map(function (ch) {
@@ -211,6 +215,7 @@
       if (Api.isAbort(err)) return;
       S.setState('alerts', 'error', err.message);
       S.setState('detail', 'error', err.message);
+      S.setState('chart', 'error', err.message);
     });
   }
 
@@ -260,6 +265,7 @@
 
   S.onRetry('alerts', load);
   S.onRetry('detail', load);
+  S.onRetry('chart', load);
   S.onReload(load);
 
   /* ------------------------------------------------------------- início */
