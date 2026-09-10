@@ -6,6 +6,10 @@
 - **Etapa 3** — sistema interno completo (`dashboard/` + `api/v1/`), com 14 telas,
   17 endpoints e dados **simulados e determinísticos**. Sem banco de dados.
 
+> **Começando agora?** Leia primeiro o [`GUIA-DO-PROJETO.md`](GUIA-DO-PROJETO.md):
+> ele explica, em linguagem simples, o que é front-end, o que é back-end e o que
+> cada pasta faz. Cada pasta principal tem também o seu `LEIA-ME.md`.
+
 Documentação:
 
 | Documento | Assunto |
