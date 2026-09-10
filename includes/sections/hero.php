@@ -20,9 +20,9 @@
   <div class="hero__frame">
 
     <img class="hero__photo"
-         src="<?php aq_out(aq_asset('images/aquapulse-hero-reservatorio.png')); ?>"
+         src="<?php aq_out(aq_asset('images/hero-reservatorio.webp')); ?>"
          width="1672" height="941"
-         alt="Vista aérea de um reservatório cercado por montanhas, com a barragem vertendo água à direita."
+         alt="Vista aérea de um grande reservatório de água azul cercado por montanhas, com a barragem de concreto à direita."
          fetchpriority="high" decoding="async">
 
     <span class="hero__scrim" aria-hidden="true"></span>
