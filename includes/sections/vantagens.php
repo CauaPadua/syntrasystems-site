@@ -1,67 +1,81 @@
 <?php
-/** Seção 4 — Vantagens de um monitoramento mais inteligente. */
+/**
+ * Seção 4 — Vantagens.
+ *
+ * Seção fotográfica de largura total: a barragem fica livre à esquerda e todo
+ * o conteúdo é sobreposto à direita, em HTML real e selecionável. A fotografia
+ * é apenas ilustrativa e fica atrás do conteúdo; o texto segue o fluxo normal
+ * do documento, sem posicionamento absoluto.
+ *
+ * Duas âncoras precisam continuar existindo aqui:
+ *   - `#vantagens`, usada pelo rodapé e pelo botão da seção "Por que monitorar";
+ *   - `#solicitar-demonstracao`, usada pelo item "Contato" do menu e pelo botão
+ *     "Solicitar acesso" da tela de login.
+ *
+ * O botão de demonstração mantém o comportamento que já existia no projeto:
+ * revela um aviso de canal em preparação, tratado por assets/js/main.js.
+ */
+
+/** @var array<int, array{titulo:string, texto:string}> */
+$aq_vantagens = [
+    [
+        'titulo' => 'Segurança para agir',
+        'texto'  => 'Antecipe mudanças e responda com mais clareza a situações críticas.',
+    ],
+    [
+        'titulo' => 'Confiança para planejar',
+        'texto'  => 'Organize informações para orientar a operação e apoiar a gestão.',
+    ],
+    [
+        'titulo' => 'Responsabilidade para preservar',
+        'texto'  => 'Acompanhe decisões, fortaleça a governança e cuide dos recursos hídricos.',
+    ],
+];
 ?>
-<section class="section section--advantages" id="vantagens" aria-labelledby="vantagens-titulo">
+<section class="aq-benefits" id="vantagens" aria-labelledby="vantagens-titulo">
 
-  <div class="advantages__media" aria-hidden="true">
-    <img class="advantages__photo"
-         src="<?php aq_out(aq_asset('images/vantagens-represa.webp')); ?>"
-         width="1672" height="941" alt="" loading="lazy" decoding="async">
-    <img class="advantages__overlay"
-         src="<?php aq_out(aq_asset('images/overlay-monitoramento.webp')); ?>"
-         width="1100" height="619" alt="" loading="lazy" decoding="async">
-    <span class="advantages__fade"></span>
-  </div>
+  <?php /* fotografia decorativa: fica atrás do conteúdo e não é anunciada */ ?>
+  <img class="aq-benefits__foto"
+       src="<?php aq_out(aq_asset('images/aquapulse-vantagens-fundo.webp')); ?>"
+       width="1586" height="992"
+       alt="" aria-hidden="true"
+       loading="lazy" decoding="async">
 
-  <img class="deco deco--linhas-vantagens"
-       src="<?php aq_out(aq_asset('images/linhas-decorativas.webp')); ?>"
-       width="1100" height="619" alt="" aria-hidden="true" loading="lazy" decoding="async">
+  <span class="aq-benefits__veu" aria-hidden="true"></span>
 
-  <div class="container section__inner">
+  <div class="aq-benefits__conteudo">
 
-    <div class="section__head reveal">
-      <p class="eyebrow"><?php aq_the_icon('sparkle'); ?><span>Vantagens</span></p>
-      <h2 class="section__title" id="vantagens-titulo">
-        Vantagens de um <br>monitoramento mais inteligente
-      </h2>
-      <p class="section__lead section__lead--left">
-        Adotar uma solução inteligente de monitoramento de represas é investir em
-        segurança, eficiência e sustentabilidade. Conheça os principais benefícios
-        para a sua operação e para a sociedade.
-      </p>
-    </div>
+    <p class="aq-benefits__id">Aquapulse <span aria-hidden="true">/</span> Vantagens</p>
 
-    <ul class="advantages-grid">
-      <?php foreach (AQ_ADVANTAGES as $i => $card): ?>
-        <li class="reveal" style="--delay: <?php echo ($i % 3) * 80; ?>ms">
-          <article class="advantage-card">
-            <span class="icon-badge icon-badge--round" aria-hidden="true"><?php aq_the_icon($card['icon']); ?></span>
-            <div class="advantage-card__body">
-              <h3 class="advantage-card__title"><?php aq_out($card['title']); ?></h3>
-              <p class="advantage-card__text"><?php aq_out($card['text']); ?></p>
-            </div>
-          </article>
+    <h2 class="aq-benefits__titulo" id="vantagens-titulo">
+      Decisões mais seguras. Uma gestão mais consciente da água.
+    </h2>
+
+    <p class="aq-benefits__intro">
+      Informação para orientar a operação, apoiar equipes e cuidar de quem
+      depende da represa.
+    </p>
+
+    <ul class="aq-benefits__lista">
+      <?php foreach ($aq_vantagens as $item): ?>
+        <li class="aq-benefits__item">
+          <h3 class="aq-benefits__item-titulo"><?php aq_out($item['titulo']); ?></h3>
+          <p class="aq-benefits__item-texto"><?php aq_out($item['texto']); ?></p>
         </li>
       <?php endforeach; ?>
     </ul>
 
-    <aside class="cta" id="solicitar-demonstracao" aria-labelledby="cta-titulo">
-      <span class="icon-badge icon-badge--round icon-badge--lg" aria-hidden="true"><?php aq_the_icon('shield-check'); ?></span>
-      <div class="cta__body">
-        <h3 class="cta__title" id="cta-titulo">Proteja hoje o que importa amanhã.</h3>
-        <p class="cta__text">
-          Dê o próximo passo para uma gestão de represas mais segura,
-          inteligente e sustentável.
-        </p>
-      </div>
-      <button class="btn btn--primary btn--lg" type="button" data-demo-trigger aria-describedby="aviso-demo">
+    <div class="aq-benefits__acao" id="solicitar-demonstracao">
+      <button class="aq-benefits__cta" type="button"
+              data-demo-trigger aria-describedby="aviso-demo">
         <span>Solicitar demonstração</span>
         <?php aq_the_icon('arrow-right'); ?>
       </button>
-      <p class="cta__note" id="aviso-demo" role="status" hidden>
+
+      <p class="aq-benefits__aviso" id="aviso-demo" role="status" hidden>
         Canal de contato em preparação. Em breve disponível.
       </p>
-    </aside>
+    </div>
 
   </div>
 </section>

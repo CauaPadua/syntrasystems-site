@@ -8,7 +8,9 @@
 
 .aq-monitorar {
   position: relative;
-  padding-block: clamp(56px, 6vw, 96px);
+  /* respiro menor embaixo: esta seção encosta na seguinte, sem vão largo */
+  padding-top: clamp(56px, 6vw, 96px);
+  padding-bottom: clamp(24px, 2.4vw, 40px);
   background: var(--bg, #fff);
   /* compensa o cabeçalho fixo quando o menu rola até esta âncora */
   scroll-margin-top: calc(var(--header-h, 110px) + 16px);

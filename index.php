@@ -20,7 +20,10 @@ $aq_version = (string) max(
     (int) @filemtime(__DIR__ . '/assets/css/style.css'),
     (int) @filemtime(__DIR__ . '/assets/js/main.js'),
     (int) @filemtime(__DIR__ . '/assets/css/monitorar.css'),
-    (int) @filemtime(__DIR__ . '/assets/js/monitorar.js')
+    (int) @filemtime(__DIR__ . '/assets/js/monitorar.js'),
+    (int) @filemtime(__DIR__ . '/assets/css/vantagens.css'),
+    (int) @filemtime(__DIR__ . '/assets/css/sistema.css'),
+    (int) @filemtime(__DIR__ . '/assets/js/sistema-carrossel.js')
 );
 ?>
 <!DOCTYPE html>
@@ -40,6 +43,10 @@ $aq_version = (string) max(
   <link rel="stylesheet" href="<?php aq_out(aq_asset('css/style.css')); ?>?v=<?php aq_out($aq_version); ?>">
   <?php /* estilos exclusivos da seção "Por que monitorar": só a landing carrega */ ?>
   <link rel="stylesheet" href="<?php aq_out(aq_asset('css/monitorar.css')); ?>?v=<?php aq_out($aq_version); ?>">
+  <?php /* estilos exclusivos da seção "Vantagens" */ ?>
+  <link rel="stylesheet" href="<?php aq_out(aq_asset('css/vantagens.css')); ?>?v=<?php aq_out($aq_version); ?>">
+  <?php /* estilos exclusivos da seção "Sistema" */ ?>
+  <link rel="stylesheet" href="<?php aq_out(aq_asset('css/sistema.css')); ?>?v=<?php aq_out($aq_version); ?>">
 
   <script>document.documentElement.classList.add('js');</script>
 </head>
@@ -50,7 +57,6 @@ $aq_version = (string) max(
   <main id="conteudo">
     <?php require __DIR__ . '/includes/sections/hero.php'; ?>
     <?php require __DIR__ . '/includes/sections/informacoes.php'; ?>
-    <?php require __DIR__ . '/includes/sections/importancia.php'; ?>
     <?php require __DIR__ . '/includes/sections/sistema.php'; ?>
     <?php require __DIR__ . '/includes/sections/vantagens.php'; ?>
   </main>
@@ -59,5 +65,6 @@ $aq_version = (string) max(
 
   <script src="<?php aq_out(aq_asset('js/main.js')); ?>?v=<?php aq_out($aq_version); ?>" defer></script>
   <script src="<?php aq_out(aq_asset('js/monitorar.js')); ?>?v=<?php aq_out($aq_version); ?>" defer></script>
+  <script src="<?php aq_out(aq_asset('js/sistema-carrossel.js')); ?>?v=<?php aq_out($aq_version); ?>" defer></script>
 </body>
 </html>

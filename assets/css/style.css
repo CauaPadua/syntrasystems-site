@@ -289,14 +289,6 @@ button { font: inherit; color: inherit; }
 .section__head--center .section__lead { margin-inline: auto; }
 .section__lead--left { margin-inline: 0; }
 
-/* decoracoes */
-.deco {
-  position: absolute;
-  z-index: 0;
-  pointer-events: none;
-  user-select: none;
-}
-
 /* ---------------------------------------------------- 4. cabecalho/navegacao */
 /*
    Sobre a hero o cabeçalho é uma barra flutuante azul-marinho translúcida,
@@ -671,234 +663,6 @@ button { font: inherit; color: inherit; }
 .hero.is-entering.is-ready .hero__lead    { transition-delay: 1180ms; }
 .hero.is-entering.is-ready .hero__cta     { transition-delay: 1380ms; }
 
-/* ---------------------------------------------------------- 6. informacoes */
-.section--info {
-  background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 42%, #ffffff 100%);
-  overflow: hidden;
-}
-.deco--onda {
-  left: -70px;
-  bottom: -40px;
-  width: min(520px, 42vw);
-  opacity: .22;
-}
-.deco--linhas {
-  right: -140px;
-  top: -150px;
-  width: min(560px, 44vw);
-  opacity: .34;
-}
-.deco--dots {
-  left: 26px;
-  top: 34%;
-  width: 130px;
-  height: 130px;
-  background-image: radial-gradient(var(--blue-300) 1.6px, transparent 1.7px);
-  background-size: 22px 22px;
-  opacity: .35;
-  -webkit-mask-image: radial-gradient(circle at 30% 50%, #000 0%, transparent 72%);
-  mask-image: radial-gradient(circle at 30% 50%, #000 0%, transparent 72%);
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
-}
-.info-grid > li { display: flex; }
-
-.info-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  padding: 42px 30px 38px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-xl);
-  background: rgba(255, 255, 255, .88);
-  box-shadow: var(--sh-sm);
-  text-align: center;
-  transition: transform var(--dur) var(--ease),
-              box-shadow var(--dur) var(--ease),
-              border-color var(--dur) var(--ease);
-}
-.info-card:hover {
-  transform: translateY(-5px);
-  border-color: var(--blue-100);
-  box-shadow: var(--sh-md);
-}
-/* Na referencia o selo de icone dos cartoes de informacoes e mais generoso. */
-.info-card .icon-badge--round { width: 82px; height: 82px; }
-.info-card .icon-badge--round .aq-icon { width: 34px; height: 34px; }
-
-.info-card__title {
-  margin-top: 26px;
-  color: var(--blue-600);
-  font-size: 1.13rem;
-  font-weight: 800;
-}
-.info-card__rule {
-  display: block;
-  width: 40px; height: 3px;
-  margin: 16px 0 18px;
-  border-radius: 3px;
-  background: var(--blue-600);
-}
-.info-card__text { font-size: .93rem; color: var(--ink); }
-
-/* -------------------------------------------------------------- 7. sistema */
-.section--system { background: var(--bg); overflow: hidden; }
-.deco--linhas-sistema {
-  left: -180px;
-  bottom: -120px;
-  width: min(700px, 55vw);
-  opacity: .5;
-  transform: scaleX(-1);
-}
-
-.system__inner {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: minmax(0, .74fr) minmax(0, 1.26fr);
-  align-items: center;
-  gap: clamp(32px, 3.4vw, 56px);
-}
-
-.system__content .section__title { font-size: clamp(1.95rem, 1.1rem + 2.4vw, 2.95rem); }
-
-.system__points { display: grid; gap: 26px; margin-top: 40px; }
-.system-point { display: flex; align-items: flex-start; gap: 18px; }
-.system-point__title {
-  margin-bottom: 6px;
-  color: var(--navy-800);
-  font-size: 1.06rem;
-  font-weight: 800;
-  line-height: 1.35;
-}
-.system-point__text { font-size: .93rem; color: var(--ink); }
-
-.system__preview { margin: 0; }
-.system__frame { max-width: 100%; }
-.system__mockup {
-  width: 100%;
-  height: auto;
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-xl);
-}
-.system__caption {
-  margin-top: 14px;
-  font-size: .8rem;
-  color: var(--ink-soft);
-}
-
-/* Em telas largas o mockup avanca ate a borda direita, como na referencia.
-   O recorte fica a cargo do overflow: hidden da propria secao. */
-@media (min-width: 1200px) {
-  .system__preview {
-    margin-right: calc(-1 * max(var(--page-gutter), (100vw - var(--container-max)) / 2));
-  }
-}
-
-/* ------------------------------------------------------ 8. vantagens + cta */
-.section--advantages {
-  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 16%, #ffffff 58%);
-  overflow: hidden;
-  padding-top: clamp(80px, 7vw, 118px);
-}
-
-.advantages__media {
-  position: absolute;
-  right: 0;
-  top: 0;
-  z-index: 0;
-  width: min(56%, 900px);
-  aspect-ratio: 16 / 10;
-  pointer-events: none;
-}
-.advantages__photo,
-.advantages__overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
-.advantages__photo { object-fit: cover; object-position: 55% 55%; }
-.advantages__overlay { object-fit: cover; opacity: .5; mix-blend-mode: screen; }
-.advantages__fade {
-  position: absolute;
-  inset: -1px;
-  background:
-    linear-gradient(90deg, #f6fbff 0%, rgba(246,251,255,.94) 14%, rgba(246,251,255,.45) 40%, rgba(246,251,255,0) 72%),
-    linear-gradient(180deg, #ffffff 0%, rgba(246,251,255,.82) 14%, rgba(246,251,255,0) 38%),
-    linear-gradient(0deg, #ffffff 0%, rgba(255,255,255,.9) 18%, rgba(255,255,255,.35) 42%, rgba(255,255,255,0) 68%);
-}
-
-/* Na referencia as linhas aparecem no canto inferior direito da secao. */
-.deco--linhas-vantagens {
-  right: -60px;
-  bottom: -220px;
-  width: min(760px, 60vw);
-  opacity: .45;
-}
-
-.section--advantages .section__head { max-width: 780px; margin-bottom: 52px; }
-
-.advantages-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-}
-.advantages-grid > li { display: flex; }
-
-.advantage-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  width: 100%;
-  padding: 32px 30px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-xl);
-  background: rgba(255, 255, 255, .92);
-  box-shadow: var(--sh-sm);
-  transition: transform var(--dur) var(--ease),
-              box-shadow var(--dur) var(--ease),
-              border-color var(--dur) var(--ease);
-}
-.advantage-card:hover {
-  transform: translateY(-5px);
-  border-color: var(--blue-100);
-  box-shadow: var(--sh-md);
-}
-.advantage-card__title {
-  margin-bottom: 12px;
-  font-size: 1.1rem;
-  font-weight: 800;
-  line-height: 1.3;
-  color: var(--navy-800);
-}
-.advantage-card__text { font-size: .93rem; color: var(--ink); }
-
-.cta {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: clamp(20px, 3vw, 40px);
-  margin-top: 30px;
-  padding: 38px clamp(28px, 3.4vw, 48px);
-  border: 1px solid var(--blue-100);
-  border-radius: var(--r-xl);
-  background: linear-gradient(120deg, #eef5ff 0%, #f6faff 60%, #ffffff 100%);
-}
-.cta .icon-badge { background: rgba(255, 255, 255, .9); box-shadow: var(--sh-sm); }
-.cta__body { flex: 1 1 auto; }
-.cta__title { font-size: clamp(1.28rem, 1.05rem + .7vw, 1.7rem); }
-.cta__text { margin-top: 10px; max-width: 480px; font-size: .97rem; color: var(--ink); }
-.cta__note {
-  position: absolute;
-  right: clamp(28px, 3.4vw, 48px);
-  bottom: 10px;
-  color: var(--navy-700);
-  font-size: .84rem;
-  font-weight: 600;
-}
-.cta__note[hidden] { display: none; }
-
 /* -------------------------------------------------------------- 9. rodape */
 .site-footer {
   border-top: 1px solid var(--border);
@@ -1026,30 +790,6 @@ button { font: inherit; color: inherit; }
 /* tablet paisagem */
 @media (max-width: 1024px) {
   :root { --section-y: 88px; }
-
-  .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .advantages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-  .system__inner { grid-template-columns: minmax(0, 1fr); gap: 44px; }
-  .system__content .section__title br { display: none; }
-  .system__preview { max-width: 880px; }
-
-  .advantages__media {
-    position: relative;
-    width: 100%;
-    margin-bottom: 40px;
-    aspect-ratio: 16 / 8;
-    border-radius: var(--r-xl);
-    overflow: hidden;
-  }
-  .advantages__fade {
-    background:
-      linear-gradient(180deg, rgba(247,251,255,.3) 0%, rgba(255,255,255,0) 30%),
-      linear-gradient(0deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 34%);
-  }
-  .section--advantages .section__head { max-width: 720px; }
-
-  .deco--dots { display: none; }
 }
 
 /* menu mobile */
@@ -1207,26 +947,7 @@ button { font: inherit; color: inherit; }
 @media (max-width: 860px) {
   :root { --section-y: 76px; }
 
-  .cta { flex-wrap: wrap; padding: 32px 28px; }
-  .cta__body { flex-basis: 100%; }
-  .cta > .btn { width: 100%; }
-  .cta__note { position: static; margin-top: 4px; flex-basis: 100%; text-align: center; }
-
   .site-footer__inner { grid-template-columns: minmax(0, 1fr); gap: 32px; }
-
-  /* O mockup ocupa a largura total e pode ser percorrido lateralmente dentro do
-     proprio quadro, mantendo os detalhes do painel legiveis. */
-  .system__frame {
-    width: calc(100% + (2 * var(--page-gutter)));
-    margin-inline: calc(-1 * var(--page-gutter));
-    padding: 6px var(--page-gutter) 16px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-  }
-  .system__frame:focus-visible { outline-offset: -3px; }
-  .system__mockup { min-width: 680px; }
-  .system__caption { margin-top: 2px; }
 }
 
 /* celular */
@@ -1235,31 +956,14 @@ button { font: inherit; color: inherit; }
 
   body { font-size: 15.5px; }
 
-  .info-grid, .advantages-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .info-card { padding: 32px 24px; }
-  .info-card__title { margin-top: 20px; }
-
-  .advantage-card { padding: 26px 22px; gap: 16px; }
-  .icon-badge--round { width: 54px; height: 54px; }
   .icon-badge--round .aq-icon { width: 24px; height: 24px; }
 
   .section__head { margin-bottom: 36px; }
   .section__title br { display: none; }
   .section__lead { margin-top: 18px; }
 
-  .system__points { gap: 22px; margin-top: 32px; }
-  .system-point { gap: 14px; }
 
-  .advantages__media { aspect-ratio: 16 / 10; margin-bottom: 32px; }
 
-  .deco--onda { width: 300px; left: -60px; opacity: .22; }
-  .deco--linhas,
-  .deco--linhas-sistema,
-  .deco--linhas-vantagens { display: none; }
-
-  .cta { padding: 28px 22px; gap: 18px; }
-  .cta .icon-badge--lg { width: 58px; height: 58px; }
-  .cta .icon-badge--lg .aq-icon { width: 26px; height: 26px; }
 
   .site-footer { padding-top: 48px; }
   .site-footer__bottom { justify-content: flex-start; }

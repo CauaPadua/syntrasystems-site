@@ -7,9 +7,8 @@
  * fotografias ao lado de um painel editorial fixo.
  *
  * A âncora `#informacoes` é preservada porque o menu principal aponta para
- * ela (item "Importância"). Os quatro cartões que antes viviam aqui foram
- * mantidos na seção seguinte, `includes/sections/importancia.php`, que é o
- * destino do botão desta seção.
+ * ela (item "Importância"). O botão desta seção leva a `#vantagens`, que é
+ * onde o site explica por que o monitoramento vale a pena.
  *
  * Os dados dos slides vêm do manifesto do pacote de referência e ficam locais
  * a esta seção: são conteúdo estático, sem API nem banco.
@@ -96,7 +95,7 @@ $aq_monitorar_total = count($aq_monitorar_slides);
             gestão responsável.
           </p>
 
-          <a class="aq-monitorar__cta" href="#importancia">
+          <a class="aq-monitorar__cta" href="#vantagens">
             <span>Entenda a importância</span>
             <?php aq_the_icon('arrow-up-right'); ?>
           </a>

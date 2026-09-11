@@ -1,0 +1,263 @@
+/* ==========================================================================
+   Aquapulse — seção "Vantagens"
+
+   Estilos exclusivos desta seção. Ficam fora de style.css porque aquele
+   arquivo também é servido para a tela de login; aqui nada é global e todos
+   os seletores começam por .aq-benefits.
+
+   Composição: fotografia de largura total com a barragem livre à esquerda e
+   uma coluna de texto sobreposta à direita. Só a imagem e o véu ficam
+   posicionados; o conteúdo segue o fluxo normal do documento.
+   ========================================================================== */
+
+.aq-benefits {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /* a altura vem do conteúdo: nada de 100vh nem recorte de texto */
+  padding-block: clamp(52px, 6.8vw, 116px);
+  background: #0a2c4e; /* cor de base enquanto a fotografia carrega */
+  color: #f5fafd;
+  scroll-margin-top: calc(var(--header-h, 110px) + 16px);
+}
+
+/* fotografia decorativa, atrás de tudo */
+.aq-benefits__foto {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/*
+   Véu muito suave, só do meio para a direita: o fundo já vem escurecido nessa
+   área, então aqui basta firmar o contraste sem apagar a textura da água.
+   A metade esquerda, com a barragem, fica intocada.
+*/
+.aq-benefits__veu {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg,
+    rgba(6, 34, 62, 0) 38%,
+    rgba(6, 34, 62, .30) 56%,
+    rgba(6, 34, 62, .46) 100%);
+}
+
+/* ------------------------------------------------------- coluna de texto */
+/*
+   Começa a ~52% da largura e ocupa ~41%, deixando ~7% de margem à direita.
+   A referência usa 54/39/7; alarguei 2% para caber a quebra "Decisões mais
+   seguras." em uma linha só. O limite em pixels evita linhas longas demais.
+*/
+.aq-benefits__conteudo {
+  width: min(41%, 720px);
+  margin-left: 52%;
+  margin-right: auto;
+}
+
+.aq-benefits__id {
+  margin: 0;
+  /* a referência sugere #8ADFF1; clareado para o texto pequeno passar de 4,5:1 */
+  color: #b6ecf9;
+  font-size: clamp(.72rem, .82vw, .84rem);
+  font-weight: 600;
+  letter-spacing: .19em;
+  text-transform: uppercase;
+}
+.aq-benefits__id span { margin-inline: .35em; }
+
+.aq-benefits__titulo {
+  margin: clamp(14px, 1.4vw, 22px) 0 0;
+  color: #f5fafd;
+  /* peso médio, como na referência: nada do extra-bold da versão antiga */
+  font-size: clamp(2rem, 3.55vw, 3.8rem);
+  font-weight: 600;
+  line-height: 1.09;
+  letter-spacing: -.015em;
+}
+
+.aq-benefits__intro {
+  margin: clamp(14px, 1.3vw, 20px) 0 0;
+  color: #d9eaf3;
+  font-size: clamp(1rem, 1.42vw, 1.42rem);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------- benefícios */
+/*
+   Três blocos em coluna única, separados por linhas finas. O respiro maior
+   antes da lista separa a introdução dos benefícios.
+*/
+.aq-benefits__lista {
+  margin: clamp(24px, 2.9vw, 46px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aq-benefits__item {
+  padding-block: clamp(15px, 1.55vw, 24px);
+  border-top: 1px solid rgba(226, 242, 250, .26);
+}
+.aq-benefits__item:last-child {
+  border-bottom: 1px solid rgba(226, 242, 250, .26);
+}
+
+.aq-benefits__item-titulo {
+  margin: 0;
+  color: #f5fafd;
+  font-size: clamp(1.12rem, 1.67vw, 1.68rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -.005em;
+}
+
+.aq-benefits__item-texto {
+  margin: clamp(6px, .6vw, 10px) 0 0;
+  color: #d9eaf3;
+  font-size: clamp(1rem, 1.2vw, 1.2rem);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------- CTA */
+.aq-benefits__acao {
+  margin-top: clamp(24px, 2.6vw, 42px);
+  scroll-margin-top: calc(var(--header-h, 110px) + 16px);
+}
+
+.aq-benefits__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 54px;
+  padding: 14px 30px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #a4e8fa;
+  color: #062c4a;
+  font-size: clamp(.98rem, 1.1vw, 1.08rem);
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color var(--dur, .28s) var(--ease, ease),
+    transform var(--dur, .28s) var(--ease, ease);
+}
+.aq-benefits__cta:hover { background: #c2f1ff; }
+.aq-benefits__cta:active { transform: translateY(1px); }
+.aq-benefits__cta .aq-icon {
+  width: 19px;
+  height: 19px;
+  transition: transform var(--dur, .28s) var(--ease, ease);
+}
+.aq-benefits__cta:hover .aq-icon { transform: translateX(4px); }
+
+/* foco visível sobre a fotografia, sem depender só da cor */
+.aq-benefits__cta:focus-visible {
+  outline: 3px solid #f5fafd;
+  outline-offset: 3px;
+}
+
+.aq-benefits__aviso {
+  margin: 14px 0 0;
+  color: #d9eaf3;
+  font-size: .95rem;
+  line-height: 1.45;
+}
+.aq-benefits__aviso[hidden] { display: none; }
+
+/* --------------------------------------------- larguras intermediárias */
+/*
+   A coluna ganha área e a tipografia encolhe com cuidado, para as descrições
+   não ficarem espremidas numa faixa estreita.
+*/
+@media (max-width: 1200px) {
+  /* a coluna desce para a esquerda: o véu acompanha para o texto não sair dela */
+  .aq-benefits__veu {
+    background: linear-gradient(90deg,
+      rgba(6, 34, 62, 0) 26%,
+      rgba(6, 34, 62, .34) 46%,
+      rgba(6, 34, 62, .50) 100%);
+  }
+
+  .aq-benefits__conteudo {
+    width: min(48%, 560px);
+    margin-left: 46%;
+  }
+}
+
+@media (max-width: 980px) {
+  .aq-benefits__veu {
+    background: linear-gradient(90deg,
+      rgba(6, 34, 62, .06) 14%,
+      rgba(6, 34, 62, .42) 40%,
+      rgba(6, 34, 62, .58) 100%);
+  }
+
+  .aq-benefits {
+    padding-block: clamp(48px, 7vw, 84px);
+  }
+  .aq-benefits__conteudo {
+    width: min(56%, 520px);
+    margin-left: 40%;
+  }
+  .aq-benefits__titulo { font-size: clamp(1.85rem, 4.2vw, 2.6rem); }
+  .aq-benefits__intro { font-size: clamp(1rem, 1.9vw, 1.15rem); }
+  .aq-benefits__item-titulo { font-size: clamp(1.1rem, 2.2vw, 1.35rem); }
+  .aq-benefits__item-texto { font-size: clamp(1rem, 1.7vw, 1.08rem); }
+}
+
+/* ------------------------------------------------------------- celular */
+/*
+   Coluna única sobre a mesma fotografia contínua. O recorte muda para manter
+   a barragem reconhecível na parte de cima, e o véu passa a ser vertical,
+   escurecendo onde o texto fica sem apagar a paisagem.
+*/
+@media (max-width: 760px) {
+  .aq-benefits {
+    padding: 0;
+  }
+
+  /* puxa o recorte para a barragem, que fica na faixa central da fotografia */
+  .aq-benefits__foto { object-position: 18% 50%; }
+
+  .aq-benefits__veu {
+    background: linear-gradient(180deg,
+      rgba(6, 34, 62, .30) 0%,
+      rgba(6, 34, 62, .58) 22%,
+      rgba(7, 36, 64, .74) 46%,
+      rgba(7, 36, 64, .82) 100%);
+  }
+
+  .aq-benefits__conteudo {
+    width: auto;
+    margin: 0;
+    /* faixa superior livre para a fotografia aparecer antes do texto */
+    padding: clamp(180px, 46vw, 260px) 22px clamp(44px, 9vw, 60px);
+  }
+
+  .aq-benefits__titulo {
+    font-size: clamp(1.75rem, 7.4vw, 2.3rem);
+    line-height: 1.12;
+  }
+  .aq-benefits__intro { font-size: 1.02rem; }
+  .aq-benefits__item-titulo { font-size: 1.16rem; }
+  .aq-benefits__item-texto { font-size: 1rem; }
+
+  .aq-benefits__cta {
+    width: 100%;
+    padding-inline: 20px;
+  }
+}
+
+/* ------------------------------------------------- movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  .aq-benefits__cta,
+  .aq-benefits__cta .aq-icon { transition: none; }
+  .aq-benefits__cta:hover .aq-icon { transform: none; }
+  .aq-benefits__cta:active { transform: none; }
+}

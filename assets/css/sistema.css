@@ -1,0 +1,239 @@
+/* ==========================================================================
+   Aquapulse — seção "Sistema"
+
+   Estilos exclusivos desta seção. Ficam fora de style.css porque aquele
+   arquivo também é servido para a tela de login; aqui nada é global e todos
+   os seletores começam por .aq-system.
+
+   Composição: fundo branco, textos à esquerda e o carrossel de capturas à
+   direita, com a coluna da imagem maior.
+   ========================================================================== */
+
+.aq-system {
+  position: relative;
+  /* o recuo de cima é menor: esta seção encosta na do carrossel de represas,
+     como foi aprovado antes. O de baixo segue o respiro normal da página. */
+  padding-top: clamp(28px, 2.8vw, 44px);
+  padding-bottom: clamp(56px, 6.4vw, 104px);
+  background: var(--bg, #fff);
+  scroll-margin-top: calc(var(--header-h, 110px) + 16px);
+
+  /* revelação lateral: mesma duração e curva do carrossel de represas */
+  --sis-transicao: 650ms;
+  --sis-ease: cubic-bezier(.33, 1, .68, 1);
+}
+
+.aq-system__inner {
+  display: grid;
+  /* mesma divisão e mesmo vão do carrossel de represas, para os dois quadros
+     terem exatamente a mesma largura e altura na página */
+  grid-template-columns: minmax(0, 32fr) minmax(0, 68fr);
+  gap: clamp(24px, 2.6vw, 40px);
+  align-items: start;
+}
+
+/* --------------------------------------------------------- coluna de texto */
+
+.aq-system__texto { min-width: 0; }
+
+/* identificação simples: sem cápsula de fundo, só texto */
+.aq-system__id {
+  margin: 0;
+  color: var(--blue-600, #1557e0);
+  font-size: clamp(.72rem, .8vw, .82rem);
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.aq-system__titulo {
+  margin: clamp(16px, 1.6vw, 26px) 0 0;
+  max-width: 13ch;
+  color: var(--navy-800, #0b2350);
+  font-size: clamp(2rem, 3.1vw, 3.35rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -.022em;
+}
+
+.aq-system__lead {
+  margin: clamp(16px, 1.5vw, 24px) 0 0;
+  max-width: 46ch;
+  color: var(--ink, #45577a);
+  font-size: clamp(1rem, 1.1vw, 1.1rem);
+  line-height: 1.62;
+}
+
+/* ------------------------------------------------------------- benefícios */
+/*
+   Três itens em coluna, sem cartão: só o ícone e o texto. O ícone vem do
+   sistema de ícones do projeto, sem selo de fundo.
+*/
+.aq-system__beneficios {
+  margin: clamp(28px, 3vw, 46px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: clamp(20px, 2.1vw, 32px);
+}
+
+.aq-system__beneficio {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(14px, 1.3vw, 20px);
+  align-items: start;
+}
+
+.aq-system__icone {
+  display: inline-flex;
+  color: var(--blue-600, #1557e0);
+}
+.aq-system__icone .aq-icon { width: 26px; height: 26px; }
+
+.aq-system__beneficio-corpo { min-width: 0; }
+
+.aq-system__beneficio-titulo {
+  margin: 0;
+  color: var(--navy-800, #0b2350);
+  font-size: clamp(1rem, 1.1vw, 1.12rem);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -.005em;
+}
+
+.aq-system__beneficio-texto {
+  margin: 6px 0 0;
+  color: var(--ink, #45577a);
+  font-size: clamp(.94rem, 1vw, 1rem);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------- carrossel */
+
+.aq-system__carrossel { min-width: 0; }
+
+.aq-system__quadro { margin: 0; }
+
+/*
+   Quadro plano: borda fina e sombra suave, sem perspectiva nem moldura de
+   navegador. A proporção 2/1 reserva a altura antes de a imagem carregar, e
+   como as cinco capturas têm o mesmo tamanho a altura nunca muda na troca.
+*/
+.aq-system__palco {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  border: 1px solid var(--border, #e5edf9);
+  border-radius: var(--r-md, 14px);
+  background: #f7fbff;
+  box-shadow: 0 10px 30px rgba(11, 35, 80, .07);
+  overflow: hidden;
+}
+/* ------------------------------------------- revelação lateral da captura */
+/*
+   Mesma transição do carrossel de represas. As capturas ficam empilhadas e
+   opacas; quem controla a visibilidade é o clip-path. Em repouso só a captura
+   `is-base` está aberta — as outras têm o recorte fechado à direita, então
+   nada aparece e nada empilha.
+
+   Na troca, a que entra vai para cima com o recorte fechado e o abre da
+   direita para a esquerda. A anterior continua preenchendo o quadro embaixo
+   durante toda a transição, então não existe nenhum instante de fundo vazio.
+*/
+.aq-system__tela {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  clip-path: inset(0 0 0 100%);
+}
+
+.aq-system__tela.is-base { clip-path: inset(0); }
+
+.aq-system__tela.is-entrando { z-index: 2; }
+
+.aq-system__tela.is-entrando.is-revelada {
+  clip-path: inset(0);
+  transition: clip-path var(--sis-transicao, 650ms) var(--sis-ease);
+}
+
+/* `contain` preserva a proporção da interface: nada é esticado nem cortado */
+.aq-system__imagem {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* zoom discreto: só a captura que está entrando assenta de 1.02 para 1 */
+.aq-system__tela.is-entrando .aq-system__imagem { transform: scale(1.02); }
+.aq-system__tela.is-entrando.is-revelada .aq-system__imagem {
+  transform: scale(1);
+  transition: transform var(--sis-transicao, 650ms) var(--sis-ease);
+}
+
+.aq-system__rodape {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: clamp(12px, 1.1vw, 16px);
+}
+
+.aq-system__legenda {
+  color: var(--ink-soft, #64749a);
+  font-size: clamp(.86rem, .92vw, .94rem);
+  line-height: 1.45;
+}
+
+.aq-system__contador {
+  color: var(--ink-soft, #64749a);
+  font-size: clamp(.84rem, .9vw, .92rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ----------------------------------------- coluna de texto mais estreita */
+/*
+   Entre 900 e 1200px a coluna de 32% aperta. A tipografia encolhe um pouco
+   para o texto respirar; o quadro do carrossel não muda de tamanho.
+*/
+@media (min-width: 901px) and (max-width: 1200px) {
+  .aq-system__titulo { font-size: clamp(1.7rem, 2.7vw, 2.2rem); }
+  .aq-system__lead { font-size: clamp(.94rem, 1.02vw, 1rem); }
+  .aq-system__beneficios { gap: clamp(18px, 1.9vw, 26px); }
+  .aq-system__beneficio-titulo { font-size: clamp(.94rem, 1.02vw, 1.02rem); }
+  .aq-system__beneficio-texto { font-size: clamp(.88rem, .95vw, .95rem); }
+  .aq-system__icone .aq-icon { width: 22px; height: 22px; }
+}
+
+/* ------------------------------------------------------------- tablet */
+@media (max-width: 900px) {
+  .aq-system__inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 44px);
+  }
+  .aq-system__titulo { max-width: 20ch; font-size: clamp(1.9rem, 4vw, 2.6rem); }
+  .aq-system__lead { max-width: 62ch; }
+  /* em duas colunas os benefícios aproveitam melhor a largura cheia */
+  .aq-system__beneficios { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ------------------------------------------------------------ celular */
+/* O texto vem antes do carrossel: já é a ordem do HTML. */
+@media (max-width: 760px) {
+  .aq-system__beneficios { grid-template-columns: minmax(0, 1fr); }
+  .aq-system__titulo { max-width: none; }
+
+  .aq-system__rodape {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* --------------------------------------------- movimento reduzido */
+/* sem revelação e sem zoom: a troca é instantânea */
+@media (prefers-reduced-motion: reduce) {
+  .aq-system__tela.is-entrando.is-revelada,
+  .aq-system__tela.is-entrando.is-revelada .aq-system__imagem { transition: none; }
+  .aq-system__tela.is-entrando .aq-system__imagem { transform: none; }
+}

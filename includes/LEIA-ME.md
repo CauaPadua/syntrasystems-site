@@ -36,7 +36,6 @@ O comando `require` do PHP significa "cole o conteúdo deste arquivo aqui".
 |---|---|
 | `sections/hero.php` | A capa, com a fotografia grande e o título |
 | `sections/informacoes.php` | "Por que monitorar", com o carrossel de fotos |
-| `sections/importancia.php` | Os quatro cartões de importância |
 | `sections/sistema.php` | Como o sistema apoia a operação |
 | `sections/vantagens.php` | Vantagens e chamada final |
 
@@ -46,8 +45,9 @@ O comando `require` do PHP significa "cole o conteúdo deste arquivo aqui".
 
 ### Os textos ficam separados do HTML
 
-Em `config.php` existem listas como `AQ_NAV` (itens do menu) e `AQ_INFO_CARDS`
-(os quatro cartões). As seções percorrem essas listas com `foreach`.
+Em `config.php` existem listas como `AQ_NAV` (itens do menu) e
+`AQ_SYSTEM_POINTS` (os pontos da seção "Sistema"). As seções percorrem essas
+listas com `foreach`.
 
 Assim, para mudar um texto não é preciso mexer na estrutura da página — e para
 mudar a estrutura não é preciso reescrever os textos.
@@ -55,7 +55,7 @@ mudar a estrutura não é preciso reescrever os textos.
 ### Toda saída de texto passa por `aq_out()`
 
 ```php
-<?php aq_out($card['title']); ?>
+<?php aq_out($item['label']); ?>
 ```
 
 Essa função **escapa** o texto antes de imprimir, convertendo caracteres como

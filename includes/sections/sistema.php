@@ -1,49 +1,117 @@
 <?php
-/** Seção 3 — Sistema: como o Aquapulse apoia a operação. */
+/**
+ * Seção 3 — Sistema: como o Aquapulse apoia a operação.
+ *
+ * Fundo branco, textos à esquerda e, à direita, um carrossel com cinco
+ * capturas do próprio sistema. As capturas são imagens estáticas: esta seção
+ * não conversa com a API nem abre o dashboard em iframe.
+ *
+ * O carrossel é o mesmo já usado na seção "Por que monitorar": ciclo de 3 s,
+ * revelação lateral da direita para a esquerda, pausas apenas temporárias e
+ * sem controles manuais. O script vive em assets/js/sistema-carrossel.js,
+ * isolado, para que as duas instâncias nunca compartilhem temporizador nem
+ * listener.
+ *
+ * A âncora `#sistema` é preservada: o menu principal ("Sobre") aponta para ela.
+ */
+
+/** @var array<int, array{arquivo:string, alt:string}> */
+$aq_sistema_telas = [
+    [
+        'arquivo' => '01-visao-geral.webp',
+        'alt'     => 'Visão geral do Aquapulse com indicadores, comparativo entre represas e situação geral.',
+    ],
+    [
+        'arquivo' => '02-nivel-reservatorio.webp',
+        'alt'     => 'Tela de nível do reservatório do Aquapulse, com gráfico do período e faixas operacionais.',
+    ],
+    [
+        'arquivo' => '03-relatorios.webp',
+        'alt'     => 'Tela de relatórios do Aquapulse, com histórico, filtros e formatos de exportação.',
+    ],
+    [
+        'arquivo' => '04-mapas.webp',
+        'alt'     => 'Tela de mapas do Aquapulse, com a localização das represas monitoradas.',
+    ],
+    [
+        'arquivo' => '05-alertas.webp',
+        'alt'     => 'Tela de alertas do Aquapulse, com ocorrências críticas e de atenção.',
+    ],
+];
+
+$aq_sistema_total = count($aq_sistema_telas);
 ?>
-<section class="section section--system" id="sistema" aria-labelledby="sistema-titulo">
+<section class="aq-system" id="sistema" aria-labelledby="sistema-titulo">
+  <div class="container aq-system__inner">
 
-  <img class="deco deco--linhas-sistema"
-       src="<?php aq_out(aq_asset('images/linhas-decorativas.webp')); ?>"
-       width="1100" height="619" alt="" aria-hidden="true" loading="lazy" decoding="async">
+    <div class="aq-system__texto">
 
-  <div class="container system__inner">
+      <p class="aq-system__id">Como a Aquapulse apoia sua operação</p>
 
-    <div class="system__content reveal">
-      <p class="eyebrow"><?php aq_the_icon('target'); ?><span>Como a Aquapulse apoia sua operação</span></p>
-      <h2 class="section__title" id="sistema-titulo">
-        Visão clara para <br>monitorar, analisar <br>e decidir
+      <h2 class="aq-system__titulo" id="sistema-titulo">
+        Visão clara para monitorar, analisar e decidir
       </h2>
-      <p class="section__lead section__lead--left">
+
+      <p class="aq-system__lead">
         O Aquapulse centraliza as informações estratégicas dos seus reservatórios
         em um só lugar, com dados confiáveis e atualizados para apoiar decisões
         mais seguras e operações mais eficientes.
       </p>
 
-      <ul class="system__points">
+      <ul class="aq-system__beneficios">
         <?php foreach (AQ_SYSTEM_POINTS as $point): ?>
-          <li class="system-point">
-            <span class="icon-badge icon-badge--tile" aria-hidden="true"><?php aq_the_icon($point['icon']); ?></span>
-            <div>
-              <h3 class="system-point__title"><?php aq_out($point['title']); ?></h3>
-              <p class="system-point__text"><?php aq_out($point['text']); ?></p>
+          <li class="aq-system__beneficio">
+            <span class="aq-system__icone" aria-hidden="true"><?php aq_the_icon($point['icon']); ?></span>
+            <div class="aq-system__beneficio-corpo">
+              <h3 class="aq-system__beneficio-titulo"><?php aq_out($point['title']); ?></h3>
+              <p class="aq-system__beneficio-texto"><?php aq_out($point['text']); ?></p>
             </div>
           </li>
         <?php endforeach; ?>
       </ul>
+
     </div>
 
-    <figure class="system__preview reveal">
-      <div class="system__frame" data-scroller
-           aria-label="Prévia do painel Aquapulse (role horizontalmente para ver todo o painel)">
-        <img class="system__mockup"
-             src="<?php aq_out(aq_asset('images/dashboard-aquapulse.webp')); ?>"
-             width="1536" height="1024"
-             alt="Prévia do painel Aquapulse: visão geral com nível do reservatório, volume armazenado, afluência, precipitação, gráfico de nível, mapa da represa, alertas recentes e relatórios."
-             loading="lazy" decoding="async">
-      </div>
-      <figcaption class="system__caption">Prévia ilustrativa da interface do Aquapulse.</figcaption>
-    </figure>
+    <?php /*
+Carrossel das capturas. A primeira já vem marcada como `is-base` no HTML,      então ela aparece mesmo sem JavaScript; as outras ficam recortadas.
+    */ ?>
+    <div class="aq-system__carrossel"
+         data-sistema-carrossel
+         data-intervalo="3000"
+         data-transicao="650"
+         role="group"
+         aria-roledescription="carrossel"
+         aria-label="Telas do sistema Aquapulse">
+
+      <figure class="aq-system__quadro">
+        <div class="aq-system__palco">
+          <?php foreach ($aq_sistema_telas as $i => $tela): ?>
+            <?php /*
+              `is-base` marca a captura que preenche o quadro. A que entra ganha
+              `is-entrando` e é revelada por cima, da direita para a esquerda,
+              sem que a anterior saia antes da hora.
+            */ ?>
+            <div class="aq-system__tela<?php echo $i === 0 ? ' is-base' : ''; ?>"
+                 data-sistema-tela="<?php echo (int) $i; ?>"
+                 <?php echo $i === 0 ? '' : 'aria-hidden="true"'; ?>>
+              <img class="aq-system__imagem"
+                   src="<?php aq_out(aq_asset('images/sistema/' . $tela['arquivo'])); ?>"
+                   width="3840" height="1920"
+                   alt="<?php aq_out($tela['alt']); ?>"
+                   loading="lazy" fetchpriority="low" decoding="async">
+            </div>
+          <?php endforeach; ?>
+        </div>
+
+        <figcaption class="aq-system__rodape">
+          <span class="aq-system__legenda">Prévia ilustrativa da interface do Aquapulse.</span>
+          <span class="aq-system__contador">
+            <span data-sistema-atual>01</span> / <?php echo sprintf('%02d', $aq_sistema_total); ?>
+          </span>
+        </figcaption>
+      </figure>
+
+    </div>
 
   </div>
 </section>
