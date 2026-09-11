@@ -1,4 +1,3 @@
 # Configurações pessoais do Obsidian (tema, layout, arquivos abertos).
 # As notas Markdown em docs/obsidian/ continuam versionadas.
 .obsidian/
-.env
