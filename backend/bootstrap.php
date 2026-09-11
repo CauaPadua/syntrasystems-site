@@ -6,6 +6,7 @@
  * (login.php, index.php) nunca inclui este arquivo.
  *
  * Responsabilidades:
+ *  - carregar variáveis de ambiente do arquivo .env, se existir;
  *  - registrar o autoload das classes do namespace Aquapulse\;
  *  - silenciar a exibição de erros (a saída é sempre JSON);
  *  - converter erros e exceções não tratadas em uma resposta 500 genérica;
@@ -15,6 +16,40 @@
 declare(strict_types=1);
 
 define('AQ_BACKEND_PATH', __DIR__);
+
+/* ------------------------------------------------------------ variáveis de ambiente */
+
+/**
+ * Lê o arquivo .env (se existir) e disponibiliza as variáveis via getenv().
+ * Não sobrescreve variáveis já definidas no ambiente do servidor.
+ */
+(static function (): void {
+    $arquivoEnv = AQ_BACKEND_PATH . '/.env';
+
+    if (!is_file($arquivoEnv)) {
+        return;
+    }
+
+    foreach (file($arquivoEnv, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $linha) {
+        $linha = trim($linha);
+
+        if ($linha === '' || str_starts_with($linha, '#')) {
+            continue;
+        }
+
+        if (!str_contains($linha, '=')) {
+            continue;
+        }
+
+        [$chave, $valor] = explode('=', $linha, 2);
+        $chave = trim($chave);
+        $valor = trim($valor);
+
+        if (getenv($chave) === false) {
+            putenv("{$chave}={$valor}");
+        }
+    }
+})();
 
 /* --------------------------------------------------------------- autoload */
 spl_autoload_register(static function (string $class): void {
