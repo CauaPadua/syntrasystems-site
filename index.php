@@ -1,6 +1,6 @@
 <?php
 /**
- * Aquapulse — landing page institucional.
+ * Aquapulse — landingg page institucional.
  *
  * Etapa 1 do projeto: apenas a página pública. Sem autenticação, banco de
  * dados, API ou painel administrativo.
