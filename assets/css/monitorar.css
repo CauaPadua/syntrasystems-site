@@ -4,12 +4,14 @@
    Estilos exclusivos desta seção. Ficam fora de style.css porque aquele
    arquivo também é servido para a tela de login; aqui nada é global e todos os
    seletores começam por .aq-monitorar.
+
+   HTML: includes/sections/informacoes.php | JS: assets/js/monitorar.js
    ========================================================================== */
 
-.aq-monitorar {
+.aq-monitorar {                                                    /* a <section> inteira */
   position: relative;
   /* respiro menor embaixo: esta seção encosta na seguinte, sem vão largo */
-  padding-top: clamp(56px, 6vw, 96px);
+  padding-top: clamp(56px, 6vw, 96px);                             /* clamp(mínimo, proporcional à tela, máximo) */
   padding-bottom: clamp(24px, 2.4vw, 40px);
   background: var(--bg, #fff);
   /* compensa o cabeçalho fixo quando o menu rola até esta âncora */
@@ -21,7 +23,7 @@
    acompanha a largura do container, sem recuo extra nas laterais.
 */
 .aq-monitorar__quadro {
-  --mon-radius: clamp(14px, 1.3vw, 20px);
+  --mon-radius: clamp(14px, 1.3vw, 20px);                          /* variável: raio dos cantos da fotografia, reaproveitado abaixo */
 
   /* revelação lateral: duração e desaceleração suave (o script pode zerar) */
   --mon-transicao: 650ms;
@@ -36,25 +38,25 @@
 */
 .aq-monitorar__topo {
   display: grid;
-  grid-template-columns: minmax(0, 32fr) minmax(0, 68fr);
+  grid-template-columns: minmax(0, 32fr) minmax(0, 68fr);          /* 32% lateral / 68% principal */
   gap: clamp(24px, 3.4vw, 56px);
   align-items: start;
   margin-bottom: clamp(28px, 3.2vw, 44px);
 }
 
-.aq-monitorar__lateral {
+.aq-monitorar__lateral {                                           /* coluna flex vertical: permite empurrar a chamada para baixo */
   display: flex;
   flex-direction: column;
   min-height: 100%;
 }
 
-.aq-monitorar__selo {
+.aq-monitorar__selo {                                              /* cápsula "POR QUE MONITORAR" */
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  align-self: flex-start;
-  padding: 9px 18px 9px 14px;
-  border-radius: 999px;
+  align-self: flex-start;                                          /* não estica na largura da coluna */
+  padding: 9px 18px 9px 14px;                                      /* cima | direita | baixo | esquerda */
+  border-radius: 999px;                                            /* raio enorme = pontas totalmente arredondadas (formato pílula) */
   background: #e1f1ff;
   color: #0752ef;
   font-size: .78rem;
@@ -62,17 +64,17 @@
   letter-spacing: .1em;
   text-transform: uppercase;
 }
-.aq-monitorar__selo-ponto {
+.aq-monitorar__selo-ponto {                                        /* bolinha azul antes do texto */
   width: 9px;
   height: 9px;
-  flex: none;
+  flex: none;                                                      /* não encolhe nem cresce dentro do flex */
   border-radius: 50%;
   background: #1f8fe0;
 }
 
 /* a chamada desce até perto da base da coluna de textos */
 .aq-monitorar__chamada {
-  margin-top: auto;
+  margin-top: auto;                                                /* em flex column, margin-top:auto ocupa o espaço livre e empurra o elemento para baixo */
   padding-top: clamp(28px, 4vw, 72px);
   color: #0b204d;
   font-size: clamp(1.9rem, 3.2vw, 3.4rem);
@@ -90,25 +92,25 @@
   text-transform: uppercase;
 }
 
-.aq-monitorar__titulo {
+.aq-monitorar__titulo {                                            /* h2 da seção */
   margin: 0;
   color: #0b204d;
   font-size: clamp(2.05rem, 4.5vw, 5rem);
   font-weight: 700;
   line-height: 1.08;
   letter-spacing: -.026em;
-  text-wrap: balance;
+  text-wrap: balance;                                              /* o navegador equilibra o comprimento das linhas do título */
 }
 
 .aq-monitorar__paragrafo {
-  max-width: 62ch;
+  max-width: 62ch;                                                 /* limita a linha a ~62 caracteres */
   margin-top: clamp(16px, 1.6vw, 26px);
   color: #52678e;
   font-size: clamp(1.02rem, 1.2vw, 1.38rem);
   line-height: 1.6;
 }
 
-.aq-monitorar__cta {
+.aq-monitorar__cta {                                               /* botão "Entenda a importância" */
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -120,24 +122,24 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
-  box-shadow: 0 12px 26px rgba(7, 82, 239, .26);
-  transition:
+  box-shadow: 0 12px 26px rgba(7, 82, 239, .26);                   /* sombra azulada abaixo do botão */
+  transition:                                                      /* anima cor, sombra e deslocamento */
     background-color var(--dur, .28s) var(--ease, ease),
     box-shadow var(--dur, .28s) var(--ease, ease),
     transform var(--dur, .28s) var(--ease, ease);
 }
 .aq-monitorar__cta:hover {
   background: #0a45c4;
-  transform: translateY(-2px);
+  transform: translateY(-2px);                                     /* sobe 2px ao passar o mouse */
   box-shadow: 0 16px 32px rgba(7, 82, 239, .3);
 }
-.aq-monitorar__cta:active { transform: translateY(0); }
+.aq-monitorar__cta:active { transform: translateY(0); }            /* ao clicar, volta à posição original */
 .aq-monitorar__cta .aq-icon {
   width: 18px;
   height: 18px;
   transition: transform var(--dur, .28s) var(--ease, ease);
 }
-.aq-monitorar__cta:hover .aq-icon { transform: translate(3px, -3px); }
+.aq-monitorar__cta:hover .aq-icon { transform: translate(3px, -3px); } /* a seta diagonal "sai" para cima e para a direita */
 
 /* ----------------------------------------------------------- painéis */
 /*
@@ -147,9 +149,9 @@
 */
 .aq-monitorar__paineis {
   display: grid;
-  grid-template-columns: minmax(0, 68fr) minmax(0, 32fr);
+  grid-template-columns: minmax(0, 68fr) minmax(0, 32fr);          /* carrossel 68% / painel 32% (mesma divisão usada na seção Sistema) */
   gap: clamp(24px, 2.6vw, 40px);
-  align-items: stretch;
+  align-items: stretch;                                            /* as duas colunas ficam com a mesma altura */
 }
 
 /* coluna do carrossel: painel em cima, controles logo abaixo */
@@ -160,16 +162,16 @@
   min-width: 0;
 }
 
-.aq-monitorar__palco {
+.aq-monitorar__palco {                                             /* área visível das fotografias */
   position: relative;
-  overflow: hidden;
+  overflow: hidden;                                                /* recorta as fotos nos cantos arredondados */
   border-radius: var(--mon-radius);
-  background: #dbe9f4;
+  background: #dbe9f4;                                             /* cor enquanto a foto não carrega */
   /* a proporção reserva a altura antes de a fotografia carregar: sem salto */
-  aspect-ratio: 1774 / 887;
+  aspect-ratio: 1774 / 887;                                        /* mesma proporção dos arquivos de imagem (2:1) */
 }
 
-.aq-monitorar__quadros {
+.aq-monitorar__quadros {                                           /* camada que contém os slides empilhados */
   position: absolute;
   inset: 0;
 }
@@ -188,25 +190,25 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  margin: 0;
+  margin: 0;                                                       /* <figure> vem com margem padrão */
   overflow: hidden;
-  clip-path: inset(0 0 0 100%);
+  clip-path: inset(0 0 0 100%);                                    /* recorte fechado: slide invisível */
 }
 
-.aq-monitorar__slide.is-base { clip-path: inset(0); }
+.aq-monitorar__slide.is-base { clip-path: inset(0); }              /* slide atual: aberto */
 
-.aq-monitorar__slide.is-entrando { z-index: 2; }
+.aq-monitorar__slide.is-entrando { z-index: 2; }                   /* slide que entra fica por cima */
 
-.aq-monitorar__slide.is-entrando.is-revelada {
+.aq-monitorar__slide.is-entrando.is-revelada {                     /* estado final: o recorte anima de 100% até 0 */
   clip-path: inset(0);
   transition: clip-path var(--mon-transicao, 650ms) var(--mon-ease);
 }
 
 .aq-monitorar__foto {
-  display: block;
+  display: block;                                                  /* evita o espaço extra que imagens inline deixam embaixo */
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover;                                               /* preenche o painel sem distorcer (corta as sobras) */
 }
 
 /* zoom discreto: só a fotografia que está entrando assenta de 1.025 para 1 */
@@ -228,7 +230,7 @@
   padding-top: clamp(2px, .6vw, 10px);
 }
 
-.aq-monitorar__acao-titulo {
+.aq-monitorar__acao-titulo {                                       /* "Do acompanhamento à ação" */
   margin: 0 0 clamp(18px, 1.8vw, 30px);
   color: #0b204d;
   font-size: clamp(1.5rem, 2.05vw, 2.15rem);
@@ -238,30 +240,30 @@
   text-wrap: balance;
 }
 
-.aq-monitorar__passos {
+.aq-monitorar__passos {                                            /* <ol> dos três passos */
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1;                                                         /* ocupa toda a altura restante do painel */
   margin: 0;
   padding: 0;
-  list-style: none;
+  list-style: none;                                                /* a numeração visual vem do span "01, 02, 03" */
 }
 
-.aq-monitorar__passo {
+.aq-monitorar__passo {                                             /* número à esquerda, texto à direita */
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: clamp(12px, 1vw, 18px);
   padding-block: clamp(14px, 1.5vw, 22px);
-  border-top: 1px solid #d5e6f3;
+  border-top: 1px solid #d5e6f3;                                   /* divisória fina entre os passos */
 }
-.aq-monitorar__passo:first-child { padding-top: 0; border-top: 0; }
+.aq-monitorar__passo:first-child { padding-top: 0; border-top: 0; } /* o primeiro não tem divisória acima */
 .aq-monitorar__passo:last-child { padding-bottom: 0; }
 
 .aq-monitorar__passo-numero {
   color: #0752ef;
   font-size: clamp(.95rem, 1.05vw, 1.1rem);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums;                              /* algarismos com a mesma largura: os números ficam alinhados */
   line-height: 1.4;
 }
 
@@ -295,13 +297,13 @@
   margin-left: -10px; /* alinha o ícone, não a caixa do botão, com a foto */
   color: #0b204d;
 }
-.aq-monitorar__controles[hidden] { display: none; }
+.aq-monitorar__controles[hidden] { display: none; }                /* respeita o hidden (o JS só remove depois de inicializar) */
 
-.aq-monitorar__botao {
+.aq-monitorar__botao {                                             /* setas anterior/próxima */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  width: 44px;                                                     /* 44x44px: tamanho mínimo recomendado para toque */
   height: 44px;
   padding: 0;
   border: 0;
@@ -314,7 +316,7 @@
 .aq-monitorar__botao:hover { background: #e1f1ff; color: #0752ef; }
 .aq-monitorar__botao .aq-icon { width: 18px; height: 18px; }
 
-.aq-monitorar__pontos {
+.aq-monitorar__pontos {                                            /* grupo de indicadores */
   display: flex;
   align-items: center;
   gap: 2px;
@@ -324,7 +326,7 @@
    O alvo de toque tem 44px, mas a marca visível é pequena. O estado atual não
    depende só de cor: a marca ativa fica mais larga e ganha contorno.
 */
-.aq-monitorar__ponto {
+.aq-monitorar__ponto {                                             /* o botão invisível ao redor da marca */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -335,38 +337,38 @@
   background: none;
   cursor: pointer;
 }
-.aq-monitorar__ponto-marca {
+.aq-monitorar__ponto-marca {                                       /* a bolinha visível */
   display: block;
   width: 9px;
   height: 9px;
   border: 1px solid #9dc2e4;
   border-radius: 999px;
   background: #d7e8f7;
-  transition:
+  transition:                                                      /* anima a mudança de largura (bolinha -> traço) */
     width var(--dur, .28s) var(--ease, ease),
     background-color var(--dur, .28s) var(--ease, ease);
 }
 .aq-monitorar__ponto:hover .aq-monitorar__ponto-marca { background: #9dc2e4; }
-.aq-monitorar__ponto.is-ativo .aq-monitorar__ponto-marca {
+.aq-monitorar__ponto.is-ativo .aq-monitorar__ponto-marca {         /* slide atual: traço largo e azul */
   width: 24px;
   border-color: #0752ef;
   background: #0752ef;
 }
 
-.aq-monitorar :focus-visible { outline-offset: 2px; }
+.aq-monitorar :focus-visible { outline-offset: 2px; }              /* contorno de foco do teclado um pouco afastado dos elementos */
 
 /* --------------------------------------------------------- tablet */
 @media (max-width: 1024px) {
   .aq-monitorar__topo {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);                         /* topo em uma coluna */
     gap: clamp(20px, 3vw, 32px);
   }
 
   /* a ordem de leitura passa a ser selo, título, parágrafo, CTA e chamada */
-  .aq-monitorar__lateral { display: contents; }
+  .aq-monitorar__lateral { display: contents; }                    /* a caixa some e seus filhos passam a ser itens diretos da grade (podendo ser reordenados) */
   /* com display:contents o selo vira item do grid: precisa de justify-self */
   .aq-monitorar__selo { order: 1; justify-self: start; margin-bottom: 4px; }
-  .aq-monitorar__texto { order: 2; }
+  .aq-monitorar__texto { order: 2; }                               /* order muda só a posição visual */
   .aq-monitorar__chamada {
     order: 3;
     margin-top: 0;
@@ -379,7 +381,7 @@
 /* ------------------------------------------------ tablet e telas estreitas */
 @media (min-width: 901px) {
   /* os três passos dividem a altura da fotografia: sem sobra no rodapé */
-  .aq-monitorar__passo { flex: 1 0 auto; }
+  .aq-monitorar__passo { flex: 1 0 auto; }                         /* cresce para dividir a altura igualmente, sem encolher */
 }
 
 /*
@@ -397,9 +399,9 @@
 
 /* --------------------------------------------------------- celular */
 @media (max-width: 767px) {
-  .aq-monitorar__quadro { --mon-radius: 12px; }
+  .aq-monitorar__quadro { --mon-radius: 12px; }                    /* cantos menores no celular */
 
-  .aq-monitorar__palco { aspect-ratio: 16 / 9; }
+  .aq-monitorar__palco { aspect-ratio: 16 / 9; }                   /* foto um pouco mais alta que 2:1, para não ficar uma faixa fina */
 
   .aq-monitorar__cta {
     width: 100%;

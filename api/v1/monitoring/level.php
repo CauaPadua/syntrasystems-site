@@ -1,5 +1,10 @@
 <?php
 /** GET /api/v1/monitoring/level.php?reservoir_id={id}&period={p} — nível, cota, capacidade e tendência */
+/*
+ * Chamado por: assets/js/pages/level.js (monitoramento/nivel.php) e
+ * assets/js/pages/levels.js (dashboard/niveis.php). Período padrão: 7 dias.
+ * Mesmo roteiro de flow.php: valida -> monta no service -> responde.
+ */
 
 declare(strict_types=1);
 
@@ -16,7 +21,7 @@ $reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');
 $period      = Validator::period('7d');
 
 $service = new MonitoringService($repo);
-$data    = $service->level($reservoirId, $period);
+$data    = $service->level($reservoirId, $period);                        // nível %, cota em metros, faixas e projeção
 
 if ($data === []) {
     ApiResponse::error('NO_DATA', 'Não há dados disponíveis para esta represa no período selecionado.', 404);

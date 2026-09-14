@@ -1,5 +1,11 @@
 <?php
 /** Aquapulse — Mapas (Leaflet + OpenStreetMap). */
+/*
+ * Mapa com todas as represas, filtros por empresa/status/busca e um painel
+ * lateral com os indicadores da represa clicada. Lógica em
+ * assets/js/pages/maps-page.js, que usa GET api/v1/map/reservoirs.php e
+ * o módulo AqMap (assets/js/maps.js) para desenhar os marcadores.
+ */
 
 declare(strict_types=1);
 
@@ -14,27 +20,27 @@ aq_page_start([
 ?>
 
 <section class="aq-context" aria-label="Filtros do mapa">
-  <?php echo aq_select(['id' => 'filtro-empresa', 'label' => 'Empresa', 'options' => ['all' => 'Todas as empresas']]); ?>
+  <?php echo aq_select(['id' => 'filtro-empresa', 'label' => 'Empresa', 'options' => ['all' => 'Todas as empresas']]); // trocar a empresa recarrega os marcadores ?>
 
   <div class="aq-field" style="flex:1 1 240px">
     <label class="aq-field__label" for="busca-represa">Buscar represa</label>
-    <input class="aq-input" type="search" id="busca-represa" placeholder="Buscar represa" style="width:100%">
+    <input class="aq-input" type="search" id="busca-represa" placeholder="Buscar represa" style="width:100%"> <?php /* filtra por nome no navegador */ ?>
   </div>
 
   <span class="aq-context__spacer"></span>
 </section>
 
-<div class="aq-grid aq-grid--3-2">
+<div class="aq-grid aq-grid--3-2"> <?php /* mapa (3/5) + painel da represa selecionada (2/5) */ ?>
   <article class="aq-card aq-card--flush" style="padding:16px">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" data-status-filters>
-      <button class="aq-chip is-active" type="button" data-status="all"><?php aq_the_icon('grid'); ?><span>Todas</span></button>
-      <button class="aq-chip" type="button" data-status="normal"><span class="aq-dot aq-dot--normal"></span><span>Normal</span></button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" data-status-filters> <?php /* chips que filtram os marcadores por status */ ?>
+      <button class="aq-chip is-active" type="button" data-status="all"><?php aq_the_icon('grid'); // "Todas" começa ativo ?><span>Todas</span></button>
+      <button class="aq-chip" type="button" data-status="normal"><span class="aq-dot aq-dot--normal"></span><span>Normal</span></button> <?php /* data-status = chave do StatusRules */ ?>
       <button class="aq-chip" type="button" data-status="attention"><span class="aq-dot aq-dot--attention"></span><span>Atenção</span></button>
       <button class="aq-chip" type="button" data-status="critical"><span class="aq-dot aq-dot--critical"></span><span>Crítico</span></button>
     </div>
 
-    <div class="aq-map aq-map--lg" id="mapa-principal">
-      <div class="aq-map__fallback" data-map-fallback="mapa-principal" hidden>
+    <div class="aq-map aq-map--lg" id="mapa-principal"> <?php /* contêiner onde o Leaflet cria o mapa */ ?>
+      <div class="aq-map__fallback" data-map-fallback="mapa-principal" hidden> <?php /* aparece se o Leaflet ou os blocos do mapa não carregarem */ ?>
         <span class="aq-state__icon" aria-hidden="true"><?php aq_the_icon('map'); ?></span>
         <p class="aq-state__title">Mapa indisponível</p>
         <p class="aq-state__text">
@@ -44,7 +50,7 @@ aq_page_start([
       </div>
     </div>
 
-    <div class="aq-map-legend" style="margin-top:14px;flex-direction:row;gap:20px;align-items:center">
+    <div class="aq-map-legend" style="margin-top:14px;flex-direction:row;gap:20px;align-items:center"> <?php /* legenda estática das cores dos marcadores */ ?>
       <strong>Legenda</strong>
       <div><span class="aq-dot aq-dot--normal"></span> Normal</div>
       <div><span class="aq-dot aq-dot--attention"></span> Atenção</div>
@@ -54,7 +60,7 @@ aq_page_start([
 
   <!-- ------------------------------- painel lateral da represa selecionada -->
   <article class="aq-card" data-panel>
-    <div data-content="panel" hidden>
+    <div data-content="panel" hidden> <?php /* preenchido com o marcador clicado (campos sel.*) */ ?>
       <h2 style="font-size:1.2rem" data-field="sel.name">—</h2>
 
       <div class="aq-form-row">
@@ -64,15 +70,16 @@ aq_page_start([
 
       <p class="aq-card__sub" style="display:flex;align-items:center;gap:8px;margin-top:12px">
         <?php aq_the_icon('map-pin'); ?> Localização
-        <strong style="margin-left:auto;color:var(--aq-text)" data-field="sel.basin">—</strong>
+        <strong style="margin-left:auto;color:var(--aq-text)" data-field="sel.basin">—</strong> <?php /* bacia hidrográfica */ ?>
       </p>
       <p class="aq-card__sub" style="display:flex;align-items:center;gap:8px;margin-top:8px">
         <?php aq_the_icon('locate'); ?> Coordenadas
-        <strong style="margin-left:auto;color:var(--aq-text)" data-field="sel.coords">—</strong>
+        <strong style="margin-left:auto;color:var(--aq-text)" data-field="sel.coords">—</strong> <?php /* coordinates (texto em graus) */ ?>
       </p>
 
       <div class="aq-grid aq-grid--2" style="margin-top:16px">
         <?php
+        // Indicadores do marcador selecionado (mesmos campos devolvidos em markers[] pela API).
         echo aq_kpi(['id' => 'sel.level', 'label' => 'Nível atual', 'icon' => 'waves', 'unit' => '%']);
         echo aq_kpi(['id' => 'sel.flow', 'label' => 'Vazão atual', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s']);
         echo aq_kpi(['id' => 'sel.ph', 'label' => 'pH da água', 'icon' => 'droplet', 'badge' => true]);
@@ -82,7 +89,7 @@ aq_page_start([
         ?>
       </div>
 
-      <a class="aq-btn aq-btn--primary" href="monitoramento/vazao.php" style="width:100%;margin-top:16px" data-monitor-link>
+      <a class="aq-btn aq-btn--primary" href="monitoramento/vazao.php" style="width:100%;margin-top:16px" data-monitor-link> <?php /* o JS acrescenta a represa selecionada ao link */ ?>
         <span>Ver monitoramento completo</span><?php aq_the_icon('chart-up'); ?>
       </a>
     </div>
@@ -96,7 +103,7 @@ aq_page_start([
       'tip'     => 'Clique em uma represa para centralizar o mapa e ver os detalhes.',
       'actions' => '<span class="aq-card__sub">Coordenadas demonstrativas</span>',
   ]); ?>
-  <div class="aq-grid aq-grid--3" data-reservoir-cards></div>
+  <div class="aq-grid aq-grid--3" data-reservoir-cards></div> <?php /* um card por represa; funciona mesmo se o mapa falhar */ ?>
 </article>
 
 <div class="aq-demo-note">
@@ -106,4 +113,4 @@ aq_page_start([
   blocos do OpenStreetMap — sem chave paga e sem Google Maps.</span>
 </div>
 
-<?php aq_page_end(['scripts' => ['pages/maps-page.js'], 'needs_map' => true]);
+<?php aq_page_end(['scripts' => ['pages/maps-page.js'], 'needs_map' => true]); // needs_map carrega Leaflet e maps.js antes de maps-page.js

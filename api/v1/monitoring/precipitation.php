@@ -1,5 +1,9 @@
 <?php
 /** GET /api/v1/monitoring/precipitation.php?reservoir_id={id}&period={p} — precipitação observada e prevista */
+/*
+ * Chamado por: assets/js/pages/rain.js (monitoramento/precipitacao.php). Período padrão: 7 dias.
+ * Mesmo roteiro de flow.php: valida -> monta no service -> responde.
+ */
 
 declare(strict_types=1);
 
@@ -16,7 +20,7 @@ $reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');
 $period      = Validator::period('7d');
 
 $service = new MonitoringService($repo);
-$data    = $service->precipitation($reservoirId, $period);
+$data    = $service->precipitation($reservoirId, $period);                // chuva diária/acumulada, estações e previsão
 
 if ($data === []) {
     ApiResponse::error('NO_DATA', 'Não há dados disponíveis para esta represa no período selecionado.', 404);

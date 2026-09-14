@@ -3,47 +3,52 @@
  *
  * Carrega empresas e represas, aplica o contexto salvo e alterna entre o modo
  * consolidado e o modo de represa selecionada.
+ *
+ * Página: dashboard/index.php | API: GET api/v1/overview.php (OverviewService).
+ * Fluxo: loadCompanies -> loadReservoirs -> load -> renderAll ou renderSingle.
  */
-(function () {
+(function () {                                                        // IIFE: isola as variáveis desta tela do escopo global
   'use strict';
 
-  var S = window.AqShell;
-  var F = window.AqFormat;
-  var G = window.AqCharts;
-  var Api = window.AqApi;
-  var Ctx = window.AqContext;
+  var S = window.AqShell;                                             // estados, fill, badge, esc
+  var F = window.AqFormat;                                            // formatação pt-BR
+  var G = window.AqCharts;                                            // gráficos
+  var Api = window.AqApi;                                             // chamadas à API
+  var Ctx = window.AqContext;                                         // empresa/represa/período compartilhados entre telas
 
   var selCompany = document.getElementById('filtro-empresa');
   var selReservoir = document.getElementById('filtro-represa');
-  var viewAll = document.querySelector('[data-view="all"]');
-  var viewSingle = document.querySelector('[data-view="single"]');
+  var viewAll = document.querySelector('[data-view="all"]');          // bloco "todas as represas"
+  var viewSingle = document.querySelector('[data-view="single"]');    // bloco "represa selecionada"
 
-  var SCOPES_ALL = ['comparison', 'flow-all', 'donut', 'summary'];
-  var SCOPES_ONE = ['level-chart', 'flow-chart'];
+  var SCOPES_ALL = ['comparison', 'flow-all', 'donut', 'summary'];    // blocos com estados de carregamento no modo consolidado
+  var SCOPES_ONE = ['level-chart', 'flow-chart'];                     // blocos com estados no modo de uma represa
 
-  var reservoirCache = [];
+  var reservoirCache = [];                                            // última lista de represas recebida
 
   /** Ajusta o círculo do ícone de um KPI à situação apurada. */
   function tonalizarIcone(kpiId, statusKey) {
     var icone = document.querySelector('[data-kpi="' + kpiId + '"] .aq-kpi__icon');
     if (!icone) return;
 
-    var tom = { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'success';
+    var tom = { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'success'; // traduz status em variação de cor
     ['success', 'warning', 'danger'].forEach(function (t) {
-      icone.classList.toggle('aq-kpi__icon--' + t, t === tom);
+      icone.classList.toggle('aq-kpi__icon--' + t, t === tom);        // liga só a classe do tom certo e desliga as outras
     });
   }
 
   /* ------------------------------------------------------------ filtros */
 
+  /** Preenche um <select> com a opção "todas" + um item por registro. */
   function fillSelect(select, items, allLabel) {
     var html = '<option value="all">' + allLabel + '</option>';
     items.forEach(function (i) {
-      html += '<option value="' + S.esc(i.id) + '">' + S.esc(i.name) + '</option>';
+      html += '<option value="' + S.esc(i.id) + '">' + S.esc(i.name) + '</option>'; // esc: nomes vindos da API não viram HTML
     });
     select.innerHTML = html;
   }
 
+  /** Busca as empresas e marca a do contexto salvo. */
   function loadCompanies() {
     return Api.companies().then(function (r) {
       fillSelect(selCompany, r.data.companies, 'Todas as empresas');
@@ -51,6 +56,7 @@
     });
   }
 
+  /** Busca as represas da empresa escolhida e garante que a seleção continua válida. */
   function loadReservoirs() {
     var ctx = Ctx.get();
     return Api.reservoirs(ctx.company_id).then(function (r) {
@@ -65,13 +71,14 @@
 
   /* -------------------------------------------------- renderização: todas */
 
+  /** Desenha o modo consolidado com os dados de data (mode = 'all'). */
   function renderAll(d) {
     var k = d.kpis;
 
     // conteudo visivel antes dos graficos: canvas oculto nasce com tamanho zero
     SCOPES_ALL.forEach(function (s) { S.setState(s, 'ready'); });
 
-    S.fill({
+    S.fill({                                                          // preenche os cards de KPI (data-field="all.*")
       'all.reservoirs.value': F.int(k.reservoirs.value),
       'all.reservoirs.foot': '',
       'all.reservoirs.badge': { html: '<span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>' + k.reservoirs.online + ' online</span>' },
@@ -81,7 +88,7 @@
       'all.flow.value': F.num(k.flow.value, 1),
       'all.ph.value': F.num(k.ph.value, 1),
       'all.ph.badge': { html: S.badge(k.ph.note, 'normal') },
-      'all.operation.value': { html: '<span class="aq-kpi__inline">'
+      'all.operation.value': { html: '<span class="aq-kpi__inline">'   // "2 normais · 1 atenção" em verde e âmbar
         + '<span style="color:var(--aq-success);font-weight:800">' + k.operation.normal + ' normais</span> · '
         + '<span style="color:var(--aq-warning);font-weight:800">' + k.operation.attention + ' atenção</span></span>' },
       'all.alerts.total': d.alert_counts.total
@@ -89,14 +96,14 @@
 
     // barras horizontais de comparação
     var bars = document.querySelector('[data-comparison-bars]');
-    bars.innerHTML = d.comparison.map(function (c) {
+    bars.innerHTML = d.comparison.map(function (c) {                  // uma barra por represa; a largura é o próprio nível em %
       return '<div class="aq-bar" style="margin-bottom:16px">'
         + '<div class="aq-bar__head"><span style="font-weight:600">' + S.esc(c.name) + '</span>'
         + '<strong style="color:var(--aq-' + (c.status.key === 'normal' ? 'success' : c.status.key === 'attention' ? 'warning' : 'danger') + ')">'
         + F.pct(c.level) + '</strong></div>'
         + '<div class="aq-bar__track"><div class="aq-bar__fill aq-bar__fill--' + c.status.key
         + '" style="width:' + c.level + '%"></div></div>'
-        + '<span class="aq-visually-hidden">Situação: ' + c.status.label + '</span>'
+        + '<span class="aq-visually-hidden">Situação: ' + c.status.label + '</span>' // o status também é lido por leitores de tela
         + '</div>';
     }).join('');
     S.setState('comparison', 'ready');
@@ -107,7 +114,7 @@
       type: 'line',
       data: {
         labels: fc.labels,
-        datasets: [(function () {
+        datasets: [(function () {                                     // função executada na hora só para obter o contexto do canvas (usado no gradiente)
           var ctx = document.getElementById('grafico-vazao-consolidada').getContext('2d');
           return G.line('Vazão total', fc.values, G.colors.primary, { fillCtx: ctx, alpha: 0.16 });
         })()]
@@ -115,13 +122,13 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 22 } },
-        scales: G.scales({ decimals: 0, max: 200 }),
+        layout: { padding: { top: 22 } },                             // espaço no topo para os rótulos de valor não serem cortados
+        scales: G.scales({ decimals: 0, max: 200 }),                  // eixo Y fixo até 200 m³/s
         plugins: G.plugins('m³/s', 1)
       },
-      plugins: [G.valueLabels({ decimals: 1, color: '#09245a' })]
+      plugins: [G.valueLabels({ decimals: 1, color: '#09245a' })]     // escreve o valor acima de cada ponto
     });
-    G.describe('grafico-vazao-consolidada', fc.values, 'm³/s', 1);
+    G.describe('grafico-vazao-consolidada', fc.values, 'm³/s', 1);   // resumo textual para leitores de tela
     S.setState('flow-all', 'ready');
 
     // donut da situação
@@ -130,18 +137,18 @@
       values: [d.donut.normal, d.donut.attention, d.donut.critical],
       colors: [G.colors.success, G.colors.warning, G.colors.danger],
       cutout: '70%',
-      center: [
+      center: [                                                       // texto no centro: total de represas
         { text: String(d.donut.total), size: 30 },
         { text: 'represas', size: 12, color: '#536b96', weight: '600' }
       ]
     });
 
-    var total = d.donut.total || 1;
+    var total = d.donut.total || 1;                                   // "|| 1" evita divisão por zero no percentual abaixo
     document.querySelector('[data-donut-legend]').innerHTML = [
       { label: 'Normal', value: d.donut.normal, key: 'normal' },
       { label: 'Atenção', value: d.donut.attention, key: 'attention' },
       { label: 'Crítico', value: d.donut.critical, key: 'critical' }
-    ].map(function (i) {
+    ].map(function (i) {                                              // legenda com quantidade e porcentagem de cada faixa
       return '<li style="display:flex;align-items:center;gap:9px">'
         + '<span class="aq-dot aq-dot--' + i.key + '"></span>'
         + '<span style="flex:1 1 auto">' + i.label + '</span>'
@@ -160,14 +167,14 @@
     }).join('');
 
     // tabela resumo
-    document.querySelector('[data-summary-rows]').innerHTML = d.reservoirs.map(function (r) {
+    document.querySelector('[data-summary-rows]').innerHTML = d.reservoirs.map(function (r) { // uma <tr> por represa
       return '<tr class="is-' + r.status.key + '">'
         + '<td><span class="aq-table__name"><span class="aq-table__icon">'
           + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
           + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
           + '<path d="M3.5 20.5V7l8.5-3.5L20.5 7v13.5"/><path d="M3.5 11h17"/><path d="M3.5 15.5h17"/></svg>'
           + '</span><span class="is-nowrap">' + S.esc(r.name) + '</span></span></td>'
-        + '<td class="is-num" style="font-weight:700;color:var(--aq-' + (r.status.key === 'attention' ? 'warning' : 'success') + ')">' + F.pct(r.level) + '</td>'
+        + '<td class="is-num" style="font-weight:700;color:var(--aq-' + (r.status.key === 'attention' ? 'warning' : 'success') + ')">' + F.pct(r.level) + '</td>' // só atenção fica âmbar; crítico também sairia verde
         + '<td class="is-num is-nowrap">' + F.int(r.volume) + ' hm³</td>'
         + '<td class="is-num is-nowrap">' + F.num(r.flow, 1) + ' m³/s</td>'
         + '<td class="is-num">' + F.num(r.ph, 1) + '</td>'
@@ -179,9 +186,9 @@
     S.setState('summary', 'ready');
 
     // mapa consolidado
-    if (window.AqMap) {
+    if (window.AqMap) {                                               // maps.js pode não ter carregado
       window.AqMap.render('mapa-visao-geral', d.reservoirs.map(function (r) {
-        return { lat: r.lat, lng: r.lng, name: r.name, city: r.city, level: r.level, flow: r.flow, status: r.status };
+        return { lat: r.lat, lng: r.lng, name: r.name, city: r.city, level: r.level, flow: r.flow, status: r.status }; // formato de marcador esperado por AqMap
       }), {});
     }
 
@@ -201,12 +208,13 @@
 
   /* ------------------------------------------- renderização: uma represa */
 
+  /** Desenha o modo de uma represa com os dados de data (mode = 'single'). */
   function renderSingle(d) {
     var k = d.kpis;
 
     SCOPES_ONE.forEach(function (s) { S.setState(s, 'ready'); });
 
-    S.fill({
+    S.fill({                                                          // cards de KPI (data-field="one.*")
       'one.level.value': F.num(k.level.value, 1),
       'one.level.foot': 'Cota: ' + F.unit(k.level.cota, 'm'),
       'one.level.badge': { html: S.badge(k.level.status.label, k.level.status.key) },
@@ -214,13 +222,13 @@
       'one.storage.foot': 'de ' + F.int(k.storage.capacity) + ' hm³',
       'one.flow.value': F.num(k.flow.value, 1),
       'one.flow.foot': 'Média 24h',
-      'one.flow.badge': { html: '<span class="aq-trend aq-trend--down">▼ ' + Math.abs(k.flow.trend) + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + k.flow.trend_label + '</span></span>' },
+      'one.flow.badge': { html: '<span class="aq-trend aq-trend--down">▼ ' + Math.abs(k.flow.trend) + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + k.flow.trend_label + '</span></span>' }, // seta para baixo fixa (a API manda tendência negativa)
       'one.ph.value': F.num(k.ph.value, 1),
       'one.ph.foot': k.ph.note,
       'one.ph.badge': { html: S.badge(k.ph.status.label, k.ph.status.key) },
       'one.rain.value': F.num(k.rain.value, 1),
       'one.rain.foot': k.rain.note,
-      'one.rain.badge': { html: '<span class="aq-trend aq-trend--up">▲ ' + k.rain.trend + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + k.rain.trend_label + '</span></span>' },
+      'one.rain.badge': { html: '<span class="aq-trend aq-trend--up">▲ ' + k.rain.trend + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + k.rain.trend_label + '</span></span>' },   // seta para cima fixa
       'one.duration.value': F.int(k.duration.value),
       'one.duration.foot': k.duration.note,
       // a cor acompanha a situação apurada — verde fixo diria "normal" mesmo
@@ -231,7 +239,7 @@
       'one.spill': d.level_chart.spill_label
     });
 
-    S.setRing('one.storage', k.storage.occupancy);
+    S.setRing('one.storage', k.storage.occupancy);                    // anel de ocupação no card de volume
 
     // o ícone do cartão também segue a situação: com o nível em atenção, um
     // ícone verde fixo contradiria o valor âmbar logo ao lado
@@ -243,9 +251,9 @@
 
     // a cota varia poucos metros: sem uma escala de 5 em 5 os rótulos
     // arredondados do eixo apareceriam repetidos (562, 562, 563, 563…)
-    var cotas = lc.observed.concat(lc.spill);
-    var cotaMin = Math.floor(Math.min.apply(null, cotas) / 5) * 5 - 5;
-    var cotaMax = Math.ceil(Math.max.apply(null, cotas) / 5) * 5 + 5;
+    var cotas = lc.observed.concat(lc.spill);                         // considera a série e a linha de vertimento para os limites do eixo
+    var cotaMin = Math.floor(Math.min.apply(null, cotas) / 5) * 5 - 5; // arredonda para baixo ao múltiplo de 5 e dá 5 m de folga
+    var cotaMax = Math.ceil(Math.max.apply(null, cotas) / 5) * 5 + 5;  // arredonda para cima ao múltiplo de 5 e dá 5 m de folga
 
     G.create('grafico-nivel', {
       type: 'line',
@@ -253,13 +261,13 @@
         labels: lc.labels,
         datasets: [
           G.line('Nível observado', lc.observed, G.colors.primary, { fillCtx: ctxLevel, alpha: 0.14, points: false }),
-          G.line('Cota de vertimento', lc.spill, G.colors.primary, { dashed: true, points: false, width: 1.6, tension: 0 })
+          G.line('Cota de vertimento', lc.spill, G.colors.primary, { dashed: true, points: false, width: 1.6, tension: 0 }) // linha reta tracejada
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: G.scales({ beginAtZero: false, min: cotaMin, max: cotaMax, step: 5, decimals: 0 }),
+        scales: G.scales({ beginAtZero: false, min: cotaMin, max: cotaMax, step: 5, decimals: 0 }), // não começa em zero: cota é em torno de 500+ m
         plugins: G.plugins('m', 1)
       }
     });
@@ -291,10 +299,10 @@
 
     // mapa da represa
     if (window.AqMap && d.reservoir) {
-      window.AqMap.render('mapa-represa', [{
+      window.AqMap.render('mapa-represa', [{                          // um único marcador
         lat: d.reservoir.lat, lng: d.reservoir.lng, name: d.reservoir.name,
         city: d.reservoir.city, level: k.level.value, flow: k.flow.value, status: d.reservoir.status
-      }], { zoomControl: true, tooltip: true });
+      }], { zoomControl: true, tooltip: true });                      // tooltip: rótulo sempre visível
     }
 
     // alertas recentes
@@ -308,11 +316,11 @@
         + '<p class="aq-list__meta">' + S.esc(a.reservoir) + '</p></div>'
         + '<div class="aq-list__side">' + S.badge(a.severity_label, a.severity)
         + '<span>' + S.esc(a.at) + '</span></div></div>';
-    }).join('') || '<p class="aq-card__sub">Nenhum alerta recente.</p>';
+    }).join('') || '<p class="aq-card__sub">Nenhum alerta recente.</p>'; // join de lista vazia dá '' (falso): mostra a mensagem
 
     // relatórios recentes
     document.querySelector('[data-reports-rows]').innerHTML = d.reports.map(function (r) {
-      var statusKey = r.status === 'done' ? 'normal' : (r.status === 'processing' ? 'info' : 'neutral');
+      var statusKey = r.status === 'done' ? 'normal' : (r.status === 'processing' ? 'info' : 'neutral'); // cor do badge: concluído verde, processando azul, agendado neutro
       return '<tr>'
         + '<td>' + S.esc(r.name) + '</td>'
         + '<td>' + S.esc(r.reservoir) + '</td>'
@@ -329,11 +337,15 @@
 
   /* ------------------------------------------------------------- carregar */
 
+  /**
+   * Busca os dados conforme o contexto e desenha o modo correspondente.
+   * @returns {Promise} usada pelo botão de atualizar para parar a animação ao terminar
+   */
   function load() {
     var ctx = Ctx.get();
-    var isAll = ctx.reservoir_id === 'all';
+    var isAll = ctx.reservoir_id === 'all';                           // decide o modo pela represa do contexto
 
-    viewAll.hidden = !isAll;
+    viewAll.hidden = !isAll;                                          // mostra um bloco e esconde o outro
     viewSingle.hidden = isAll;
 
     document.querySelector('[data-context-note]').textContent = isAll
@@ -343,7 +355,7 @@
     var scopes = isAll ? SCOPES_ALL : SCOPES_ONE;
     scopes.forEach(function (s) { S.setState(s, 'loading'); });
 
-    return Api.overview({
+    return Api.overview({                                             // GET overview.php?company_id=&reservoir_id=&period=
       company_id: ctx.company_id,
       reservoir_id: ctx.reservoir_id,
       period: ctx.period
@@ -361,23 +373,23 @@
         });
       }
 
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);
-      var el = document.querySelector('[data-context-updated]');
+      S.setUpdated(r.meta.generated_at, r.meta.updated_label);        // rótulo da topbar
+      var el = document.querySelector('[data-context-updated]');      // rótulo da barra de contexto
       if (el) el.textContent = r.meta.updated_label || F.relative(r.meta.generated_at);
     }).catch(function (err) {
-      if (Api.isAbort(err)) return;
+      if (Api.isAbort(err)) return;                                   // cancelada por uma requisição mais nova
       scopes.forEach(function (s) { S.setState(s, 'error', err.message); });
     });
   }
 
   /* --------------------------------------------------------------- eventos */
 
-  selCompany.addEventListener('change', function () {
+  selCompany.addEventListener('change', function () {                 // troca de empresa
     Ctx.set({ company_id: selCompany.value });
-    loadReservoirs().then(load);
+    loadReservoirs().then(load);                                      // primeiro atualiza a lista de represas, depois os dados
   });
 
-  selReservoir.addEventListener('change', function () {
+  selReservoir.addEventListener('change', function () {               // troca de represa (pode alternar o modo da tela)
     Ctx.set({ reservoir_id: selReservoir.value });
     load();
   });
@@ -386,24 +398,24 @@
   // trocar em um seletor reflete no outro e recarrega uma única vez
   var seletoresPeriodo = document.querySelectorAll('[data-period-picker]');
   seletoresPeriodo.forEach(function (sel) {
-    sel.value = Ctx.get().period;
+    sel.value = Ctx.get().period;                                     // inicia com o período salvo
     sel.addEventListener('change', function () {
       Ctx.set({ period: sel.value });
-      seletoresPeriodo.forEach(function (outro) { outro.value = sel.value; });
+      seletoresPeriodo.forEach(function (outro) { outro.value = sel.value; }); // sincroniza o outro seletor
       load();
     });
   });
 
-  SCOPES_ALL.concat(SCOPES_ONE).forEach(function (s) {
+  SCOPES_ALL.concat(SCOPES_ONE).forEach(function (s) {                // "Tentar novamente" de qualquer bloco recarrega a tela
     S.onRetry(s, load);
   });
 
-  S.onReload(load);
+  S.onReload(load);                                                   // botão de atualizar e atualização automática
 
   /* ---------------------------------------------------------------- início */
-  loadCompanies()
-    .then(loadReservoirs)
-    .then(load)
+  loadCompanies()                                                     // 1. empresas
+    .then(loadReservoirs)                                             // 2. represas da empresa
+    .then(load)                                                       // 3. dados da tela
     .catch(function (err) {
       if (Api.isAbort(err)) return;
       SCOPES_ALL.forEach(function (s) { S.setState(s, 'error', err.message); });

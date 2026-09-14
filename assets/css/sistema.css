@@ -7,58 +7,63 @@
 
    Composição: fundo branco, textos à esquerda e o carrossel de capturas à
    direita, com a coluna da imagem maior.
+
+   Notação usada no arquivo (padrão BEM): .bloco__elemento e .bloco--variação.
+   clamp(mínimo, ideal, máximo) faz o valor acompanhar a largura da tela (vw)
+   sem passar dos limites. var(--nome, reserva) lê uma variável CSS definida em
+   style.css e usa a reserva se ela não existir.
    ========================================================================== */
 
-.aq-system {
+.aq-system {                                                       /* a <section> inteira */
   position: relative;
   /* o recuo de cima é menor: esta seção encosta na do carrossel de represas,
      como foi aprovado antes. O de baixo segue o respiro normal da página. */
   padding-top: clamp(28px, 2.8vw, 44px);
   padding-bottom: clamp(56px, 6.4vw, 104px);
   background: var(--bg, #fff);
-  scroll-margin-top: calc(var(--header-h, 110px) + 16px);
+  scroll-margin-top: calc(var(--header-h, 110px) + 16px);          /* ao rolar até #sistema, para abaixo do cabeçalho fixo em vez de ficar escondida atrás dele */
 
   /* revelação lateral: mesma duração e curva do carrossel de represas */
-  --sis-transicao: 650ms;
-  --sis-ease: cubic-bezier(.33, 1, .68, 1);
+  --sis-transicao: 650ms;                                          /* variável sobrescrita pelo JS (0ms com movimento reduzido) */
+  --sis-ease: cubic-bezier(.33, 1, .68, 1);                        /* curva de aceleração: começa rápido e desacelera no fim */
 }
 
-.aq-system__inner {
+.aq-system__inner {                                                /* grade de duas colunas */
   display: grid;
   /* mesma divisão e mesmo vão do carrossel de represas, para os dois quadros
      terem exatamente a mesma largura e altura na página */
-  grid-template-columns: minmax(0, 32fr) minmax(0, 68fr);
-  gap: clamp(24px, 2.6vw, 40px);
-  align-items: start;
+  grid-template-columns: minmax(0, 32fr) minmax(0, 68fr);          /* fr = fração do espaço livre; minmax(0, …) deixa a coluna encolher sem estourar com conteúdo largo */
+  gap: clamp(24px, 2.6vw, 40px);                                   /* espaço entre as colunas */
+  align-items: start;                                              /* as colunas começam no topo, sem esticar até a mesma altura */
 }
 
 /* --------------------------------------------------------- coluna de texto */
 
-.aq-system__texto { min-width: 0; }
+.aq-system__texto { min-width: 0; }                                /* permite ao texto quebrar dentro da coluna em vez de alargá-la */
 
 /* identificação simples: sem cápsula de fundo, só texto */
 .aq-system__id {
   margin: 0;
   color: var(--blue-600, #1557e0);
-  font-size: clamp(.72rem, .8vw, .82rem);
+  font-size: clamp(.72rem, .8vw, .82rem);                          /* rem = múltiplo do tamanho da fonte base (16px) */
   font-weight: 700;
-  letter-spacing: .16em;
+  letter-spacing: .16em;                                           /* espaçamento entre letras típico de rótulos em maiúsculas */
   text-transform: uppercase;
 }
 
-.aq-system__titulo {
+.aq-system__titulo {                                               /* h2 da seção */
   margin: clamp(16px, 1.6vw, 26px) 0 0;
-  max-width: 13ch;
+  max-width: 13ch;                                                 /* ch = largura do caractere "0": limita a linha a ~13 caracteres, forçando 3 linhas equilibradas */
   color: var(--navy-800, #0b2350);
   font-size: clamp(2rem, 3.1vw, 3.35rem);
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: -.022em;
+  letter-spacing: -.022em;                                         /* aproxima levemente as letras em títulos grandes */
 }
 
-.aq-system__lead {
+.aq-system__lead {                                                 /* parágrafo de apoio */
   margin: clamp(16px, 1.5vw, 24px) 0 0;
-  max-width: 46ch;
+  max-width: 46ch;                                                 /* linha confortável de leitura */
   color: var(--ink, #45577a);
   font-size: clamp(1rem, 1.1vw, 1.1rem);
   line-height: 1.62;
@@ -69,24 +74,24 @@
    Três itens em coluna, sem cartão: só o ícone e o texto. O ícone vem do
    sistema de ícones do projeto, sem selo de fundo.
 */
-.aq-system__beneficios {
+.aq-system__beneficios {                                           /* <ul> */
   margin: clamp(28px, 3vw, 46px) 0 0;
   padding: 0;
-  list-style: none;
+  list-style: none;                                                /* remove as bolinhas padrão da lista */
   display: grid;
   gap: clamp(20px, 2.1vw, 32px);
 }
 
-.aq-system__beneficio {
+.aq-system__beneficio {                                            /* <li>: ícone à esquerda, texto à direita */
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);                      /* coluna do ícone do tamanho dele; o texto ocupa o resto */
   gap: clamp(14px, 1.3vw, 20px);
   align-items: start;
 }
 
 .aq-system__icone {
   display: inline-flex;
-  color: var(--blue-600, #1557e0);
+  color: var(--blue-600, #1557e0);                                 /* o SVG usa currentColor, então herda esta cor */
 }
 .aq-system__icone .aq-icon { width: 26px; height: 26px; }
 
@@ -112,7 +117,7 @@
 
 .aq-system__carrossel { min-width: 0; }
 
-.aq-system__quadro { margin: 0; }
+.aq-system__quadro { margin: 0; }                                  /* <figure> tem margem padrão do navegador; aqui é zerada */
 
 /*
    Quadro plano: borda fina e sombra suave, sem perspectiva nem moldura de
@@ -120,13 +125,13 @@
    como as cinco capturas têm o mesmo tamanho a altura nunca muda na troca.
 */
 .aq-system__palco {
-  position: relative;
-  aspect-ratio: 2 / 1;
+  position: relative;                                              /* referência para as capturas posicionadas em absolute */
+  aspect-ratio: 2 / 1;                                             /* altura = metade da largura, sempre */
   border: 1px solid var(--border, #e5edf9);
   border-radius: var(--r-md, 14px);
   background: #f7fbff;
-  box-shadow: 0 10px 30px rgba(11, 35, 80, .07);
-  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(11, 35, 80, .07);                   /* sombra: deslocamento x, y, desfoque e cor com 7% de opacidade */
+  overflow: hidden;                                                /* recorta as capturas nos cantos arredondados */
 }
 /* ------------------------------------------- revelação lateral da captura */
 /*
@@ -139,20 +144,20 @@
    direita para a esquerda. A anterior continua preenchendo o quadro embaixo
    durante toda a transição, então não existe nenhum instante de fundo vazio.
 */
-.aq-system__tela {
+.aq-system__tela {                                                 /* cada captura, empilhada ocupando o quadro todo */
   position: absolute;
-  inset: 0;
+  inset: 0;                                                        /* atalho para top/right/bottom/left = 0 */
   z-index: 1;
   overflow: hidden;
-  clip-path: inset(0 0 0 100%);
+  clip-path: inset(0 0 0 100%);                                    /* recorte com 100% à esquerda: nada fica visível */
 }
 
-.aq-system__tela.is-base { clip-path: inset(0); }
+.aq-system__tela.is-base { clip-path: inset(0); }                  /* captura atual: sem recorte, totalmente visível */
 
-.aq-system__tela.is-entrando { z-index: 2; }
+.aq-system__tela.is-entrando { z-index: 2; }                       /* a que está entrando fica por cima da atual */
 
-.aq-system__tela.is-entrando.is-revelada {
-  clip-path: inset(0);
+.aq-system__tela.is-entrando.is-revelada {                         /* estado final da animação */
+  clip-path: inset(0);                                             /* o recorte vai de 100% a 0: a imagem "abre" da direita para a esquerda */
   transition: clip-path var(--sis-transicao, 650ms) var(--sis-ease);
 }
 
@@ -170,9 +175,9 @@
   transition: transform var(--sis-transicao, 650ms) var(--sis-ease);
 }
 
-.aq-system__rodape {
+.aq-system__rodape {                                               /* <figcaption>: legenda à esquerda, contador à direita */
   display: flex;
-  align-items: baseline;
+  align-items: baseline;                                           /* alinha pela linha de base do texto, mesmo com fontes de tamanhos diferentes */
   justify-content: space-between;
   gap: 16px;
   margin-top: clamp(12px, 1.1vw, 16px);
@@ -184,10 +189,10 @@
   line-height: 1.45;
 }
 
-.aq-system__contador {
+.aq-system__contador {                                             /* "01 / 05" */
   color: var(--ink-soft, #64749a);
   font-size: clamp(.84rem, .9vw, .92rem);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums;                              /* algarismos de largura igual: o contador não "treme" ao trocar de número */
   white-space: nowrap;
 }
 
@@ -196,7 +201,7 @@
    Entre 900 e 1200px a coluna de 32% aperta. A tipografia encolhe um pouco
    para o texto respirar; o quadro do carrossel não muda de tamanho.
 */
-@media (min-width: 901px) and (max-width: 1200px) {
+@media (min-width: 901px) and (max-width: 1200px) {                /* só vale entre essas duas larguras de tela */
   .aq-system__titulo { font-size: clamp(1.7rem, 2.7vw, 2.2rem); }
   .aq-system__lead { font-size: clamp(.94rem, 1.02vw, 1rem); }
   .aq-system__beneficios { gap: clamp(18px, 1.9vw, 26px); }
@@ -206,9 +211,9 @@
 }
 
 /* ------------------------------------------------------------- tablet */
-@media (max-width: 900px) {
+@media (max-width: 900px) {                                        /* até 900px de largura */
   .aq-system__inner {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);                         /* uma coluna só: texto em cima, carrossel embaixo */
     gap: clamp(28px, 4vw, 44px);
   }
   .aq-system__titulo { max-width: 20ch; font-size: clamp(1.9rem, 4vw, 2.6rem); }
@@ -220,10 +225,10 @@
 /* ------------------------------------------------------------ celular */
 /* O texto vem antes do carrossel: já é a ordem do HTML. */
 @media (max-width: 760px) {
-  .aq-system__beneficios { grid-template-columns: minmax(0, 1fr); }
+  .aq-system__beneficios { grid-template-columns: minmax(0, 1fr); } /* benefícios empilhados */
   .aq-system__titulo { max-width: none; }
 
-  .aq-system__rodape {
+  .aq-system__rodape {                                             /* legenda e contador um embaixo do outro */
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
@@ -232,7 +237,7 @@
 
 /* --------------------------------------------- movimento reduzido */
 /* sem revelação e sem zoom: a troca é instantânea */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {                          /* usuário pediu menos animação nas configurações do sistema */
   .aq-system__tela.is-entrando.is-revelada,
   .aq-system__tela.is-entrando.is-revelada .aq-system__imagem { transition: none; }
   .aq-system__tela.is-entrando .aq-system__imagem { transform: none; }

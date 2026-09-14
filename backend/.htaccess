@@ -1,13 +1,24 @@
 # Aquapulse — o diretório backend/ nunca deve ser acessado diretamente pela web.
 # Ele é incluído pelos pontos de entrada em api/. Vale para Apache/XAMPP.
+#
+# Por que isso importa: aqui ficam o .env (credenciais do banco), os dados
+# simulados, os scripts SQL e as classes PHP. Nada disso deve ser baixado ou
+# executado por uma URL. Os arquivos continuam acessíveis ao PHP via require.
+#
+# Os dois blocos abaixo fazem a mesma coisa; só um é aplicado, conforme a
+# versão do Apache (o IfModule verifica qual módulo de autorização existe).
+# Observação: neste arquivo os comentários precisam ficar em linha própria —
+# o Apache não aceita comentário no fim de uma linha de diretiva.
 
 <IfModule mod_authz_core.c>
     # Apache 2.4+
+    # "Require all denied" recusa qualquer requisição (resposta 403 Forbidden).
     Require all denied
 </IfModule>
 
 <IfModule !mod_authz_core.c>
     # Apache 2.2
+    # Sintaxe antiga equivalente: nega a todos os endereços.
     Order deny,allow
     Deny from all
 </IfModule>

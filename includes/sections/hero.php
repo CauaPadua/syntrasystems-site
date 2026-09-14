@@ -15,19 +15,20 @@
  * para revelá-las em sequência. Sem JavaScript, o texto continua visível.
  */
 ?>
-<section class="hero" id="inicio" aria-labelledby="hero-titulo">
+<section class="hero" id="inicio" aria-labelledby="hero-titulo"> <?php /* id="inicio": destino do item "Início" do menu; aria-labelledby usa o h1 como nome da seção */ ?>
 
   <div class="hero__frame">
 
+    <?php /* foto de fundo: fetchpriority="high" porque é o maior elemento da primeira tela (também pré-carregada no <head>) */ ?>
     <img class="hero__photo"
          src="<?php aq_out(aq_asset('images/hero-reservatorio.webp')); ?>"
          width="1672" height="941"
          alt="Vista aérea de um grande reservatório de água azul cercado por montanhas, com a barragem de concreto à direita."
          fetchpriority="high" decoding="async">
 
-    <span class="hero__scrim" aria-hidden="true"></span>
+    <span class="hero__scrim" aria-hidden="true"></span> <?php /* degradê escuro sobre a foto para o texto branco ficar legível */ ?>
 
-    <div class="hero__layout">
+    <div class="hero__layout"> <?php /* grade que distribui os blocos pelos cantos */ ?>
 
       <div class="hero__intro">
         <span class="hero__eyebrow">
@@ -35,7 +36,7 @@
           Monitoramento de represas
         </span>
 
-        <h1 class="hero__title" id="hero-titulo" data-words-stagger>Cada gota importa. Cada decisão também.</h1>
+        <h1 class="hero__title" id="hero-titulo" data-words-stagger>Cada gota importa. Cada decisão também.</h1> <?php /* data-words-stagger: main.js anima as palavras uma a uma; único h1 da página */ ?>
       </div>
 
       <p class="hero__lead">
@@ -43,7 +44,7 @@
       </p>
 
       <div class="hero__cta">
-        <a class="btn btn--cyan btn--lg" href="#sistema">
+        <a class="btn btn--cyan btn--lg" href="#sistema"> <?php /* rola até a seção "Sistema" */ ?>
           <span>Conheça o Aquapulse</span>
           <?php aq_the_icon('arrow-up-right'); ?>
         </a>

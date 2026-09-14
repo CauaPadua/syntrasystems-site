@@ -7,32 +7,39 @@
  *   - represa específica: apenas os dados dela.
  *
  * Os dois blocos existem no HTML e o JavaScript alterna conforme o filtro.
+ *
+ * Fluxo da tela:
+ *  1. o PHP abaixo exige login (page.php) e desenha a estrutura vazia;
+ *  2. assets/js/pages/overview.js carrega empresas e represas nos seletores;
+ *  3. o JS chama GET api/v1/overview.php com empresa, represa e período;
+ *  4. conforme data.mode ('all' ou 'single'), mostra um dos dois blocos
+ *     (data-view) e preenche cards, gráficos, tabelas e mapa.
  */
 
 declare(strict_types=1);
 
-define('AQ_DEPTH', 1);
-require __DIR__ . '/includes/page.php';
+define('AQ_DEPTH', 1);                                                    // página em dashboard/: a raiz do projeto está um nível acima
+require __DIR__ . '/includes/page.php';                                   // verifica a sessão e carrega layout e componentes
 
-aq_page_start([
-    'route'    => 'overview',
+aq_page_start([                                                           // abre <html>, sidebar e topbar
+    'route'    => 'overview',                                             // destaca "Visão geral" no menu
     'title'    => 'Visão geral',
     'subtitle' => 'Acompanhe os principais indicadores em tempo real',
 ]);
 ?>
 
 <!-- ------------------------------------------------- contexto de análise -->
-<section class="aq-context" aria-label="Contexto de análise">
+<section class="aq-context" aria-label="Contexto de análise"> <?php /* barra de filtros no topo da tela */ ?>
   <div class="aq-context__label">
     <?php aq_the_icon('filter'); ?>
     <div>
       <strong>Contexto de análise</strong>
-      <span data-context-note>Dados consolidados do sistema</span>
+      <span data-context-note>Dados consolidados do sistema</span> <?php /* o JS troca para "Dados da represa selecionada" */ ?>
     </div>
   </div>
 
-  <?php echo aq_select(['id' => 'filtro-empresa', 'label' => 'Empresa', 'options' => ['all' => 'Todas as empresas']]); ?>
-  <?php echo aq_select(['id' => 'filtro-represa', 'label' => 'Represa', 'options' => ['all' => 'Todas as represas']]); ?>
+  <?php echo aq_select(['id' => 'filtro-empresa', 'label' => 'Empresa', 'options' => ['all' => 'Todas as empresas']]); // demais opções vêm de GET companies.php ?>
+  <?php echo aq_select(['id' => 'filtro-represa', 'label' => 'Represa', 'options' => ['all' => 'Todas as represas']]); // opções vêm de GET reservoirs.php, conforme a empresa ?>
 
   <span class="aq-context__spacer"></span>
 
@@ -44,22 +51,23 @@ aq_page_start([
     </p>
     <p class="aq-context__note">
       <?php aq_the_icon('refresh'); ?>
-      <span>Atualizado <span data-context-updated>há 2 min</span></span>
+      <span>Atualizado <span data-context-updated>há 2 min</span></span> <?php /* preenchido com meta.updated_label da API */ ?>
     </p>
   </div>
 </section>
 
 <!-- ============================ MODO: TODAS AS REPRESAS ================== -->
-<div data-view="all" hidden>
+<div data-view="all" hidden> <?php /* bloco consolidado; começa oculto e o JS mostra quando reservoir_id = 'all' */ ?>
 
-  <div class="aq-grid aq-grid--6" style="margin-bottom:var(--aq-content-gap)">
+  <div class="aq-grid aq-grid--6" style="margin-bottom:var(--aq-content-gap)"> <?php /* linha de 6 cards de KPI */ ?>
     <?php
-    echo aq_kpi(['id' => 'all.reservoirs', 'label' => 'Represas monitoradas', 'icon' => 'gate', 'badge' => true]);
-    echo aq_kpi(['id' => 'all.storage', 'label' => 'Volume total armazenado', 'icon' => 'box', 'unit' => 'hm³']);
-    echo aq_kpi(['id' => 'all.level', 'label' => 'Nível médio', 'icon' => 'waves', 'unit' => '%']);
-    echo aq_kpi(['id' => 'all.flow', 'label' => 'Vazão total', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s']);
-    echo aq_kpi(['id' => 'all.ph', 'label' => 'pH médio', 'icon' => 'droplet', 'badge' => true]);
-    echo aq_kpi(['id' => 'all.operation', 'label' => 'Situação operacional', 'icon' => 'shield-check', 'tone' => 'success']);
+    // O id de cada card ("all.xxx") é o prefixo dos data-field preenchidos por renderAll() em overview.js.
+    echo aq_kpi(['id' => 'all.reservoirs', 'label' => 'Represas monitoradas', 'icon' => 'gate', 'badge' => true]);        // kpis.reservoirs: total + "N online"
+    echo aq_kpi(['id' => 'all.storage', 'label' => 'Volume total armazenado', 'icon' => 'box', 'unit' => 'hm³']);         // kpis.storage: soma dos volumes
+    echo aq_kpi(['id' => 'all.level', 'label' => 'Nível médio', 'icon' => 'waves', 'unit' => '%']);                        // kpis.level: média do nível
+    echo aq_kpi(['id' => 'all.flow', 'label' => 'Vazão total', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s']);          // kpis.flow: soma das vazões
+    echo aq_kpi(['id' => 'all.ph', 'label' => 'pH médio', 'icon' => 'droplet', 'badge' => true]);                          // kpis.ph: média do pH
+    echo aq_kpi(['id' => 'all.operation', 'label' => 'Situação operacional', 'icon' => 'shield-check', 'tone' => 'success']); // kpis.operation: normais x atenção
     ?>
   </div>
 
@@ -71,15 +79,15 @@ aq_page_start([
           'tip'   => 'Capacidade ocupada de cada represa, classificada pela faixa operacional.',
       ]); ?>
       <p class="aq-card__sub" style="margin-bottom:14px">Capacidade ocupada (%)</p>
-      <div data-content="comparison" hidden>
-        <div data-comparison-bars></div>
-        <?php echo aq_legend([
+      <div data-content="comparison" hidden> <?php /* conteúdo real do card; fica oculto enquanto o estado "carregando" é exibido */ ?>
+        <div data-comparison-bars></div> <?php /* barras horizontais geradas pelo JS a partir de data.comparison */ ?>
+        <?php echo aq_legend([                                            // legenda fixa das três faixas de StatusRules
             ['label' => 'Normal até 80%', 'color' => '#16a34a', 'style' => 'square'],
             ['label' => 'Atenção: 80%–90%', 'color' => '#f59e0b', 'style' => 'square'],
             ['label' => 'Crítico: acima de 90%', 'color' => '#ef4444', 'style' => 'square'],
         ]); ?>
       </div>
-      <?php echo aq_states('comparison'); ?>
+      <?php echo aq_states('comparison'); // estados carregando / sem dados / erro deste card ?>
     </article>
 
     <article class="aq-card">
@@ -88,27 +96,27 @@ aq_page_start([
           'tip'   => 'Somatório diário da vazão de todas as represas do contexto.',
       ]); ?>
       <div data-content="flow-all" hidden>
-        <?php echo aq_chart(['id' => 'grafico-vazao-consolidada', 'size' => 'md', 'axis' => 'Somatório diário (m³/s)', 'desc' => 'Vazão total consolidada dos últimos sete dias.']); ?>
+        <?php echo aq_chart(['id' => 'grafico-vazao-consolidada', 'size' => 'md', 'axis' => 'Somatório diário (m³/s)', 'desc' => 'Vazão total consolidada dos últimos sete dias.']); // gráfico de linha com data.flow_chart ?>
         <?php echo aq_legend([['label' => 'Vazão total (m³/s)', 'color' => '#0b5bea']]); ?>
       </div>
       <?php echo aq_states('flow-all'); ?>
     </article>
 
-    <div style="display:flex;flex-direction:column;gap:var(--aq-content-gap);min-width:0">
+    <div style="display:flex;flex-direction:column;gap:var(--aq-content-gap);min-width:0"> <?php /* coluna com dois cards empilhados */ ?>
       <article class="aq-card">
         <?php echo aq_card_head(['title' => 'Situação geral', 'tip' => 'Distribuição das represas por faixa operacional.']); ?>
         <div data-content="donut" hidden style="display:flex;align-items:center;gap:18px">
           <div style="width:150px;flex:none">
-            <?php echo aq_chart(['id' => 'grafico-situacao', 'size' => 'sm', 'desc' => 'Distribuição das represas por situação.']); ?>
+            <?php echo aq_chart(['id' => 'grafico-situacao', 'size' => 'sm', 'desc' => 'Distribuição das represas por situação.']); // gráfico de rosca com data.donut ?>
           </div>
-          <ul style="flex:1 1 auto;display:flex;flex-direction:column;gap:9px;font-size:.86rem" data-donut-legend></ul>
+          <ul style="flex:1 1 auto;display:flex;flex-direction:column;gap:9px;font-size:.86rem" data-donut-legend></ul> <?php /* legenda com quantidade e % de cada faixa */ ?>
         </div>
         <?php echo aq_states('donut'); ?>
       </article>
 
       <article class="aq-card">
-        <p style="text-align:center;font-weight:700;margin-bottom:12px"><span data-field="all.alerts.total">—</span> alertas ativos</p>
-        <div style="display:flex;justify-content:center;gap:34px" data-alert-counts></div>
+        <p style="text-align:center;font-weight:700;margin-bottom:12px"><span data-field="all.alerts.total">—</span> alertas ativos</p> <?php /* data.alert_counts.total */ ?>
+        <div style="display:flex;justify-content:center;gap:34px" data-alert-counts></div> <?php /* badges com críticos e atenção */ ?>
       </article>
     </div>
   </div>
@@ -120,12 +128,12 @@ aq_page_start([
           'tip'   => 'Comparação lado a lado dos indicadores de cada represa.',
       ]); ?>
       <div data-content="summary" hidden>
-        <?php echo aq_table_open('Resumo de todas as represas'); ?>
+        <?php echo aq_table_open('Resumo de todas as represas'); // contêiner com rolagem horizontal própria ?>
         <table class="aq-table aq-table--bordered aq-table--tight">
           <thead>
             <tr>
-              <th scope="col">Represa</th>
-              <th scope="col" class="is-num">Nível (%)</th>
+              <th scope="col">Represa</th> <?php /* scope="col": o leitor de tela associa o cabeçalho às células da coluna */ ?>
+              <th scope="col" class="is-num">Nível (%)</th> <?php /* is-num alinha números à direita */ ?>
               <th scope="col" class="is-num">Volume (hm³)</th>
               <th scope="col" class="is-num">Vazão (m³/s)</th>
               <th scope="col" class="is-num">pH</th>
@@ -134,7 +142,7 @@ aq_page_start([
               <th scope="col">Situação</th>
             </tr>
           </thead>
-          <tbody data-summary-rows></tbody>
+          <tbody data-summary-rows></tbody> <?php /* uma linha por represa de data.reservoirs */ ?>
         </table>
         <?php echo aq_table_close(); ?>
       </div>
@@ -144,8 +152,8 @@ aq_page_start([
     <div style="display:flex;flex-direction:column;gap:var(--aq-content-gap);min-width:0">
       <article class="aq-card">
         <?php echo aq_card_head(['title' => 'Localização das represas', 'tip' => 'Coordenadas demonstrativas — serão substituídas pelo banco de dados.']); ?>
-        <div class="aq-map aq-map--sm" id="mapa-visao-geral">
-          <div class="aq-map__fallback" data-map-fallback="mapa-visao-geral" hidden>
+        <div class="aq-map aq-map--sm" id="mapa-visao-geral"> <?php /* Leaflet desenha o mapa dentro deste div (AqMap.render) */ ?>
+          <div class="aq-map__fallback" data-map-fallback="mapa-visao-geral" hidden> <?php /* mensagem exibida se a biblioteca de mapas não carregar */ ?>
             <span class="aq-state__icon" aria-hidden="true"><?php aq_the_icon('map'); ?></span>
             <p class="aq-state__title">Mapa indisponível</p>
             <p class="aq-state__text">Não foi possível carregar o mapa. Verifique a conexão com a internet.</p>
@@ -155,7 +163,7 @@ aq_page_start([
 
       <article class="aq-card">
         <?php echo aq_card_head(['title' => 'Alertas prioritários', 'tip' => 'Alertas ativos com maior severidade.']); ?>
-        <div class="aq-list" data-priority-alerts></div>
+        <div class="aq-list" data-priority-alerts></div> <?php /* até 3 alertas não resolvidos (data.priority_alerts) */ ?>
         <p style="margin-top:12px">
           <a class="aq-card__link" href="alertas.php">Ver todos os alertas <?php aq_the_icon('arrow-right'); ?></a>
         </p>
@@ -165,17 +173,18 @@ aq_page_start([
 </div>
 
 <!-- ========================= MODO: REPRESA SELECIONADA =================== -->
-<div data-view="single" hidden>
+<div data-view="single" hidden> <?php /* bloco de uma represa; o JS mostra quando uma represa específica é escolhida */ ?>
 
-  <div class="aq-grid aq-grid--7" style="margin-bottom:var(--aq-content-gap)">
+  <div class="aq-grid aq-grid--7" style="margin-bottom:var(--aq-content-gap)"> <?php /* linha de 7 cards de KPI */ ?>
     <?php
-    echo aq_kpi(['id' => 'one.level', 'label' => 'Nível do reservatório', 'icon' => 'waves', 'unit' => '%', 'badge' => true]);
-    echo aq_kpi(['id' => 'one.storage', 'label' => 'Volume armazenado', 'icon' => 'box', 'unit' => 'hm³', 'ring' => true]);
-    echo aq_kpi(['id' => 'one.flow', 'label' => 'Vazão atual', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s', 'badge' => true]);
+    // Cards preenchidos por renderSingle() em overview.js com os campos data.kpis.* da represa.
+    echo aq_kpi(['id' => 'one.level', 'label' => 'Nível do reservatório', 'icon' => 'waves', 'unit' => '%', 'badge' => true]);  // nível % + badge de status
+    echo aq_kpi(['id' => 'one.storage', 'label' => 'Volume armazenado', 'icon' => 'box', 'unit' => 'hm³', 'ring' => true]);     // ring: anel com % de ocupação
+    echo aq_kpi(['id' => 'one.flow', 'label' => 'Vazão atual', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s', 'badge' => true]); // badge com tendência
     echo aq_kpi(['id' => 'one.ph', 'label' => 'pH da água', 'icon' => 'droplet', 'badge' => true]);
     echo aq_kpi(['id' => 'one.rain', 'label' => 'Precipitação (24h)', 'icon' => 'cloud-rain', 'unit' => 'mm', 'badge' => true]);
     echo aq_kpi(['id' => 'one.duration', 'label' => 'Previsão de duração', 'icon' => 'clock', 'unit' => 'dias']);
-    echo aq_kpi(['id' => 'one.operation', 'label' => 'Situação operacional', 'icon' => 'shield-check', 'tone' => 'success']);
+    echo aq_kpi(['id' => 'one.operation', 'label' => 'Situação operacional', 'icon' => 'shield-check', 'tone' => 'success']);  // a cor do ícone é ajustada pelo JS conforme o status
     ?>
   </div>
 
@@ -185,11 +194,11 @@ aq_page_start([
           'title'   => 'Nível do reservatório',
           'icon'    => 'chart-bars',
           'tip'     => 'Cota observada no período, comparada com a cota de vertimento.',
-          'actions' => aq_period_picker('periodo-nivel'),
+          'actions' => aq_period_picker('periodo-nivel'),                // seletor de período no canto do card
       ]); ?>
       <div data-content="level-chart" hidden>
-        <?php echo aq_chart(['id' => 'grafico-nivel', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Histórico da cota do reservatório.']); ?>
-        <p class="aq-card__sub" data-field="one.spill"></p>
+        <?php echo aq_chart(['id' => 'grafico-nivel', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Histórico da cota do reservatório.']); // data.level_chart ?>
+        <p class="aq-card__sub" data-field="one.spill"></p> <?php /* texto "Cota de vertimento: 565,0 m" */ ?>
         <?php echo aq_legend([
             ['label' => 'Nível observado', 'color' => '#0b5bea'],
             ['label' => 'Cota de vertimento', 'color' => '#0b5bea', 'style' => 'dashed'],
@@ -202,10 +211,10 @@ aq_page_start([
       <?php echo aq_card_head([
           'title' => 'Comparativo de vazão',
           'tip'   => 'Vazão do período selecionado comparada com a média do período anterior.',
-          'actions' => aq_period_picker('periodo-vazao'),
+          'actions' => aq_period_picker('periodo-vazao'),                // os dois seletores compartilham o mesmo período (overview.js os sincroniza)
       ]); ?>
       <div data-content="flow-chart" hidden>
-        <?php echo aq_chart(['id' => 'grafico-vazao-comparativo', 'size' => 'md', 'axis' => 'Vazão (m³/s)', 'desc' => 'Comparativo de vazão entre o dia atual e os dias anteriores.']); ?>
+        <?php echo aq_chart(['id' => 'grafico-vazao-comparativo', 'size' => 'md', 'axis' => 'Vazão (m³/s)', 'desc' => 'Comparativo de vazão entre o dia atual e os dias anteriores.']); // data.flow_chart (current x previous) ?>
         <?php echo aq_legend([
             ['label' => 'Período atual', 'color' => '#0b5bea'],
             ['label' => 'Período anterior (média)', 'color' => '#9ec5fe', 'style' => 'dashed'],
@@ -217,9 +226,9 @@ aq_page_start([
     <article class="aq-card">
       <?php echo aq_card_head([
           'title'   => 'Localização da represa',
-          'actions' => '<a class="aq-card__link" href="mapas.php">Ver no mapa ' . aq_icon('external-link') . '</a>',
+          'actions' => '<a class="aq-card__link" href="mapas.php">Ver no mapa ' . aq_icon('external-link') . '</a>', // HTML montado aqui mesmo, sem dado externo
       ]); ?>
-      <div class="aq-map aq-map--sm" id="mapa-represa" style="flex:1 1 auto">
+      <div class="aq-map aq-map--sm" id="mapa-represa" style="flex:1 1 auto"> <?php /* mapa com um único marcador */ ?>
         <div class="aq-map__fallback" data-map-fallback="mapa-represa" hidden>
           <span class="aq-state__icon" aria-hidden="true"><?php aq_the_icon('map'); ?></span>
           <p class="aq-state__title">Mapa indisponível</p>
@@ -236,7 +245,7 @@ aq_page_start([
           'icon'    => 'bell',
           'actions' => '<a class="aq-card__link" href="alertas.php">Ver todos</a>',
       ]); ?>
-      <div class="aq-list" data-recent-alerts></div>
+      <div class="aq-list" data-recent-alerts></div> <?php /* até 3 alertas da represa (data.alerts) */ ?>
       <p style="margin-top:14px">
         <a class="aq-card__link" href="alertas.php">Ver todos os alertas <?php aq_the_icon('arrow-right'); ?></a>
       </p>
@@ -257,10 +266,10 @@ aq_page_start([
             <th scope="col">Período</th>
             <th scope="col">Gerado em</th>
             <th scope="col">Status</th>
-            <th scope="col"><span class="aq-visually-hidden">Baixar</span></th>
+            <th scope="col"><span class="aq-visually-hidden">Baixar</span></th> <?php /* coluna do ícone de download: título só para leitores de tela */ ?>
           </tr>
         </thead>
-        <tbody data-reports-rows></tbody>
+        <tbody data-reports-rows></tbody> <?php /* até 5 relatórios da represa (data.reports) */ ?>
       </table>
       <?php echo aq_table_close(); ?>
     </article>
@@ -268,7 +277,7 @@ aq_page_start([
 </div>
 
 <?php
-aq_page_end([
-    'scripts'   => ['pages/overview.js'],
-    'needs_map' => true,
+aq_page_end([                                                             // fecha o layout e carrega os scripts
+    'scripts'   => ['pages/overview.js'],                                 // lógica desta tela
+    'needs_map' => true,                                                  // esta tela tem mapas: carrega Leaflet e maps.js
 ]);

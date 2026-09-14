@@ -1,4 +1,9 @@
 /** Aquapulse — Configurações. */
+/*
+ * Página: dashboard/configuracoes.php | API: GET api/v1/settings.php.
+ * Controla a troca de abas, desenha empresas/represas/limites/notificações e
+ * guarda as preferências alteradas apenas no sessionStorage (modo demonstrativo).
+ */
 (function () {
   'use strict';
 
@@ -6,9 +11,9 @@
   var F = window.AqFormat;
   var Api = window.AqApi;
 
-  var companies = [];
-  var settings = null;
-  var selectedCompany = null;
+  var companies = [];                                                 // empresas com a lista de represas de cada uma
+  var settings = null;                                                // objeto de configurações (unidades, indicadores, limites...)
+  var selectedCompany = null;                                         // empresa aberta nos cards de detalhe
 
   /*
    * Preferências alteradas nesta tela vivem apenas na sessão do navegador.
@@ -25,14 +30,15 @@
 
   /* ------------------------------------------------------------ abas */
 
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]')); // converte a NodeList em array comum (para usar indexOf/forEach com índice)
 
+  /** Ativa uma aba: marca aria-selected, ajusta o tabindex e mostra só o painel dela. */
   function activate(tab) {
     tabs.forEach(function (t) {
       var on = t === tab;
       t.setAttribute('aria-selected', on ? 'true' : 'false');
-      t.setAttribute('tabindex', on ? '0' : '-1');
-      var panel = document.getElementById(t.getAttribute('aria-controls'));
+      t.setAttribute('tabindex', on ? '0' : '-1');                    // só a aba ativa entra na sequência do Tab
+      var panel = document.getElementById(t.getAttribute('aria-controls')); // painel ligado à aba
       if (panel) panel.hidden = !on;
     });
   }
@@ -43,12 +49,12 @@
     // navegação por teclado entre abas (padrão WAI-ARIA)
     tab.addEventListener('keydown', function (e) {
       var next = null;
-      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
-      if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];               // próxima (volta ao início depois da última)
+      if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];  // anterior (vai para a última antes da primeira)
       if (e.key === 'Home') next = tabs[0];
       if (e.key === 'End') next = tabs[tabs.length - 1];
       if (next) {
-        e.preventDefault();
+        e.preventDefault();                                           // impede a rolagem da página pelas setas
         activate(next);
         next.focus();
       }
@@ -57,6 +63,7 @@
 
   /* ------------------------------------------------------- renderização */
 
+  /** Lista de empresas à esquerda; a selecionada fica destacada. */
   function renderCompanies() {
     document.querySelector('[data-companies]').innerHTML = companies.map(function (c) {
       var on = selectedCompany && c.id === selectedCompany.id;
@@ -71,13 +78,14 @@
         + '<div style="flex:1 1 auto"><strong style="display:block;font-size:.92rem">' + S.esc(c.name) + '</strong>'
         + S.badge(c.status_label, 'normal')
         + '<span style="display:block;font-size:.8rem;color:var(--aq-text-secondary);margin-top:4px">'
-        + c.reservoirs.length + (c.reservoirs.length === 1 ? ' represa' : ' represas') + '</span></div>'
+        + c.reservoirs.length + (c.reservoirs.length === 1 ? ' represa' : ' represas') + '</span></div>' // singular/plural
         + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
         + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>'
         + '</button>';
     }).join('');
   }
 
+  /** Dados e represas da empresa selecionada. */
   function renderCompanyDetail() {
     if (!selectedCompany) return;
 
@@ -88,7 +96,7 @@
       'company.status': { html: S.badge(selectedCompany.status_label, 'normal') }
     });
 
-    document.querySelector('[data-company-reservoirs]').innerHTML = selectedCompany.reservoirs.map(function (r) {
+    document.querySelector('[data-company-reservoirs]').innerHTML = selectedCompany.reservoirs.map(function (r) { // um bloco por represa
       return '<div style="border:1px solid var(--aq-border);border-radius:11px;padding:14px;margin-bottom:12px">'
         + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
         + '<span class="aq-list__icon aq-list__icon--info" aria-hidden="true">'
@@ -105,13 +113,14 @@
     }).join('') || '<p class="aq-card__sub">Nenhuma represa vinculada a esta empresa.</p>';
   }
 
+  /** Lista de indicadores com caixas de marcação; o estado salvo na sessão tem prioridade. */
   function renderIndicators() {
     var local = readLocal();
     document.querySelector('[data-indicators]').innerHTML = settings.indicators.map(function (i) {
-      var on = local['ind.' + i.id] !== undefined ? local['ind.' + i.id] : i.enabled;
+      var on = local['ind.' + i.id] !== undefined ? local['ind.' + i.id] : i.enabled; // valor alterado nesta sessão, ou o da API
       return '<div class="aq-form-row">'
         + '<span id="ind-label-' + S.esc(i.id) + '">' + S.esc(i.label) + '</span>'
-        + '<button class="aq-check" type="button" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '"'
+        + '<button class="aq-check" type="button" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '"' // checkbox acessível feito com <button>
         + ' aria-labelledby="ind-label-' + S.esc(i.id) + '" data-indicator="' + S.esc(i.id) + '">'
         + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"'
         + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-9"/></svg>'
@@ -119,6 +128,7 @@
     }).join('');
   }
 
+  /** Cards de limites (aba principal) e lista de limites (aba "Limites e alertas"). */
   function renderThresholds() {
     var t = settings.thresholds;
     document.querySelector('[data-thresholds]').innerHTML = [
@@ -126,7 +136,7 @@
       { icon: 'droplet', label: 'pH mínimo', value: F.num(t.ph_min, 1) },
       { icon: 'droplet', label: 'pH máximo', value: F.num(t.ph_max, 1) },
       { icon: 'cloud-rain', label: 'Precipitação crítica', value: t.rain_critical_mm + ' mm' }
-    ].map(function (i) {
+    ].map(function (i) {                                              // obs.: o campo icon é definido mas todos os cards usam o mesmo ícone de ondas
       return '<div style="border:1px solid var(--aq-border);border-radius:11px;padding:14px;'
         + 'display:flex;align-items:center;gap:12px">'
         + '<span class="aq-kpi__icon" aria-hidden="true" style="width:38px;height:38px">'
@@ -149,16 +159,18 @@
     }).join('');
   }
 
+  /** Canais de notificação com interruptores. */
   function renderNotifications() {
     document.querySelector('[data-notifications]').innerHTML = settings.notifications.map(function (n) {
       return '<div class="aq-form-row">'
         + '<div><strong style="display:block">' + S.esc(n.label) + '</strong>'
         + '<span style="font-size:.83rem;color:var(--aq-text-secondary)">' + S.esc(n.target) + '</span></div>'
-        + '<button class="aq-switch" type="button" role="switch" aria-checked="' + (n.enabled ? 'true' : 'false') + '"'
+        + '<button class="aq-switch" type="button" role="switch" aria-checked="' + (n.enabled ? 'true' : 'false') + '"' // estado vem da API (a escolha salva na sessão não é reaplicada aqui)
         + ' aria-label="Notificações por ' + S.esc(n.label) + '" data-switch="notif-' + S.esc(n.id) + '"></button></div>';
     }).join('');
   }
 
+  /** Aba de usuários: mostra só o usuário logado, lido da topbar. */
   function renderUsers() {
     // o nome vem do cabeçalho, que já recebeu o usuário da sessão pelo PHP —
     // repetir o nome aqui faria a tela discordar do topo da página
@@ -168,16 +180,17 @@
     document.querySelector('[data-users]').innerHTML =
       '<tr><td>' + S.esc(nome ? nome.textContent.trim() : 'Usuário da sessão') + '</td>'
       + '<td>' + S.esc(topo ? topo.getAttribute('data-user-email') : '—') + '</td>'
-      + '<td>Administrador</td><td>' + S.badge('Ativo', 'normal') + '</td></tr>';
+      + '<td>Administrador</td><td>' + S.badge('Ativo', 'normal') + '</td></tr>'; // perfil fixo "Administrador" (a topbar exibe "Operador")
   }
 
   /* ---------------------------------------------------------- carregar */
 
+  /** Busca as configurações e desenha todas as abas. */
   function load() {
     return Api.settings().then(function (r) {
       companies = r.data.companies;
       settings = r.data.settings;
-      selectedCompany = companies[0] || null;
+      selectedCompany = companies[0] || null;                         // abre a primeira empresa por padrão
 
       renderCompanies();
       renderCompanyDetail();
@@ -190,21 +203,21 @@
       var local = readLocal();
       ['pref-nivel', 'pref-volume', 'pref-vazao', 'pref-refresh'].forEach(function (id) {
         var el = document.getElementById(id);
-        if (el && local[id]) el.value = local[id];
+        if (el && local[id]) el.value = local[id];                    // restaura o valor escolhido antes (se houver)
       });
 
       S.setUpdated(r.meta.generated_at, r.meta.updated_label);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;
-      S.notify('Não foi possível carregar', err.message, 'error');
+      S.notify('Não foi possível carregar', err.message, 'error');    // esta tela não tem blocos de estado: avisa pelo toast
     });
   }
 
   /* ----------------------------------------------------------- eventos */
 
-  document.addEventListener('click', function (e) {
+  document.addEventListener('click', function (e) {                   // delegação: um ouvinte trata todos os cliques da tela
     var company = e.target.closest('[data-company]');
-    if (company) {
+    if (company) {                                                    // clicou em uma empresa da lista
       var id = company.getAttribute('data-company');
       selectedCompany = companies.filter(function (c) { return c.id === id; })[0] || selectedCompany;
       renderCompanies();
@@ -213,28 +226,28 @@
     }
 
     var sw = e.target.closest('[data-switch]');
-    if (sw) {
+    if (sw) {                                                         // interruptor (atualização automática ou notificação)
       var on = sw.getAttribute('aria-checked') === 'true';
-      sw.setAttribute('aria-checked', on ? 'false' : 'true');
-      var l = readLocal(); l[sw.getAttribute('data-switch')] = !on; writeLocal(l);
+      sw.setAttribute('aria-checked', on ? 'false' : 'true');         // inverte o estado visual/acessível
+      var l = readLocal(); l[sw.getAttribute('data-switch')] = !on; writeLocal(l); // guarda na sessão
       return;
     }
 
     var check = e.target.closest('[data-indicator]');
-    if (check) {
+    if (check) {                                                      // caixa de marcação de indicador
       var checked = check.getAttribute('aria-checked') === 'true';
       check.setAttribute('aria-checked', checked ? 'false' : 'true');
       var li = readLocal(); li['ind.' + check.getAttribute('data-indicator')] = !checked; writeLocal(li);
       return;
     }
 
-    if (e.target.closest('[data-demo-action]')) {
+    if (e.target.closest('[data-demo-action]')) {                     // botões de cadastro/edição ainda não implementados
       S.notify('Modo demonstrativo',
         'Cadastro e edição dependem do banco de dados, que será implementado na próxima etapa.', 'info');
       return;
     }
 
-    if (e.target.closest('[data-save]')) {
+    if (e.target.closest('[data-save]')) {                           // "Salvar alterações": grava os selects de preferência na sessão
       var s = readLocal();
       ['pref-nivel', 'pref-volume', 'pref-vazao', 'pref-refresh'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -246,7 +259,7 @@
       return;
     }
 
-    if (e.target.closest('[data-cancel]')) {
+    if (e.target.closest('[data-cancel]')) {                          // "Cancelar": apaga tudo o que foi salvo na sessão e recarrega da API
       writeLocal({});
       load();
       S.notify('Alterações descartadas', 'As preferências voltaram aos valores originais.', 'info');
@@ -259,8 +272,8 @@
     busca.addEventListener('input', function () {
       var term = busca.value.trim().toLowerCase();
       document.querySelectorAll('[data-company]').forEach(function (c) {
-        var name = c.textContent.toLowerCase();
-        c.style.display = (!term || name.indexOf(term) >= 0) ? '' : 'none';
+        var name = c.textContent.toLowerCase();                       // compara com todo o texto do card (nome, status, nº de represas)
+        c.style.display = (!term || name.indexOf(term) >= 0) ? '' : 'none'; // esconde os que não contêm o termo
       });
     });
   }

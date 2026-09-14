@@ -3,6 +3,9 @@
  *
  * Consome o MESMO endpoint da tela detalhada de nível
  * (api/v1/monitoring/level.php). Não há segunda fonte de dados.
+ *
+ * Página: dashboard/niveis.php. Diferente das telas de monitoramento, não usa
+ * AqMonitorPage: tem filtro de empresa e trabalha em cota (metros).
  */
 (function () {
   'use strict';
@@ -17,29 +20,32 @@
   var selReservoir = document.getElementById('filtro-represa');
   var selPeriod = document.getElementById('filtro-periodo');
 
-  var ESCOPOS = ['history', 'trend', 'monthly'];
-  var lastData = null;
+  var ESCOPOS = ['history', 'trend', 'monthly'];                      // blocos com estados de carregamento
+  var lastData = null;                                                // últimos dados recebidos (guardados, mas não reutilizados no código atual)
 
+  /** Preenche o seletor de empresas. */
   function fillCompanies(items) {
     selCompany.innerHTML = '<option value="all">Todas as empresas</option>'
       + items.map(function (i) { return '<option value="' + S.esc(i.id) + '">' + S.esc(i.name) + '</option>'; }).join('');
   }
 
+  /** Preenche o seletor de represas (sem "todas") e devolve a represa a usar. */
   function fillReservoirs(items) {
     selReservoir.innerHTML = items.map(function (i) {
       return '<option value="' + S.esc(i.id) + '">' + S.esc(i.name) + '</option>';
     }).join('');
-    return Ctx.requireReservoir(items);
+    return Ctx.requireReservoir(items);                               // esta tela exige uma represa específica
   }
   /** Último valor finito de uma série, ou null quando ela não serve. */
   function ultimoValido(serie) {
     if (!Array.isArray(serie)) return null;
-    for (var i = serie.length - 1; i >= 0; i--) {
+    for (var i = serie.length - 1; i >= 0; i--) {                     // percorre de trás para frente até achar um número válido
       if (typeof serie[i] === 'number' && isFinite(serie[i])) return serie[i];
     }
     return null;
   }
 
+  /** Desenha a tela inteira a partir de data (MonitoringService::level). */
   function render(d) {
     ESCOPOS.forEach(function (s) { S.setState(s, 'ready'); });
     lastData = d;
@@ -49,14 +55,14 @@
 
     // as cotas vêm prontas da API (derivadas do percentual, ver
     // MonitoringService::cota) — nada é extraído de texto aqui
-    var margem = Math.round((h.cota_spill - k.cota.value) * 10) / 10;
+    var margem = Math.round((h.cota_spill - k.cota.value) * 10) / 10; // metros que faltam até verter; *10 /10 arredonda para 1 casa
 
     // a projeção pode não vir: nesse caso o KPI mostra "—" em vez de quebrar
     // todo o render() e deixar os três gráficos da tela em branco
     var fimProjecao = ultimoValido(d.forecast && d.forecast.cota);
     var tendencia = fimProjecao === null
       ? null
-      : Math.round((fimProjecao - k.cota.value) * 10) / 10;
+      : Math.round((fimProjecao - k.cota.value) * 10) / 10;           // variação projetada em 7 dias (m)
 
     S.fill({
       'cota.value': F.num(k.cota.value, 1), 'cota.foot': 'Cota atual',
@@ -69,11 +75,11 @@
         + '">' + S.esc(k.level.status.label) + '</span>' },
       'status.foot': k.level.status.key === 'normal'
         ? 'Dentro da faixa operacional'
-        : 'Monitoramento intensificado',
+        : 'Monitoramento intensificado',                              // atenção ou crítico
       'trend.value': tendencia === null ? '—' : F.signed(tendencia, 1) + ' m'
     });
 
-    S.setRing('used', k.level.value);
+    S.setRing('used', k.level.value);                                 // anel de capacidade utilizada
 
     /* --------------------- histórico em cota, com todos os limites */
     G.guard('grafico-niveis', function () {
@@ -81,7 +87,7 @@
 
     // escala de 2 em 2 metros ao redor dos dados e dos limites, para que os
     // rótulos do eixo não se repitam depois do arredondamento
-    var cotas = h.cota.concat([h.cota_alert, h.cota_attention, h.cota_spill, h.cota_critical]);
+    var cotas = h.cota.concat([h.cota_alert, h.cota_attention, h.cota_spill, h.cota_critical]); // inclui os limites para as linhas ficarem visíveis
     var cotaMin = Math.floor(Math.min.apply(null, cotas) / 2) * 2 - 2;
     var cotaMax = Math.ceil(Math.max.apply(null, cotas) / 2) * 2 + 2;
 
@@ -89,7 +95,7 @@
       type: 'line',
       data: {
         labels: h.labels,
-        datasets: [G.line('Nível observado', h.cota, G.colors.primary, { fillCtx: ctx, alpha: 0.14 })]
+        datasets: [G.line('Nível observado', h.cota, G.colors.primary, { fillCtx: ctx, alpha: 0.14 })] // série em metros (h.cota)
       },
       options: {
         responsive: true,
@@ -97,7 +103,7 @@
         scales: G.scales({ beginAtZero: false, min: cotaMin, max: cotaMax, step: 2, decimals: 0 }),
         plugins: G.plugins('m', 1, {
           annotation: {
-            annotations: {
+            annotations: {                                            // quatro linhas de limite; rótulos alternam início/fim e acima/abaixo para não se sobrepor
               vertimento: G.limitLine(h.cota_spill, '#38bdf8',
                 'Cota de vertimento ' + F.num(h.cota_spill, 1) + ' m', 'start'),
               critico: G.limitLine(h.cota_critical, G.colors.danger,
@@ -114,14 +120,14 @@
     G.describe('grafico-niveis', h.cota, 'm', 1);
 
     // tabela equivalente ao gráfico ("Ver tabela" mostra estes mesmos dados)
-    document.querySelector('[data-chart-rows]').innerHTML = h.labels.map(function (l, i) {
-      return '<tr><td>' + S.esc(l) + '</td><td class="is-num">' + F.num(h.cota[i], 1) + '</td></tr>';
+    document.querySelector('[data-chart-rows]').innerHTML = h.labels.map(function (l, i) { // uma linha por ponto do gráfico
+      return '<tr><td>' + S.esc(l) + '</td><td class="is-num">' + F.num(h.cota[i], 1) + '</td></tr>'; // valor em metros (o cabeçalho da coluna no PHP diz "Nível (%)")
     }).join('');
     });
 
     /* ------------------------------------------- faixas e marcador */
     var marker = document.querySelector('[data-level-marker]');
-    if (marker) marker.style.bottom = k.level.value + '%';
+    if (marker) marker.style.bottom = k.level.value + '%';            // posiciona a linha do nível atual na coluna de faixas
 
     // as faixas são as do próprio sistema (StatusRules), enviadas pela API —
     // repetir percentuais aqui faria a tela discordar da classificação
@@ -141,7 +147,7 @@
       // esta tela trabalha em cota, então a projeção também é exibida em
       // metros — e mostra os SETE pontos projetados, não uma amostragem
       var proj = (f.cota || []).slice(0, 7);
-      var rotulos = (f.labels || []).slice(0, proj.length);
+      var rotulos = (f.labels || []).slice(0, proj.length);           // mesma quantidade de rótulos e valores
 
       var projMin = Math.floor(Math.min.apply(null, proj) / 2) * 2 - 2;
       var projMax = Math.ceil(Math.max.apply(null, proj) / 2) * 2 + 2;
@@ -164,7 +170,7 @@
 
     /* -------------------------------------------------- registros */
     document.querySelector('[data-records]').innerHTML = d.readings.map(function (r) {
-      var up = r.variation >= 0;
+      var up = r.variation >= 0;                                      // subida (ou estável) em verde com seta para cima
       return '<tr>'
         + '<td class="is-nowrap">' + S.esc(r.time) + '</td>'
         + '<td class="is-num">' + F.num(r.cota, 1) + '</td>'
@@ -178,12 +184,12 @@
     /* --------------------------------------------- comparativo mensal */
     G.guard('grafico-mensal', function () {
       var meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai'];
-      var base = k.cota.value;
+      var base = k.cota.value;                                        // os valores mensais abaixo são ILUSTRATIVOS: gerados no navegador a partir da cota atual
 
       var maxima  = [base + 3.2, base + 2.9, base + 3.4, base + 3.0, base + 3.6];
       var media   = [base + 0.9, base + 0.6, base + 1.0, base + 0.8, base + 1.4];
       var minima  = [base - 3.6, base - 3.9, base - 3.4, base - 3.7, base - 3.2];
-      var atual   = [base - 2.6, base - 3.3, base - 3.0, base - 2.9, base];
+      var atual   = [base - 2.6, base - 3.3, base - 3.0, base - 2.9, base]; // termina exatamente na cota atual
 
       // a faixa acompanha a represa. Fixa em 550–570, este gráfico ficava
       // visualmente vazio em Rio Verde (548,9 m) e Serra Azul (604,1 m),
@@ -228,10 +234,11 @@
     }).join('');
   }
 
+  /** Busca os dados da represa e período escolhidos. */
   function load() {
     ESCOPOS.forEach(function (s) { S.setState(s, 'loading'); });
 
-    return Api.level({ reservoir_id: Ctx.get().reservoir_id, period: selPeriod.value })
+    return Api.level({ reservoir_id: Ctx.get().reservoir_id, period: selPeriod.value }) // mesmo endpoint da tela de monitoramento de nível
       .then(function (r) {
         // falha ao montar não pode apagar os gráficos que já funcionavam
         try {
@@ -248,7 +255,7 @@
       })
       .catch(function (err) {
         if (Api.isAbort(err)) return;
-        var estado = err.code === 'NO_DATA' ? 'empty' : 'error';
+        var estado = err.code === 'NO_DATA' ? 'empty' : 'error';      // "sem dados" é diferente de erro de comunicação
         ESCOPOS.forEach(function (s) { S.setState(s, estado, err.message); });
       });
   }
@@ -270,10 +277,11 @@
 
   selPeriod.addEventListener('change', function () {
     Ctx.set({ period: selPeriod.value });
-    syncChips();
+    syncChips();                                                      // mantém os atalhos de período coerentes com o select
     load();
   });
 
+  /** Marca como ativo o chip de período igual ao valor do select. */
   function syncChips() {
     document.querySelectorAll('[data-quick-periods] .aq-chip').forEach(function (c) {
       c.classList.toggle('is-active', c.getAttribute('data-period') === selPeriod.value);
@@ -282,7 +290,7 @@
 
   document.addEventListener('click', function (e) {
     var chip = e.target.closest('[data-quick-periods] .aq-chip');
-    if (chip) {
+    if (chip) {                                                       // atalho de período abaixo do gráfico
       selPeriod.value = chip.getAttribute('data-period');
       Ctx.set({ period: selPeriod.value });
       syncChips();
@@ -291,9 +299,9 @@
     }
 
     var toggle = e.target.closest('[data-toggle-table]');
-    if (toggle) {
+    if (toggle) {                                                     // botão "Ver tabela" / "Ver gráfico"
       var table = document.querySelector('[data-chart-table]');
-      table.hidden = !table.hidden;
+      table.hidden = !table.hidden;                                   // alterna a tabela; o gráfico continua visível
       toggle.querySelector('span').textContent = table.hidden ? 'Ver tabela' : 'Ver gráfico';
     }
   });
@@ -302,17 +310,17 @@
   S.onReload(load);
 
   /* ------------------------------------------------------------- início */
-  Api.companies()
+  Api.companies()                                                     // 1. empresas
     .then(function (r) {
       fillCompanies(r.data.companies);
       selCompany.value = Ctx.get().company_id;
-      return Api.reservoirs(Ctx.get().company_id);
+      return Api.reservoirs(Ctx.get().company_id);                    // 2. represas
     })
     .then(function (r) {
       selReservoir.value = fillReservoirs(r.data.reservoirs);
-      selPeriod.value = ['7d', '30d', '90d', '12m'].indexOf(Ctx.get().period) >= 0 ? Ctx.get().period : '30d';
+      selPeriod.value = ['7d', '30d', '90d', '12m'].indexOf(Ctx.get().period) >= 0 ? Ctx.get().period : '30d'; // usa o período salvo se ele existir nesta tela; senão 30 dias
       syncChips();
-      return load();
+      return load();                                                  // 3. dados
     })
     .catch(function (err) {
       if (Api.isAbort(err)) return;

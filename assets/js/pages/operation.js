@@ -1,4 +1,9 @@
 /** Aquapulse — Monitoramento / Situação operacional. */
+/*
+ * Página: dashboard/monitoramento/operacional.php | API: GET api/v1/monitoring/operation.php.
+ * Além do render(), trata o formulário demonstrativo "Abrir chamado", que
+ * grava os chamados no sessionStorage e os mostra na tabela de manutenções.
+ */
 (function () {
   'use strict';
 
@@ -6,7 +11,7 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
-  var ICONS = {
+  var ICONS = {                                                       // ícones dos subsistemas (nomes definidos em MonitoringService::operation)
     signal: '<path d="M4.9 4.9a10 10 0 0 0 0 14.2"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/><path d="M8 8a5.5 5.5 0 0 0 0 8"/><path d="M16 8a5.5 5.5 0 0 1 0 8"/><circle cx="12" cy="12" r="1.6"/>',
     gate: '<path d="M3.5 20.5V7l8.5-3.5L20.5 7v13.5"/><path d="M3.5 11h17"/><path d="M3.5 15.5h17"/><path d="M8.5 8.7v11.8"/><path d="M15.5 8.7v11.8"/>',
     'cloud-rain': '<path d="M6.5 15.5a4 4 0 0 1 .6-8 5.5 5.5 0 0 1 10.5 1.6 3.5 3.5 0 0 1-.6 6.4"/><path d="M8.5 18v2.5"/><path d="M12 18.5v2.5"/>',
@@ -15,6 +20,7 @@
     wrench: '<path d="M15.5 3.5a5 5 0 0 0-4.6 7l-7 7 2.6 2.6 7-7a5 5 0 0 0 6.4-6.4l-3 3-2.6-2.6 3-3a5 5 0 0 0-1.8-.6Z"/>'
   };
 
+  /** Monta o <svg> de um ícone; tamanho padrão de 20 px. */
   function icon(name, size) {
     return '<svg class="aq-icon" style="width:' + (size || 20) + 'px;height:' + (size || 20) + 'px" viewBox="0 0 24 24"'
       + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
@@ -22,11 +28,13 @@
   }
 
   /* Chamados abertos em modo demonstrativo: vivem só nesta sessão. */
-  var DEMO_KEY = 'aq.demo.tickets';
+  var DEMO_KEY = 'aq.demo.tickets';                                   // chave no sessionStorage
 
+  /** Lê a lista de chamados salvos (lista vazia se não houver ou se o storage falhar). */
   function readTickets() {
     try { return JSON.parse(sessionStorage.getItem(DEMO_KEY) || '[]'); } catch (e) { return []; }
   }
+  /** Acrescenta um chamado à lista salva. */
   function saveTicket(t) {
     try {
       var list = readTickets();
@@ -35,19 +43,19 @@
     } catch (e) { /* armazenamento indisponível: segue sem registrar */ }
   }
 
-  var page = window.AqMonitorPage({
-    periodId: 'filtro-sistemas',
+  var page = window.AqMonitorPage({                                   // guarda a referência para chamar page.reload() depois de registrar um chamado
+    periodId: 'filtro-sistemas',                                      // o "período" desta tela é o filtro de sistemas
     periodParam: null,
     scopes: ['availability'],
-    fetch: function (p) { return window.AqApi.operation({ reservoir_id: p.reservoir_id }); },
+    fetch: function (p) { return window.AqApi.operation({ reservoir_id: p.reservoir_id }); }, // envia só a represa: o endpoint não usa período
 
-    render: function (d) {
+    render: function (d) {                                            // d = MonitoringService::operation()
       var k = d.kpis;
 
       S.fill({
-        'general.value': { html: '<span style="color:var(--aq-success)">' + k.general.status.label + '</span>' },
+        'general.value': { html: '<span style="color:var(--aq-success)">' + k.general.status.label + '</span>' }, // sempre em verde, mesmo em "Atenção"
         'general.foot': k.general.note,
-        'sensors.value': { html: k.sensors.online + ' <span class="aq-kpi__unit">de</span> ' + k.sensors.total },
+        'sensors.value': { html: k.sensors.online + ' <span class="aq-kpi__unit">de</span> ' + k.sensors.total }, // "18 de 18"
         'sensors.foot': k.sensors.note,
         'gates.value': { html: k.gates.online + ' <span class="aq-kpi__unit">de</span> ' + k.gates.total },
         'gates.foot': k.gates.note,
@@ -56,8 +64,8 @@
       });
 
       /* --------------------------------------- visão geral dos sistemas */
-      document.querySelector('[data-systems]').innerHTML = d.systems.map(function (s) {
-        var tone = s.status === 'attention' ? 'warning' : 'success';
+      document.querySelector('[data-systems]').innerHTML = d.systems.map(function (s) { // um bloco por subsistema
+        var tone = s.status === 'attention' ? 'warning' : 'success';  // atenção = borda âmbar; demais = verde
         return '<div style="border:1.6px solid var(--aq-' + tone + ');border-radius:12px;padding:14px;'
           + 'display:flex;align-items:center;gap:11px;background:var(--aq-' + tone + '-soft)">'
           + '<span style="color:var(--aq-' + tone + ')" aria-hidden="true">' + icon(s.icon, 22) + '</span>'
@@ -69,7 +77,7 @@
       var a = d.availability;
       G.donut('grafico-disponibilidade', {
         labels: ['Disponível', 'Indisponível'],
-        values: [a.general, 100 - a.general],
+        values: [a.general, 100 - a.general],                         // fatia disponível + o que falta para 100%
         colors: [G.colors.success, '#e2eaf4'],
         cutout: '74%',
         unit: '%',
@@ -81,7 +89,7 @@
         ]
       });
 
-      document.querySelector('[data-availability]').innerHTML = a.items.map(function (i) {
+      document.querySelector('[data-availability]').innerHTML = a.items.map(function (i) { // telemetria, comunicação e energia com barra de %
         return '<li>'
           + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">'
           + '<span style="width:34px;height:34px;flex:none;display:inline-flex;align-items:center;justify-content:center;'
@@ -96,13 +104,13 @@
       /* -------------------------------------------------- componentes */
       document.querySelector('[data-components]').innerHTML = d.components.map(function (c) {
         return '<tr><td>' + S.esc(c.name) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>'
+          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>' // status fixo "Normal" (não usa c.status)
           + '<td>' + S.esc(c.at) + '</td></tr>';
       }).join('');
 
       /* ------------------------------------------------------ eventos */
       document.querySelector('[data-events]').innerHTML = d.events.map(function (e) {
-        var st = e.status === 'resolved' ? 'normal' : (e.status === 'new' ? 'info' : 'attention');
+        var st = e.status === 'resolved' ? 'normal' : (e.status === 'new' ? 'info' : 'attention'); // resolvido verde, novo azul, em análise âmbar
         return '<tr><td>' + S.esc(e.at) + '</td>'
           + '<td>' + S.esc(e.component) + '</td>'
           + '<td>' + S.esc(e.event) + '</td>'
@@ -112,12 +120,12 @@
       }).join('');
 
       /* ------------------------------------------------- manutenções */
-      var extras = readTickets().map(function (t) {
+      var extras = readTickets().map(function (t) {                   // converte os chamados da sessão para o formato das linhas de manutenção
         return { date: t.date, equipment: t.equipment, type: 'Chamado (demo)', priority: t.priority,
                  priority_label: t.priority === 'critical' ? 'Crítica' : (t.priority === 'attention' ? 'Atenção' : 'Baixa') };
       });
 
-      document.querySelector('[data-maintenances]').innerHTML = d.maintenances.concat(extras).map(function (m) {
+      document.querySelector('[data-maintenances]').innerHTML = d.maintenances.concat(extras).map(function (m) { // manutenções da API + chamados da sessão
         return '<tr><td class="is-nowrap">' + S.esc(m.date) + '</td>'
           + '<td>' + S.esc(m.equipment) + '</td>'
           + '<td>' + S.esc(m.type) + '</td>'
@@ -138,19 +146,19 @@
   var form = document.getElementById('form-chamado');
   if (form) {
     form.addEventListener('submit', function (e) {
-      e.preventDefault();
+      e.preventDefault();                                             // impede o envio padrão do formulário (que recarregaria a página)
 
-      saveTicket({
+      saveTicket({                                                    // lê os campos do modal e guarda na sessão
         equipment: document.getElementById('chamado-equipamento').value,
         priority: document.getElementById('chamado-prioridade').value,
         description: document.getElementById('chamado-descricao').value,
-        date: new Date().toLocaleDateString('pt-BR')
+        date: new Date().toLocaleDateString('pt-BR')                  // data real do navegador (não a data demonstrativa)
       });
 
       S.closeModal('modal-chamado');
       S.notify('Chamado registrado', 'Registro demonstrativo mantido apenas nesta sessão.', 'info');
-      form.reset();
-      page.reload();
+      form.reset();                                                   // limpa os campos para o próximo chamado
+      page.reload();                                                  // redesenha a tabela já com o novo chamado
     });
   }
 })();

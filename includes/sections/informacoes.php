@@ -12,15 +12,17 @@
  *
  * Os dados dos slides vêm do manifesto do pacote de referência e ficam locais
  * a esta seção: são conteúdo estático, sem API nem banco.
+ *
+ * O comportamento do carrossel está em assets/js/monitorar.js.
  */
 
 /** @var array<int, array{id:string, src:string, alt:string, pos:string}> */
-$aq_monitorar_slides = [
+$aq_monitorar_slides = [                                                  // fotografias do carrossel, na ordem de exibição
     [
-        'id'  => 'monitoramento',
-        'src' => 'images/monitorar/01-monitoramento.webp',
+        'id'  => 'monitoramento',                                         // identificador interno do slide
+        'src' => 'images/monitorar/01-monitoramento.webp',                // caminho dentro de assets/
         'alt' => 'Imagem ilustrativa de profissional operando uma estação de monitoramento junto a um reservatório.',
-        'pos' => '50% 50%',
+        'pos' => '50% 50%',                                               // ponto focal da foto (object-position) quando ela é recortada
     ],
     [
         'id'  => 'vista-aerea',
@@ -63,13 +65,13 @@ $aq_monitorar_passos = [
     ],
 ];
 
-$aq_monitorar_total = count($aq_monitorar_slides);
+$aq_monitorar_total = count($aq_monitorar_slides);                        // total de slides (usado nos rótulos "1 de 4")
 ?>
 <section class="aq-monitorar" id="informacoes" aria-labelledby="monitorar-titulo">
   <div class="container">
     <div class="aq-monitorar__quadro">
 
-      <div class="aq-monitorar__topo">
+      <div class="aq-monitorar__topo"> <?php /* parte de cima: coluna lateral + texto principal */ ?>
 
         <div class="aq-monitorar__lateral">
           <p class="aq-monitorar__selo">
@@ -95,7 +97,7 @@ $aq_monitorar_total = count($aq_monitorar_slides);
             gestão responsável.
           </p>
 
-          <a class="aq-monitorar__cta" href="#vantagens">
+          <a class="aq-monitorar__cta" href="#vantagens"> <?php /* leva à seção de vantagens */ ?>
             <span>Entenda a importância</span>
             <?php aq_the_icon('arrow-up-right'); ?>
           </a>
@@ -103,9 +105,10 @@ $aq_monitorar_total = count($aq_monitorar_slides);
 
       </div>
 
-      <div class="aq-monitorar__paineis">
+      <div class="aq-monitorar__paineis"> <?php /* parte de baixo: carrossel (68%) + painel editorial (32%) */ ?>
 
         <?php /* Carrossel: painel de fotografias e, abaixo dele, os controles. */ ?>
+        <?php /* data-intervalo e data-transicao (em ms) são lidos por monitorar.js */ ?>
         <div class="aq-monitorar__carrossel"
              data-monitorar-carrossel
              data-intervalo="3000"
@@ -116,12 +119,13 @@ $aq_monitorar_total = count($aq_monitorar_slides);
 
           <div class="aq-monitorar__palco">
             <div class="aq-monitorar__quadros" data-monitorar-quadros>
-              <?php foreach ($aq_monitorar_slides as $i => $slide): ?>
+              <?php foreach ($aq_monitorar_slides as $i => $slide): // um <figure> por fotografia ?>
                 <?php /*
                   `is-base` marca a fotografia que preenche o painel. A que
                   entra ganha `is-entrando` e é revelada por cima, da direita
                   para a esquerda, sem que esta saia antes da hora.
                 */ ?>
+                <?php /* aria-label "1 de 4" identifica o slide; os que não estão visíveis recebem aria-hidden */ ?>
                 <figure class="aq-monitorar__slide<?php echo $i === 0 ? ' is-base' : ''; ?>"
                         data-monitorar-slide="<?php echo (int) $i; ?>"
                         role="group"
@@ -150,8 +154,9 @@ $aq_monitorar_total = count($aq_monitorar_slides);
               <?php aq_the_icon('chevron-left'); ?>
             </button>
 
-            <div class="aq-monitorar__pontos">
+            <div class="aq-monitorar__pontos"> <?php /* um ponto clicável por slide */ ?>
               <?php foreach ($aq_monitorar_slides as $i => $slide): ?>
+                <?php /* aria-current marca o ponto do slide visível */ ?>
                 <button class="aq-monitorar__ponto<?php echo $i === 0 ? ' is-ativo' : ''; ?>"
                         type="button"
                         data-monitorar-ponto="<?php echo (int) $i; ?>"
@@ -173,11 +178,11 @@ $aq_monitorar_total = count($aq_monitorar_slides);
         <div class="aq-monitorar__acao">
           <h3 class="aq-monitorar__acao-titulo">Do acompanhamento à ação</h3>
 
-          <ol class="aq-monitorar__passos">
+          <ol class="aq-monitorar__passos"> <?php /* <ol>: lista ordenada, a sequência tem significado */ ?>
             <?php foreach ($aq_monitorar_passos as $i => $passo): ?>
               <li class="aq-monitorar__passo">
                 <?php /* o número é decorativo: a própria lista já ordena para o leitor de tela */ ?>
-                <span class="aq-monitorar__passo-numero" aria-hidden="true"><?php echo sprintf('%02d', $i + 1); ?></span>
+                <span class="aq-monitorar__passo-numero" aria-hidden="true"><?php echo sprintf('%02d', $i + 1); // 01, 02, 03 ?></span>
                 <div class="aq-monitorar__passo-corpo">
                   <h4 class="aq-monitorar__passo-titulo"><?php aq_out($passo['titulo']); ?></h4>
                   <p class="aq-monitorar__passo-texto"><?php aq_out($passo['texto']); ?></p>

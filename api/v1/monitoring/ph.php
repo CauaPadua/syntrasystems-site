@@ -1,5 +1,9 @@
 <?php
 /** GET /api/v1/monitoring/ph.php?reservoir_id={id}&period={p} — qualidade e faixa ideal de pH */
+/*
+ * Chamado por: assets/js/pages/ph.js (monitoramento/ph.php). Período padrão: 24 horas.
+ * Mesmo roteiro de flow.php: valida -> monta no service -> responde.
+ */
 
 declare(strict_types=1);
 
@@ -16,7 +20,7 @@ $reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');
 $period      = Validator::period('24h');
 
 $service = new MonitoringService($repo);
-$data    = $service->ph($reservoirId, $period);
+$data    = $service->ph($reservoirId, $period);                           // pH atual, mínimo/máximo, régua e pontos de coleta
 
 if ($data === []) {
     ApiResponse::error('NO_DATA', 'Não há dados disponíveis para esta represa no período selecionado.', 404);

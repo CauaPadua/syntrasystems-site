@@ -15,6 +15,14 @@
  * Nenhuma tela, JavaScript, endpoint ou contrato de API precisa ser alterado.
  *
  * Ver docs/database-handoff.md para as entidades e campos esperados.
+ *
+ * Situação atual do código: a implementação com banco já existe em
+ * backend/src/Repositories/PdoMonitoringRepository.php (sem a subpasta Pdo/),
+ * e o Container já escolhe entre ela e a versão simulada automaticamente.
+ *
+ * Implementações:
+ *  - Repositories\Mock\MockMonitoringRepository -> lê backend/storage/mock/monitoring.php
+ *  - Repositories\PdoMonitoringRepository       -> lê as tabelas MySQL
  */
 
 declare(strict_types=1);
@@ -26,12 +34,16 @@ interface MonitoringRepositoryInterface
     /**
      * Todas as empresas.
      *
+     * Consumido por: api/v1/companies.php e pela validação de company_id.
+     *
      * @return array<int,array{id:string,code:string,name:string,manager:string,status:string,status_label:string}>
      */
     public function companies(): array;
 
     /**
      * Represas, opcionalmente filtradas por empresa.
+     *
+     * Consumido por: api/v1/reservoirs.php, mapa, visão geral e validação de reservoir_id.
      *
      * @param string $companyId ID da empresa ou 'all'.
      * @return array<int,array<string,mixed>> Cada item traz os campos descritos
@@ -45,6 +57,9 @@ interface MonitoringRepositoryInterface
     /**
      * Série temporal de uma métrica.
      *
+     * Alimenta os gráficos de linha/barra das telas de monitoramento: "labels" é o
+     * eixo X (datas/horas) e "values" é o eixo Y, na mesma ordem.
+     *
      * @param string $reservoirId ID da represa.
      * @param string $metric      level|flow|inflow|outflow|ph|storage|precipitation
      * @param string $period      24h|7d|30d|90d|12m
@@ -54,6 +69,8 @@ interface MonitoringRepositoryInterface
 
     /**
      * Últimas leituras registradas de uma métrica.
+     *
+     * Alimenta as tabelas "últimas leituras" das telas detalhadas.
      *
      * @return array<int,array<string,mixed>>
      */

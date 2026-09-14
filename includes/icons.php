@@ -5,6 +5,10 @@
  * Todos os ícones são puramente decorativos: recebem aria-hidden="true" e
  * focusable="false" para não serem anunciados por leitores de tela. O
  * significado é sempre transmitido pelo texto que acompanha o ícone.
+ *
+ * Usado pela landing (index.php), pelo login e pelo dashboard (page.php inclui
+ * este mesmo arquivo). Os ícones ficam embutidos no HTML em vez de arquivos de
+ * imagem: não há requisições extras e a cor segue o texto (stroke="currentColor").
  */
 
 /**
@@ -12,9 +16,13 @@
  *
  * @param string $name  Identificador do ícone.
  * @param string $class Classes CSS adicionais aplicadas ao <svg>.
+ * @return string o <svg> completo, ou string vazia se o nome não existir
  */
 function aq_icon(string $name, string $class = ''): string
 {
+    // Mapa nome => desenho. Cada valor é o "miolo" de um SVG de 24x24 (tags <path>,
+    // <circle>, <rect>) que será colocado dentro do <svg> montado no fim da função.
+    // "static" cria o array uma única vez por requisição, mesmo com centenas de chamadas.
     static $paths = [
         'shield-check'  => '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6L12 3Z"/><path d="m9 12 2 2 4-4"/>',
         'zap'           => '<path d="M13 2 4.5 13H11l-1 9 8.5-11H12l1-9Z"/>',
@@ -94,19 +102,19 @@ function aq_icon(string $name, string $class = ''): string
         'sliders'       => '<path d="M4 8h9"/><path d="M17 8h3"/><path d="M4 16h4"/><path d="M12 16h8"/><circle cx="15" cy="8" r="2"/><circle cx="10" cy="16" r="2"/>',
     ];
 
-    if (!isset($paths[$name])) {
+    if (!isset($paths[$name])) {                                          // nome inexistente: não quebra a página, apenas não desenha nada
         return '';
     }
 
-    $classAttr = trim('aq-icon ' . $class);
+    $classAttr = trim('aq-icon ' . $class);                               // classe base aq-icon + classes extras; trim remove o espaço quando não há extras
 
-    return '<svg class="' . htmlspecialchars($classAttr, ENT_QUOTES) . '" viewBox="0 0 24 24" fill="none"'
-        . ' stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"'
-        . ' aria-hidden="true" focusable="false">' . $paths[$name] . '</svg>';
+    return '<svg class="' . htmlspecialchars($classAttr, ENT_QUOTES) . '" viewBox="0 0 24 24" fill="none"' // viewBox 24x24: sistema de coordenadas dos desenhos; o tamanho real vem do CSS
+        . ' stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"'      // traço na cor do texto ao redor, com pontas arredondadas
+        . ' aria-hidden="true" focusable="false">' . $paths[$name] . '</svg>';                            // escondido de leitores de tela e fora da navegação por Tab
 }
 
 /** Imprime o ícone diretamente. */
 function aq_the_icon(string $name, string $class = ''): void
 {
-    echo aq_icon($name, $class);
+    echo aq_icon($name, $class);                                          // atalho para usar no meio do HTML, ex.: aq_the_icon('bell')
 }

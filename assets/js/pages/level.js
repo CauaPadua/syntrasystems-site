@@ -1,4 +1,8 @@
 /** Aquapulse — Monitoramento / Nível do reservatório. */
+/*
+ * Página: dashboard/monitoramento/nivel.php | API: GET api/v1/monitoring/level.php.
+ * Represa, período, estados e recarga ficam em AqMonitorPage; aqui só o render().
+ */
 (function () {
   'use strict';
 
@@ -10,26 +14,26 @@
     scopes: ['history', 'capacity', 'forecast'],
     fetch: function (p) { return window.AqApi.level(p); },
 
-    render: function (d) {
+    render: function (d) {                                            // d = MonitoringService::level()
       var k = d.kpis;
 
       S.fill({
         'level.value': F.num(k.level.value, 1), 'level.foot': k.level.note,
-        'level.badge': { html: S.badge(k.level.status.label, k.level.status.key) },
+        'level.badge': { html: S.badge(k.level.status.label, k.level.status.key) }, // Normal / Atenção / Crítico
         'cota.value': F.num(k.cota.value, 1), 'cota.foot': k.cota.note,
         'variation.value': F.signed(k.variation.value, 1), 'variation.foot': k.variation.note,
         'available.value': F.num(k.available.value, 1), 'available.foot': k.available.note,
-        'capacity.level': F.pct(d.capacity.level),
+        'capacity.level': F.pct(d.capacity.level),                    // texto dentro da coluna de capacidade
         'capacity.total': 'Capacidade total: 100%'
       });
 
       document.querySelectorAll('[data-kpi="variation"] .aq-kpi__value').forEach(function (el) {
-        el.classList.toggle('aq-kpi__value--success', k.variation.positive);
+        el.classList.toggle('aq-kpi__value--success', k.variation.positive); // variação positiva (cota subindo) em verde
       });
 
       /* --------------- histórico com linhas de limite (plugin annotation) */
       var h = d.history;
-      var ctx = document.getElementById('grafico-historico-nivel').getContext('2d');
+      var ctx = document.getElementById('grafico-historico-nivel').getContext('2d'); // contexto usado para o gradiente da área
 
       G.create('grafico-historico-nivel', {
         type: 'line',
@@ -40,12 +44,12 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ beginAtZero: false, min: 50, max: 100, step: 10, decimals: 0 }),
+          scales: G.scales({ beginAtZero: false, min: 50, max: 100, step: 10, decimals: 0 }), // eixo de 50% a 100% (valores abaixo de 50% ficariam fora do gráfico)
           plugins: G.plugins('%', 1, {
-            annotation: {
+            annotation: {                                             // linhas horizontais de limite
               annotations: {
-                atencao: G.limitLine(h.attention, G.colors.warning, h.attention_label, 'end', true),
-                critico: G.limitLine(h.critical, G.colors.danger, h.critical_label, 'end')
+                atencao: G.limitLine(h.attention, G.colors.warning, h.attention_label, 'end', true), // 80%, rótulo abaixo da linha
+                critico: G.limitLine(h.critical, G.colors.danger, h.critical_label, 'end')           // 90%
               }
             }
           })
@@ -55,10 +59,10 @@
 
       /* ------------------------------------ capacidade e faixas */
       var fill = document.querySelector('[data-capacity-fill]');
-      if (fill) fill.style.height = d.capacity.level + '%';
+      if (fill) fill.style.height = d.capacity.level + '%';           // altura da "água" = nível em %; o CSS anima a mudança
 
-      document.querySelector('[data-capacity-bands]').innerHTML = d.capacity.bands.map(function (b) {
-        var color = b.status === 'critical' ? 'danger' : (b.status === 'attention' ? 'warning' : 'success');
+      document.querySelector('[data-capacity-bands]').innerHTML = d.capacity.bands.map(function (b) { // uma linha por faixa
+        var color = b.status === 'critical' ? 'danger' : (b.status === 'attention' ? 'warning' : 'success'); // status -> variável de cor do CSS
         return '<li style="display:flex;gap:12px;align-items:flex-start">'
           + '<span style="width:4px;align-self:stretch;border-radius:3px;background:var(--aq-' + color + ')"></span>'
           + '<div><strong style="display:block;font-size:.88rem">' + S.esc(b.label) + '</strong>'
@@ -72,7 +76,7 @@
         type: 'line',
         data: {
           labels: f.labels,
-          datasets: [G.line('Previsão', f.values, G.colors.primary, { fillCtx: ctxF, alpha: 0.12, dashed: true })]
+          datasets: [G.line('Previsão', f.values, G.colors.primary, { fillCtx: ctxF, alpha: 0.12, dashed: true })] // tracejado: é projeção, não medida
         },
         options: {
           responsive: true,
@@ -102,7 +106,7 @@
           + '<td class="is-num">' + F.num(r.cota, 1) + '</td>'
           + '<td class="is-num">' + F.num(r.level, 1) + '</td>'
           + '<td class="is-num">' + F.signed(r.variation, 1) + ' m</td>'
-          + '<td>' + S.badge(r.status.label, r.status.key) + '</td>'
+          + '<td>' + S.badge(r.status.label, r.status.key) + '</td>'  // status calculado no servidor para cada leitura
           + '</tr>';
       }).join('');
     }

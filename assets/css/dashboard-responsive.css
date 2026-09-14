@@ -6,25 +6,30 @@
    rolagem horizontal na página inteira. Tabelas usam wrapper próprio.
 
    Ordem no celular: título, filtros, KPIs, visualizações principais, detalhes.
+
+   Carregado por dashboard/includes/page.php DEPOIS de dashboard.css: por vir
+   depois, estas regras substituem as de lá quando a largura da tela se encaixa
+   em cada @media (max-width: N = "telas de até N pixels").
+   Os títulos das faixas citam a largura de referência de cada ajuste.
    ========================================================================= */
 
 /* ------------------------------------------------- 1440px: leve compressão */
 @media (max-width: 1500px) {
-  .aq-content { padding-left: 22px; padding-right: 22px; }
+  .aq-content { padding-left: 22px; padding-right: 22px; }      /* área de conteúdo com margens laterais menores */
   .aq-topbar { padding-left: 22px; padding-right: 22px; }
-  .aq-kpi__value { font-size: 1.7rem; }
+  .aq-kpi__value { font-size: 1.7rem; }                          /* números dos cards um pouco menores */
 }
 
 /* ------------------------- 1280px: mantém sidebar, reduz colunas dos KPIs */
 @media (max-width: 1340px) {
-  :root { --aq-sidebar-width: 236px; }
+  :root { --aq-sidebar-width: 236px; }                           /* redefine a variável global: todo cálculo que usa a largura da sidebar se ajusta */
 
   .aq-sidebar__brand img { width: 168px; }
   .aq-topbar__title h1 { font-size: 1.42rem; }
   .aq-topbar__meta { gap: 14px; }
 
   /* faixas de 5, 6 e 7 KPIs quebram em duas linhas em vez de espremer */
-  .aq-grid--5, .aq-grid--6, .aq-grid--7 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .aq-grid--5, .aq-grid--6, .aq-grid--7 { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* repeat(3, …) = três colunas iguais */
 
   .aq-kpi__value { font-size: 1.55rem; }
   .aq-kpi__icon { width: 40px; height: 40px; }
@@ -37,38 +42,38 @@
 @media (max-width: 1180px) {
   .aq-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .aq-grid--3-2, .aq-grid--2-1, .aq-grid--1-2,
-  .aq-grid--7-3 { grid-template-columns: minmax(0, 1fr); }
+  .aq-grid--7-3 { grid-template-columns: minmax(0, 1fr); }        /* grades assimétricas (gráfico + lateral) viram uma coluna */
   .aq-map--lg { height: 480px; }
 }
 
 /* ------------------- 1024px e tablet: sidebar recolhível + 2 colunas */
 @media (max-width: 1024px) {
-  .aq-sidebar {
-    transform: translateX(-100%);
-    transition: transform 220ms ease;
+  .aq-sidebar {                                                   /* a sidebar vira uma gaveta escondida à esquerda */
+    transform: translateX(-100%);                                 /* desloca 100% da própria largura para fora da tela */
+    transition: transform 220ms ease;                             /* desliza ao abrir/fechar */
     box-shadow: 0 0 40px rgba(3, 30, 73, 0.3);
   }
-  .aq-sidebar.is-open { transform: none; }
+  .aq-sidebar.is-open { transform: none; }                        /* dashboard-shell.js adiciona is-open: a gaveta aparece */
 
-  .aq-main { margin-left: 0; }
+  .aq-main { margin-left: 0; }                                    /* o conteúdo passa a ocupar a largura toda */
 
-  .aq-menu-toggle { display: inline-flex; }
+  .aq-menu-toggle { display: inline-flex; }                       /* mostra o botão hambúrguer */
 
-  .aq-backdrop {
+  .aq-backdrop {                                                  /* fundo escuro atrás da gaveta */
     display: block;
-    position: fixed; inset: 0; z-index: 55;
+    position: fixed; inset: 0; z-index: 55;                       /* cobre a tela inteira, abaixo da sidebar */
     background: rgba(3, 30, 73, 0.4);
   }
-  .aq-backdrop[hidden] { display: none; }
-  body.aq-nav-open { overflow: hidden; }
+  .aq-backdrop[hidden] { display: none; }                         /* respeita o atributo hidden controlado pelo JS */
+  body.aq-nav-open { overflow: hidden; }                          /* com o menu aberto, a página de trás não rola */
 
   .aq-grid--3, .aq-grid--5, .aq-grid--6, .aq-grid--7,
   .aq-grid--5-4-7, .aq-grid--3-3-3-4-8,
-  .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* quase todas as grades em 2 colunas */
 
   /* com duas colunas quem fica na borda direita é o item par: a bolha da
      dica precisa abrir para a esquerda para não sair da tela */
-  .aq-grid > *:nth-child(even) .aq-tip::after {
+  .aq-grid > *:nth-child(even) .aq-tip::after {                   /* :nth-child(even) = 2º, 4º, 6º... filho; ::after é a bolha da dica */
     left: auto;
     right: 0;
     transform: none;
@@ -76,18 +81,18 @@
 
   .aq-context { gap: 16px; }
   .aq-context__label { border-right: 0; padding-right: 0; }
-  .aq-context__note { display: none; }
+  .aq-context__note { display: none; }                            /* esconde textos auxiliares da barra de filtros */
 }
 
 /* ------------------------------------- 768px: drawer + cards reorganizados */
 @media (max-width: 860px) {
-  :root { --aq-header-height: 76px; --aq-content-gap: 14px; }
+  :root { --aq-header-height: 76px; --aq-content-gap: 14px; }     /* topbar mais baixa e espaços menores entre blocos */
 
-  .aq-topbar { flex-wrap: wrap; padding: 14px 18px; row-gap: 12px; }
+  .aq-topbar { flex-wrap: wrap; padding: 14px 18px; row-gap: 12px; } /* permite que os itens da topbar quebrem em duas linhas */
   .aq-topbar__title h1 { font-size: 1.28rem; }
   .aq-topbar__title p { font-size: 0.84rem; }
   .aq-topbar__meta { width: 100%; justify-content: space-between; gap: 10px; }
-  .aq-meta-item--date { display: none; }
+  .aq-meta-item--date { display: none; }                          /* a data some para liberar espaço */
 
   .aq-content { padding: 14px 18px 22px; }
 
@@ -96,15 +101,15 @@
   .aq-grid--5-4-7, .aq-grid--3-3-3-4-8,
   .aq-grid--4-6-5, .aq-grid--7-6-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  .aq-select, .aq-input { min-width: 0; width: 100%; }
+  .aq-select, .aq-input { min-width: 0; width: 100%; }            /* campos ocupam a largura disponível */
   .aq-select--sm { width: auto; }
   .aq-field { width: 100%; }
-  .aq-context { flex-direction: column; align-items: stretch; }
+  .aq-context { flex-direction: column; align-items: stretch; }   /* filtros empilhados */
 
   .aq-map--lg { height: 400px; }
   .aq-chart--xl { height: 300px; }
 
-  .aq-user__info { display: none; }
+  .aq-user__info { display: none; }                               /* no botão do usuário fica só o avatar */
   .aq-user { padding: 0; }
 }
 
@@ -126,15 +131,15 @@
   .aq-grid > *:nth-child(even) .aq-tip::after {
     left: 50%;
     right: auto;
-    transform: translateX(-50%);
+    transform: translateX(-50%);                                  /* centraliza a bolha em relação ao ícone */
   }
 
   .aq-card { padding: 15px 16px; }
-  .aq-card__head { flex-wrap: wrap; }
+  .aq-card__head { flex-wrap: wrap; }                             /* título e ações do card podem quebrar linha */
 
   .aq-kpi__value { font-size: 1.6rem; }
 
-  .aq-chart--sm { height: 210px; }
+  .aq-chart--sm { height: 210px; }                                /* alturas fixas dos gráficos no celular */
   .aq-chart--md { height: 220px; }
   .aq-chart--lg { height: 240px; }
   .aq-chart--xl { height: 260px; }
@@ -143,18 +148,18 @@
   .aq-map--lg { height: 340px; }
 
   /* tabelas rolam dentro do próprio wrapper, nunca na página */
-  .aq-table { min-width: 560px; }
-  .aq-table-wrap { -webkit-overflow-scrolling: touch; }
+  .aq-table { min-width: 560px; }                                 /* a tabela mantém largura mínima legível; o wrapper ganha rolagem horizontal */
+  .aq-table-wrap { -webkit-overflow-scrolling: touch; }           /* rolagem com inércia em iOS antigos */
 
   .aq-legend { gap: 12px; font-size: 0.78rem; }
   .aq-pagination { justify-content: center; }
 
   .aq-tabs { gap: 0; }
   .aq-tab { padding: 12px 13px; font-size: 0.85rem; }
-  .aq-tab span { display: none; }
+  .aq-tab span { display: none; }                                 /* abas de Configurações mostram só o ícone */
   .aq-tab .aq-icon { width: 20px; height: 20px; }
 
-  .aq-toast { right: 12px; left: 12px; bottom: 12px; max-width: none; }
+  .aq-toast { right: 12px; left: 12px; bottom: 12px; max-width: none; } /* aviso flutuante ocupa a largura toda */
 
-  .aq-sidebar { width: min(280px, 86vw); }
+  .aq-sidebar { width: min(280px, 86vw); }                        /* gaveta com no máximo 280px ou 86% da tela */
 }

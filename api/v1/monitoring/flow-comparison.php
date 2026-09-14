@@ -4,6 +4,9 @@
  *
  * Compara a vazão entre dois períodos. Intervalos inválidos ou iguais são
  * recusados com mensagem clara ao usuário.
+ *
+ * Chamado por: assets/js/pages/comparison.js (monitoramento/comparativo.php).
+ * Erros: 400 RESERVOIR_REQUIRED / INVALID_RANGE, 404 INVALID_RESERVOIR / NO_DATA.
  */
 
 declare(strict_types=1);
@@ -16,14 +19,14 @@ use Aquapulse\Support\Validator;
 
 [$repo] = aq_api_boot();
 
-$reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');
+$reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');    // represa obrigatória
 
-$ranges = ['16 – 22 mai', '09 – 15 mai', '02 – 08 mai', '25 abr – 01 mai'];
+$ranges = ['16 – 22 mai', '09 – 15 mai', '02 – 08 mai', '25 abr – 01 mai']; // semanas selecionáveis na tela (a allowlist são os próprios textos)
 
-$current  = Validator::option('current', $ranges, $ranges[0], 'INVALID_RANGE', 'O período atual informado não é válido.');
-$previous = Validator::option('previous', $ranges, $ranges[1], 'INVALID_RANGE', 'O período de comparação informado não é válido.');
+$current  = Validator::option('current', $ranges, $ranges[0], 'INVALID_RANGE', 'O período atual informado não é válido.');          // padrão: semana mais recente
+$previous = Validator::option('previous', $ranges, $ranges[1], 'INVALID_RANGE', 'O período de comparação informado não é válido.'); // padrão: semana anterior
 
-if ($current === $previous) {
+if ($current === $previous) {                                              // regra de negócio: comparar um período com ele mesmo não faz sentido
     ApiResponse::error(
         'INVALID_RANGE',
         'Selecione períodos diferentes para comparar. O período atual e o anterior não podem ser iguais.',

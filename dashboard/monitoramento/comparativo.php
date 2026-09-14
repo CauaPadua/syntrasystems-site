@@ -1,5 +1,12 @@
 <?php
 /** Aquapulse — Monitoramento / Comparativo de vazão. */
+/*
+ * Compara a vazão de UMA represa entre dois períodos semanais escolhidos pelo
+ * usuário. Dados de GET api/v1/monitoring/flow-comparison.php, carregados por
+ * assets/js/pages/comparison.js (com monitor-page.js).
+ * É a única tela de monitoramento que não usa aq_monitor_bar(), porque precisa
+ * de DOIS seletores de período.
+ */
 
 declare(strict_types=1);
 
@@ -12,7 +19,7 @@ aq_page_start([
     'subtitle' => 'Compare a vazão atual com períodos anteriores',
 ]);
 
-$ranges = [
+$ranges = [                                                               // semanas disponíveis; valor e texto iguais, e idênticos à allowlist do endpoint
     '16 – 22 mai'     => '16 – 22 mai',
     '09 – 15 mai'     => '09 – 15 mai',
     '02 – 08 mai'     => '02 – 08 mai',
@@ -22,9 +29,9 @@ $ranges = [
 
 <!-- barra própria: esta tela tem dois seletores de período independentes -->
 <section class="aq-context" aria-label="Contexto da comparação">
-  <?php echo aq_select(['id' => 'filtro-represa', 'label' => 'Represa analisada', 'options' => []]); ?>
+  <?php echo aq_select(['id' => 'filtro-represa', 'label' => 'Represa analisada', 'options' => []]); // opções preenchidas pelo JS ?>
 
-  <div class="aq-field">
+  <div class="aq-field"> <?php /* mesma estrutura de aq_monitor_bar(), repetida aqui */ ?>
     <span class="aq-field__label">Código</span>
     <strong style="font-size:1rem;line-height:42px" data-field="reservoir.code">—</strong>
   </div>
@@ -39,8 +46,8 @@ $ranges = [
 
   <span class="aq-context__spacer"></span>
 
-  <?php echo aq_select(['id' => 'filtro-atual', 'label' => 'Período atual', 'options' => $ranges, 'value' => '16 – 22 mai']); ?>
-  <?php echo aq_select(['id' => 'filtro-anterior', 'label' => 'Comparar com', 'options' => $ranges, 'value' => '09 – 15 mai']); ?>
+  <?php echo aq_select(['id' => 'filtro-atual', 'label' => 'Período atual', 'options' => $ranges, 'value' => '16 – 22 mai']); // enviado como ?current= ?>
+  <?php echo aq_select(['id' => 'filtro-anterior', 'label' => 'Comparar com', 'options' => $ranges, 'value' => '09 – 15 mai']); // enviado como ?previous= (a API recusa se for igual ao atual) ?>
 </section>
 
 <div class="aq-grid aq-grid--4">
@@ -56,8 +63,8 @@ $ranges = [
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Vazão diária comparada', 'tip' => 'Vazão média de cada dia nos dois períodos.']); ?>
     <div data-content="chart" hidden>
-      <?php echo aq_chart(['id' => 'grafico-comparativo', 'size' => 'lg', 'axis' => 'm³/s', 'desc' => 'Comparação diária da vazão entre dois períodos.']); ?>
-      <div data-legend-periods></div>
+      <?php echo aq_chart(['id' => 'grafico-comparativo', 'size' => 'lg', 'axis' => 'm³/s', 'desc' => 'Comparação diária da vazão entre dois períodos.']); // data.chart (current x previous) ?>
+      <div data-legend-periods></div> <?php /* legenda gerada pelo JS com os nomes dos períodos escolhidos */ ?>
     </div>
     <?php echo aq_states('chart'); ?>
   </article>
@@ -65,7 +72,7 @@ $ranges = [
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Diferença por dia', 'tip' => 'Diferença diária: verde quando positiva, âmbar quando negativa.']); ?>
     <div data-content="diff" hidden>
-      <?php echo aq_chart(['id' => 'grafico-diferenca', 'size' => 'lg', 'axis' => 'm³/s', 'desc' => 'Diferença diária de vazão entre os períodos.']); ?>
+      <?php echo aq_chart(['id' => 'grafico-diferenca', 'size' => 'lg', 'axis' => 'm³/s', 'desc' => 'Diferença diária de vazão entre os períodos.']); // barras de data.diff_chart ?>
       <?php echo aq_legend([
           ['label' => 'Diferença positiva', 'color' => '#16a34a', 'style' => 'square'],
           ['label' => 'Diferença negativa', 'color' => '#f59e0b', 'style' => 'square'],
@@ -79,7 +86,7 @@ $ranges = [
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Afluência x defluência', 'tip' => 'Médias de entrada e saída no período atual.']); ?>
     <div data-content="inout" hidden>
-    <?php echo aq_chart(['id' => 'grafico-afl-defl', 'size' => 'md', 'axis' => 'm³/s', 'desc' => 'Afluência e defluência médias do período atual.']); ?>
+    <?php echo aq_chart(['id' => 'grafico-afl-defl', 'size' => 'md', 'axis' => 'm³/s', 'desc' => 'Afluência e defluência médias do período atual.']); // data.in_out ?>
     <?php echo aq_legend([
         ['label' => 'Afluência média (atual)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Defluência média (atual)', 'color' => '#b6d3fe', 'style' => 'square'],
@@ -90,7 +97,7 @@ $ranges = [
 
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Resumo da comparação', 'tip' => 'Destaques calculados a partir dos dois períodos.']); ?>
-    <div class="aq-list" data-summary></div>
+    <div class="aq-list" data-summary></div> <?php /* melhor dia, menor vazão, médias e tendência (data.summary) */ ?>
   </article>
 
   <article class="aq-card">
@@ -107,7 +114,7 @@ $ranges = [
           <th scope="col">Status</th>
         </tr>
       </thead>
-      <tbody data-rows></tbody>
+      <tbody data-rows></tbody> <?php /* data.rows: um dia por linha */ ?>
     </table>
     <?php echo aq_table_close(); ?>
     <p class="aq-card__sub" style="margin-top:12px">Valores médios diários (m³/s)</p>
@@ -118,8 +125,8 @@ $ranges = [
   <span class="aq-kpi__icon" aria-hidden="true"><?php aq_the_icon('chart-up'); ?></span>
   <div>
     <h3 style="font-size:1rem">Insight</h3>
-    <p class="aq-card__sub" data-field="insight.text"></p>
+    <p class="aq-card__sub" data-field="insight.text"></p> <?php /* "A vazão média aumentou X m³/s..." */ ?>
   </div>
 </article>
 
-<?php aq_page_end(['scripts' => ['pages/comparison.js'], 'monitor' => true]);
+<?php aq_page_end(['scripts' => ['pages/comparison.js'], 'monitor' => true]); // lógica desta tela

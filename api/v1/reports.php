@@ -1,5 +1,11 @@
 <?php
 /** GET /api/v1/reports.php?reservoir_id={id|all}&type={t}&status={st} — relatórios. */
+/*
+ * Chamado por: assets/js/pages/reports.js (dashboard/relatorios.php) e pela visão geral.
+ * Entrada: company_id, reservoir_id, type (all|operational|hydrological|quality|planning)
+ *          e status (all|done|processing|scheduled), todos opcionais.
+ * Saída: lista filtrada, resumo geral, contagem do escopo e relatórios agendados.
+ */
 
 declare(strict_types=1);
 
@@ -17,9 +23,9 @@ $reservoirId = Validator::reservoirId($repo->reservoirs($companyId), true);
 $type        = Validator::option('type', Validator::REPORT_TYPES, 'all', 'INVALID_TYPE', 'O tipo de relatório informado não é válido.');
 $status      = Validator::option('status', Validator::REPORT_STATUS, 'all', 'INVALID_STATUS', 'O status informado não é válido.');
 
-$rows = $repo->reports($reservoirId, $type, $status);
+$rows = $repo->reports($reservoirId, $type, $status);                        // relatórios que passam pelos filtros
 
-$reports = array_map(static function (array $rep) use ($repo): array {
+$reports = array_map(static function (array $rep) use ($repo): array {       // formata cada relatório para a tabela
     $r = $repo->reservoir($rep['reservoir_id']);
     $when = new DateTimeImmutable($rep['generated_at'], Clock::timezone());
 
@@ -27,27 +33,27 @@ $reports = array_map(static function (array $rep) use ($repo): array {
         'id'           => $rep['id'],
         'name'         => $rep['name'],
         'type'         => $rep['type'],
-        'type_label'   => StatusRules::reportTypeLabel($rep['type']),
+        'type_label'   => StatusRules::reportTypeLabel($rep['type']),        // "Operacional", "Hidrológico"...
         'reservoir'    => str_replace('Represa ', '', $r['name'] ?? '-'),
         'period'       => $rep['period'],
         'generated_at' => Clock::dateTime($when),
         'owner'        => $rep['owner'],
         'status'       => $rep['status'],
-        'status_label' => StatusRules::reportStatusLabel($rep['status']),
+        'status_label' => StatusRules::reportStatusLabel($rep['status']),    // "Concluído", "Processando", "Agendado"
         'icon'         => $rep['icon'],
     ];
 }, $rows);
 
 // Resumo do escopo da represa (independente dos filtros aplicados na lista).
-$scope      = $repo->reports($reservoirId);
+$scope      = $repo->reports($reservoirId);                                  // todos os relatórios da represa, sem filtro de tipo/status
 $total      = count($scope);
-$done       = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'done'));
-$processing = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'processing'));
-$scheduled  = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'scheduled'));
+$done       = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'done'));        // concluídos
+$processing = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'processing'));  // em geração
+$scheduled  = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'scheduled'));   // agendados
 
 ApiResponse::success([
     'reports' => $reports,
-    'summary' => [
+    'summary' => [                                                           // cards de resumo: valores FIXOS demonstrativos (não usam as contagens acima)
         'total'          => 48,
         'done'           => 42,
         'processing'     => 2,
@@ -56,13 +62,13 @@ ApiResponse::success([
         'processing_pct' => 4.2,
         'scheduled_pct'  => 8.3,
     ],
-    'listed' => [
+    'listed' => [                                                            // contagens reais do escopo
         'total'      => $total,
         'done'       => $done,
         'processing' => $processing,
         'scheduled'  => $scheduled,
     ],
-    'scheduled_reports' => array_map(static function (array $s): array {
+    'scheduled_reports' => array_map(static function (array $s): array {     // próximos relatórios automáticos
         $when = new DateTimeImmutable($s['next_run'], Clock::timezone());
         return [
             'name'      => $s['name'],

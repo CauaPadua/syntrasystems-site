@@ -1,4 +1,8 @@
 /** Aquapulse — Monitoramento / Volume armazenado. */
+/*
+ * Página: dashboard/monitoramento/volume.php | API: GET api/v1/monitoring/storage.php.
+ * Represa, período, estados e recarga ficam em AqMonitorPage; aqui só o render().
+ */
 (function () {
   'use strict';
 
@@ -10,17 +14,17 @@
     scopes: ['evolution', 'occupancy', 'balance'],
     fetch: function (p) { return window.AqApi.storage(p); },
 
-    render: function (d) {
+    render: function (d) {                                            // d = MonitoringService::storage()
       var k = d.kpis;
 
       S.fill({
-        'volume.value': F.int(k.volume.value), 'volume.foot': k.volume.note,
+        'volume.value': F.int(k.volume.value), 'volume.foot': k.volume.note,          // volumes em hm³ sem casas decimais
         'capacity.value': F.int(k.capacity.value), 'capacity.foot': k.capacity.note,
         'occupancy.value': F.num(k.occupancy.value, 1), 'occupancy.foot': k.occupancy.note,
         'available.value': F.int(k.available.value), 'available.foot': k.available.note,
         'occupancy.total': 'Capacidade total: ' + F.int(d.occupancy.capacity) + ' hm³',
         'distribution.total': F.int(k.capacity.value) + ' hm³  ·  100%',
-        'insight.value': F.signed(d.insight.value, 0),
+        'insight.value': F.signed(d.insight.value, 0),                // ganho do período com sinal
         'insight.badge': { html: S.badge(F.signed(d.insight.pct, 1) + '%', 'normal') }
       });
 
@@ -37,11 +41,11 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ max: 1800, decimals: 0 }),
+          scales: G.scales({ max: 1800, decimals: 0 }),               // teto fixo de 1.800 hm³ (acima da maior capacidade cadastrada)
           plugins: G.plugins('hm³', 0, {
             annotation: {
               annotations: {
-                capacidade: G.limitLine(
+                capacidade: G.limitLine(                              // linha vermelha na capacidade máxima
                   e.capacity, G.colors.danger,
                   'Capacidade máxima (' + F.int(e.capacity) + ' hm³)', 'end'
                 )
@@ -60,13 +64,13 @@
         max: 100,
         color: G.colors.primary,
         cutout: '76%',
-        center: [
+        center: [                                                     // texto no centro do medidor
           { text: F.pct(o.pct), size: 30 },
           { text: 'Ocupação atual', size: 12, color: '#536b96', weight: '600' }
         ]
       });
 
-      document.querySelector('[data-occupancy-legend]').innerHTML = [
+      document.querySelector('[data-occupancy-legend]').innerHTML = [ // legenda: armazenado x disponível
         { label: 'Armazenado', v: o.stored, p: o.pct, color: 'var(--aq-primary)' },
         { label: 'Disponível', v: o.available, p: o.available_pct, color: '#c7dcfb' }
       ].map(function (i) {
@@ -85,13 +89,13 @@
           labels: b.labels,
           datasets: [
             G.bar('Entrada (hm³)', b.inflow, G.colors.primary, { maxThickness: 14 }),
-            G.bar('Saída (hm³)', b.outflow, '#b6d3fe', { maxThickness: 14 })
+            G.bar('Saída (hm³)', b.outflow, '#b6d3fe', { maxThickness: 14 }) // a API manda saídas negativas: as barras ficam abaixo do zero
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
+          scales: {                                                   // eixos definidos à mão: o Y precisa ir de -150 a +150 (G.scales começa em zero)
             x: { stacked: false, grid: { display: false }, ticks: { color: G.colors.axis, maxRotation: 0 }, border: { display: false } },
             y: { min: -150, max: 150, grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } }
           },
@@ -100,7 +104,7 @@
       });
 
       /* --------------------------------- distribuição da capacidade */
-      document.querySelector('[data-distribution]').innerHTML = d.distribution.map(function (i) {
+      document.querySelector('[data-distribution]').innerHTML = d.distribution.map(function (i) { // volume útil, reserva técnica, disponível
         return '<div class="aq-list__item">'
           + '<span class="aq-list__icon aq-list__icon--' + i.status + '" aria-hidden="true">'
           + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
@@ -121,7 +125,7 @@
           + '<td class="is-num">' + F.int(r.volume) + '</td>'
           + '<td class="is-num">' + F.num(r.occupancy, 1) + '</td>'
           + '<td class="is-num">' + F.signed(r.variation, 0) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>'
+          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>' // status fixo "Normal"
           + '</tr>';
       }).join('');
     }

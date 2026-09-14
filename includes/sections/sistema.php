@@ -16,10 +16,10 @@
  */
 
 /** @var array<int, array{arquivo:string, alt:string}> */
-$aq_sistema_telas = [
+$aq_sistema_telas = [                                                     // uma entrada por captura de tela, na ordem de exibição
     [
-        'arquivo' => '01-visao-geral.webp',
-        'alt'     => 'Visão geral do Aquapulse com indicadores, comparativo entre represas e situação geral.',
+        'arquivo' => '01-visao-geral.webp',                               // arquivo em assets/images/sistema/
+        'alt'     => 'Visão geral do Aquapulse com indicadores, comparativo entre represas e situação geral.', // descrição para leitores de tela
     ],
     [
         'arquivo' => '02-nivel-reservatorio.webp',
@@ -39,10 +39,10 @@ $aq_sistema_telas = [
     ],
 ];
 
-$aq_sistema_total = count($aq_sistema_telas);
+$aq_sistema_total = count($aq_sistema_telas);                             // total de telas, usado no contador "01 / 05"
 ?>
 <section class="aq-system" id="sistema" aria-labelledby="sistema-titulo">
-  <div class="container aq-system__inner">
+  <div class="container aq-system__inner"> <?php /* grade de duas colunas: texto (32%) e carrossel (68%) */ ?>
 
     <div class="aq-system__texto">
 
@@ -59,7 +59,7 @@ $aq_sistema_total = count($aq_sistema_telas);
       </p>
 
       <ul class="aq-system__beneficios">
-        <?php foreach (AQ_SYSTEM_POINTS as $point): ?>
+        <?php foreach (AQ_SYSTEM_POINTS as $point): // os três benefícios vêm de includes/config.php ?>
           <li class="aq-system__beneficio">
             <span class="aq-system__icone" aria-hidden="true"><?php aq_the_icon($point['icon']); ?></span>
             <div class="aq-system__beneficio-corpo">
@@ -73,8 +73,10 @@ $aq_sistema_total = count($aq_sistema_telas);
     </div>
 
     <?php /*
-Carrossel das capturas. A primeira já vem marcada como `is-base` no HTML,      então ela aparece mesmo sem JavaScript; as outras ficam recortadas.
+      Carrossel das capturas. A primeira já vem marcada como `is-base` no HTML,
+      então ela aparece mesmo sem JavaScript; as outras ficam recortadas.
     */ ?>
+    <?php /* data-intervalo (ms entre trocas) e data-transicao (ms da animação) são lidos por sistema-carrossel.js */ ?>
     <div class="aq-system__carrossel"
          data-sistema-carrossel
          data-intervalo="3000"
@@ -84,16 +86,18 @@ Carrossel das capturas. A primeira já vem marcada como `is-base` no HTML,      
          aria-label="Telas do sistema Aquapulse">
 
       <figure class="aq-system__quadro">
-        <div class="aq-system__palco">
-          <?php foreach ($aq_sistema_telas as $i => $tela): ?>
+        <div class="aq-system__palco"> <?php /* área 2:1 onde as capturas ficam empilhadas */ ?>
+          <?php foreach ($aq_sistema_telas as $i => $tela): // $i = posição da tela (0 a 4) ?>
             <?php /*
               `is-base` marca a captura que preenche o quadro. A que entra ganha
               `is-entrando` e é revelada por cima, da direita para a esquerda,
               sem que a anterior saia antes da hora.
             */ ?>
+            <?php /* só a primeira fica visível a leitores de tela; as outras recebem aria-hidden */ ?>
             <div class="aq-system__tela<?php echo $i === 0 ? ' is-base' : ''; ?>"
                  data-sistema-tela="<?php echo (int) $i; ?>"
                  <?php echo $i === 0 ? '' : 'aria-hidden="true"'; ?>>
+              <?php /* loading="lazy": a seção fica abaixo da primeira tela, então as imagens só baixam quando necessário */ ?>
               <img class="aq-system__imagem"
                    src="<?php aq_out(aq_asset('images/sistema/' . $tela['arquivo'])); ?>"
                    width="3840" height="1920"
@@ -106,7 +110,7 @@ Carrossel das capturas. A primeira já vem marcada como `is-base` no HTML,      
         <figcaption class="aq-system__rodape">
           <span class="aq-system__legenda">Prévia ilustrativa da interface do Aquapulse.</span>
           <span class="aq-system__contador">
-            <span data-sistema-atual>01</span> / <?php echo sprintf('%02d', $aq_sistema_total); ?>
+            <span data-sistema-atual>01</span> / <?php echo sprintf('%02d', $aq_sistema_total); // %02d = número com 2 dígitos ("05") ?>
           </span>
         </figcaption>
       </figure>

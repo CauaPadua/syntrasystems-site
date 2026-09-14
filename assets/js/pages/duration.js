@@ -1,4 +1,8 @@
 /** Aquapulse — Monitoramento / Previsão de duração da água. */
+/*
+ * Página: dashboard/monitoramento/duracao.php | API: GET api/v1/monitoring/duration.php.
+ * Usa AqMonitorPage com o seletor "filtro-horizonte" enviado como ?horizon=.
+ */
 (function () {
   'use strict';
 
@@ -6,7 +10,7 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
-  var SCEN_ICONS = {
+  var SCEN_ICONS = {                                                  // ícones dos cenários e fatores (os nomes vêm da API: leaf, waves...)
     leaf: '<path d="M20 4c0 9-5.2 13.5-11 13.5A5 5 0 0 1 4 12.5C4 6.8 9.5 4 20 4Z"/><path d="M4.5 20C7 15 11 11.5 16 9.5"/>',
     waves: '<path d="M2 7.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/><path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/>',
     'chart-up': '<path d="M3 21h18"/><path d="M11 21V9"/><path d="M16 21v-9"/><path d="M14 4h6v6"/><path d="M20 4l-7.5 7.5"/>',
@@ -14,6 +18,7 @@
     'cloud-rain': '<path d="M6.5 15.5a4 4 0 0 1 .6-8 5.5 5.5 0 0 1 10.5 1.6 3.5 3.5 0 0 1-.6 6.4"/><path d="M8.5 18v2.5"/><path d="M12 18.5v2.5"/>'
   };
 
+  /** Monta o <svg> de um ícone; tamanho padrão de 20 px. */
   function icon(name, size) {
     return '<svg class="aq-icon" style="width:' + (size || 20) + 'px;height:' + (size || 20) + 'px" viewBox="0 0 24 24"'
       + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
@@ -21,12 +26,12 @@
   }
 
   window.AqMonitorPage({
-    periodId: 'filtro-horizonte',
-    periodParam: 'horizon',
+    periodId: 'filtro-horizonte',                                     // o seletor desta tela tem outro id...
+    periodParam: 'horizon',                                           // ...e é enviado como ?horizon= (e não salvo como período do contexto)
     scopes: ['projection', 'estimate'],
     fetch: function (p) { return window.AqApi.duration(p); },
 
-    render: function (d) {
+    render: function (d) {                                            // d = DurationForecastService::build()
       var k = d.kpis;
 
       S.fill({
@@ -38,7 +43,7 @@
         'estimate.badge': { html: S.badge(d.estimate.badge, 'normal') },
         'estimate.note': d.estimate.note,
         'insight.text': d.insight.text,
-        'insight.gain': F.signed(d.insight.gain, 0)
+        'insight.gain': F.signed(d.insight.gain, 0)                   // "+12"
       });
 
       /* ------------------- projeção com capacidade e reserva técnica */
@@ -49,7 +54,7 @@
         type: 'line',
         data: {
           labels: p.labels,
-          datasets: [
+          datasets: [                                                 // uma linha por cenário de consumo
             G.line('Consumo atual', p.current, G.colors.primary, { fillCtx: ctx, alpha: 0.13, points: false }),
             G.line('Consumo elevado (+20%)', p.high, G.colors.warning, { dashed: true, points: false, width: 1.9 }),
             G.line('Economia de 10%', p.saving, G.colors.success, { dashed: true, points: false, width: 1.9 })
@@ -63,7 +68,7 @@
             annotation: {
               annotations: {
                 capacidade: G.limitLine(p.capacity, G.colors.danger, 'Capacidade máxima (' + F.int(p.capacity) + ' hm³)', 'end'),
-                reserva: G.limitLine(p.reserve, G.colors.warning, 'Reserva técnica (' + F.int(p.reserve) + ' hm³)', 'end', true)
+                reserva: G.limitLine(p.reserve, G.colors.warning, 'Reserva técnica (' + F.int(p.reserve) + ' hm³)', 'end', true) // volume mínimo de segurança; rótulo abaixo da linha
               }
             }
           })
@@ -75,7 +80,7 @@
       G.gauge('medidor-duracao', {
         value: d.estimate.days,
         min: 0,
-        max: d.estimate.max_days,
+        max: d.estimate.max_days,                                     // escala de 0 a 120 dias
         color: G.colors.primary,
         cutout: '76%',
         center: [
@@ -85,9 +90,9 @@
       });
 
       /* --------------------------------------------------- cenários */
-      document.querySelector('[data-scenarios]').innerHTML = d.scenarios.map(function (s) {
+      document.querySelector('[data-scenarios]').innerHTML = d.scenarios.map(function (s) { // um card por cenário, direto na grade (display:contents)
         var tone = s.status === 'attention' ? 'warning' : (s.status === 'normal' ? 'success' : 'primary');
-        var isBase = s.key === 'current';
+        var isBase = s.key === 'current';                             // o cenário atual recebe borda azul de destaque
         return '<article class="aq-card" style="text-align:center;'
           + (isBase ? 'border-color:var(--aq-primary);box-shadow:0 0 0 1px var(--aq-primary) inset' : '') + '">'
           + '<div class="aq-card__title" style="justify-content:center;font-size:.95rem">' + S.esc(s.label)
@@ -107,7 +112,7 @@
         return '<div class="aq-list__item">'
           + '<span style="color:var(--aq-primary)" aria-hidden="true">' + icon(f.icon, 20) + '</span>'
           + '<div class="aq-list__body"><p class="aq-list__meta" style="margin:0">' + S.esc(f.label) + '</p></div>'
-          + '<div class="aq-list__side"><strong style="color:var(--aq-text)">' + S.esc(f.value) + '</strong></div></div>';
+          + '<div class="aq-list__side"><strong style="color:var(--aq-text)">' + S.esc(f.value) + '</strong></div></div>'; // o valor já vem formatado da API ("18,2 hm³/dia")
       }).join('');
 
       /* ------------------------------------ histórico das estimativas */
@@ -115,7 +120,7 @@
         return '<tr>'
           + '<td class="is-nowrap">' + S.esc(h.date) + '</td>'
           + '<td class="is-num">' + F.int(h.estimate) + '</td>'
-          + '<td class="is-num">' + S.esc(h.variation) + '</td>'
+          + '<td class="is-num">' + S.esc(h.variation) + '</td>'      // texto pronto: "+3" ou "—"
           + '<td>' + S.esc(h.scenario) + '</td>'
           + '<td class="is-num"><span class="aq-status-text" style="justify-content:flex-end">'
           + '<span class="aq-dot aq-dot--normal"></span>' + h.confidence + '%</span></td>'

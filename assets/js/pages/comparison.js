@@ -1,4 +1,9 @@
 /** Aquapulse — Monitoramento / Comparativo de vazão. */
+/*
+ * Página: dashboard/monitoramento/comparativo.php | API: GET api/v1/monitoring/flow-comparison.php.
+ * Esta tela não tem seletor de período comum: envia os dois períodos
+ * escolhidos (current e previous) através de extraParams.
+ */
 (function () {
   'use strict';
 
@@ -6,10 +11,10 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
-  var selCurrent = document.getElementById('filtro-atual');
-  var selPrevious = document.getElementById('filtro-anterior');
+  var selCurrent = document.getElementById('filtro-atual');           // período atual
+  var selPrevious = document.getElementById('filtro-anterior');       // período de comparação
 
-  var ICONS = {
+  var ICONS = {                                                       // ícones dos itens do resumo
     best: '<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5.5A2.5 2.5 0 0 0 8 10.5"/><path d="M16 6h2.5A2.5 2.5 0 0 1 16 10.5"/><path d="M10 20h4"/><path d="M12 13v7"/>',
     worst: '<circle cx="12" cy="12" r="8.5"/><path d="M12 16V8"/><path d="m8.5 12.5 3.5 3.5 3.5-3.5"/>',
     avg: '<path d="M2 7.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/><path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/>',
@@ -22,7 +27,7 @@
   }
 
   var page = window.AqMonitorPage({
-    periodId: null,
+    periodId: null,                                                   // sem seletor de período padrão
     scopes: ['chart', 'diff', 'inout'],
 
     // os dois períodos são parâmetros próprios desta tela
@@ -32,7 +37,7 @@
 
     fetch: function (p) { return window.AqApi.comparison(p); },
 
-    render: function (d) {
+    render: function (d) {                                            // d = MonitoringService::flowComparison()
       var k = d.kpis;
 
       S.fill({
@@ -43,7 +48,7 @@
         'insight.text': d.insight.text
       });
 
-      ['variation', 'max_diff'].forEach(function (id) {
+      ['variation', 'max_diff'].forEach(function (id) {               // cor dos dois KPIs com sinal: verde se positivo, âmbar se negativo
         document.querySelectorAll('[data-kpi="' + id + '"] .aq-kpi__value').forEach(function (el) {
           el.classList.toggle('aq-kpi__value--success', k[id].positive);
           el.classList.toggle('aq-kpi__value--warning', !k[id].positive);
@@ -65,15 +70,15 @@
           responsive: true,
           maintainAspectRatio: false,
           layout: { padding: { top: 24, bottom: 14 } },
-          interaction: { mode: 'index', intersect: false },
+          interaction: { mode: 'index', intersect: false },           // tooltip mostra os dois períodos do mesmo dia
           scales: G.scales({ max: 80, decimals: 0 }),
           plugins: G.plugins('m³/s', 1)
         },
-        plugins: [G.valueLabels({ datasets: [0], decimals: 1, color: '#0b5bea', offset: 10 })]
+        plugins: [G.valueLabels({ datasets: [0], decimals: 1, color: '#0b5bea', offset: 10 })] // rótulos só na série atual
       });
       G.describe('grafico-comparativo', c.current, 'm³/s', 1);
 
-      document.querySelector('[data-legend-periods]').innerHTML =
+      document.querySelector('[data-legend-periods]').innerHTML =     // legenda com os nomes reais dos períodos escolhidos
         '<div class="aq-legend">'
         + '<span class="aq-legend__item"><span class="aq-legend__key" style="background:#0b5bea"></span>'
         + 'Período atual (' + S.esc(d.periods.current) + ')</span>'
@@ -86,27 +91,27 @@
         type: 'bar',
         data: {
           labels: df.labels,
-          datasets: [{
+          datasets: [{                                                // dataset montado à mão: cada barra tem a própria cor
             label: 'Diferença',
             data: df.values,
-            backgroundColor: df.values.map(function (v) { return v >= 0 ? G.colors.success : G.colors.warning; }),
+            backgroundColor: df.values.map(function (v) { return v >= 0 ? G.colors.success : G.colors.warning; }), // positiva verde, negativa âmbar
             borderRadius: 4,
             borderSkipped: false,
             maxBarThickness: 16
           }]
         },
         options: {
-          indexAxis: 'y',
+          indexAxis: 'y',                                             // inverte os eixos: barras deitadas (dias no eixo vertical)
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { min: -4, max: 12, grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } },
+            x: { min: -4, max: 12, grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } }, // escala fixa de -4 a +12 m³/s
             y: { grid: { display: false }, border: { display: false }, ticks: { color: G.colors.axis } }
           },
           plugins: G.plugins('m³/s', 1)
         },
         plugins: [G.valueLabels({
-          horizontal: true, signed: true, decimals: 1, offset: 7,
+          horizontal: true, signed: true, decimals: 1, offset: 7,     // valor com sinal na ponta de cada barra
           color: function (v) { return v >= 0 ? G.colors.success : G.colors.warning; }
         })]
       });
@@ -132,7 +137,7 @@
 
       /* ---------------------------------------------------- resumo */
       var sm = d.summary;
-      document.querySelector('[data-summary]').innerHTML = [
+      document.querySelector('[data-summary]').innerHTML = [           // quatro destaques: melhor dia, menor vazão, média e tendência
         { ic: 'best', tone: 'success', label: sm.best.label, right: '<strong>' + S.esc(sm.best.day) + '</strong><br>' + F.unit(sm.best.value, sm.best.unit) },
         { ic: 'worst', tone: 'warning', label: sm.worst.label, right: '<strong>' + S.esc(sm.worst.day) + '</strong><br>' + F.unit(sm.worst.value, sm.worst.unit) },
         { ic: 'avg', tone: 'info', label: sm.average.label, right: '<strong>' + F.unit(sm.average.current, sm.average.unit) + '</strong>  ' + F.unit(sm.average.previous, sm.average.unit) + '<br><span style="font-size:.76rem">(atual)  (anterior)</span>' },
@@ -145,7 +150,7 @@
       }).join('');
 
       /* -------------------------------------------- comparativo diário */
-      var SETA = {
+      var SETA = {                                                    // setas SVG por tendência
         up:   '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
         down: '<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>',
         flat: '<path d="M5 12h14"/>'
@@ -154,7 +159,7 @@
       document.querySelector('[data-rows]').innerHTML = d.rows.map(function (r) {
         var flat = r.status === 'flat' || r.diff === 0;
         var chave = flat ? 'flat' : (r.status === 'up' ? 'up' : 'down');
-        var rotulo = flat ? 'Estável' : (chave === 'up' ? 'Aumento' : 'Redução');
+        var rotulo = flat ? 'Estável' : (chave === 'up' ? 'Aumento' : 'Redução'); // texto para leitores de tela (a seta é só visual)
         return '<tr>'
           + '<td class="is-nowrap">' + S.esc(r.day) + '</td>'
           + '<td class="is-num">' + F.num(r.current, 1) + '</td>'
@@ -172,7 +177,7 @@
 
   /* ---------------------- períodos: recusa comparação inválida (iguais) */
   function onPeriodChange() {
-    if (selCurrent.value === selPrevious.value) {
+    if (selCurrent.value === selPrevious.value) {                     // validação no navegador, antes de gastar uma requisição (a API também valida)
       S.notify(
         'Períodos iguais',
         'Selecione períodos diferentes para comparar. Ajuste um dos seletores.',
@@ -183,7 +188,7 @@
       });
       return;
     }
-    page.reload();
+    page.reload();                                                    // períodos válidos: busca os dados de novo
   }
 
   selCurrent.addEventListener('change', onPeriodChange);

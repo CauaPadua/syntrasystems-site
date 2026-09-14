@@ -8,28 +8,30 @@
    Composição: fotografia de largura total com a barragem livre à esquerda e
    uma coluna de texto sobreposta à direita. Só a imagem e o véu ficam
    posicionados; o conteúdo segue o fluxo normal do documento.
+
+   Camadas (de trás para frente): foto (z-index -2) -> véu (-1) -> conteúdo.
    ========================================================================== */
 
-.aq-benefits {
-  position: relative;
-  isolation: isolate;
+.aq-benefits {                                                     /* a <section> inteira */
+  position: relative;                                              /* referência para a foto e o véu posicionados em absolute */
+  isolation: isolate;                                              /* cria um contexto de empilhamento próprio: os z-index negativos ficam presos dentro da seção */
   overflow: hidden;
   /* a altura vem do conteúdo: nada de 100vh nem recorte de texto */
-  padding-block: clamp(52px, 6.8vw, 116px);
+  padding-block: clamp(52px, 6.8vw, 116px);                        /* padding-block = espaçamento em cima e embaixo */
   background: #0a2c4e; /* cor de base enquanto a fotografia carrega */
   color: #f5fafd;
-  scroll-margin-top: calc(var(--header-h, 110px) + 16px);
+  scroll-margin-top: calc(var(--header-h, 110px) + 16px);          /* compensa o cabeçalho fixo ao rolar até #vantagens */
 }
 
 /* fotografia decorativa, atrás de tudo */
 .aq-benefits__foto {
   position: absolute;
-  inset: 0;
+  inset: 0;                                                        /* ocupa a seção inteira */
   z-index: -2;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 50%;
+  object-fit: cover;                                               /* preenche toda a área, cortando as sobras sem distorcer a imagem */
+  object-position: 50% 50%;                                        /* ponto da foto mantido no centro ao cortar */
 }
 
 /*
@@ -40,11 +42,11 @@
 .aq-benefits__veu {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: linear-gradient(90deg,
-    rgba(6, 34, 62, 0) 38%,
+  z-index: -1;                                                     /* entre a foto e o texto */
+  background: linear-gradient(90deg,                               /* degradê da esquerda (90deg) para a direita */
+    rgba(6, 34, 62, 0) 38%,                                        /* transparente até 38% da largura */
     rgba(6, 34, 62, .30) 56%,
-    rgba(6, 34, 62, .46) 100%);
+    rgba(6, 34, 62, .46) 100%);                                    /* 46% de opacidade na borda direita */
 }
 
 /* ------------------------------------------------------- coluna de texto */
@@ -54,12 +56,12 @@
    seguras." em uma linha só. O limite em pixels evita linhas longas demais.
 */
 .aq-benefits__conteudo {
-  width: min(41%, 720px);
-  margin-left: 52%;
+  width: min(41%, 720px);                                          /* min() escolhe o menor valor: 41% da seção, mas nunca mais que 720px */
+  margin-left: 52%;                                                /* empurra a coluna para a metade direita */
   margin-right: auto;
 }
 
-.aq-benefits__id {
+.aq-benefits__id {                                                 /* "AQUAPULSE / VANTAGENS" */
   margin: 0;
   /* a referência sugere #8ADFF1; clareado para o texto pequeno passar de 4,5:1 */
   color: #b6ecf9;
@@ -68,9 +70,9 @@
   letter-spacing: .19em;
   text-transform: uppercase;
 }
-.aq-benefits__id span { margin-inline: .35em; }
+.aq-benefits__id span { margin-inline: .35em; }                    /* espaço dos dois lados da barra "/" */
 
-.aq-benefits__titulo {
+.aq-benefits__titulo {                                             /* h2 da seção */
   margin: clamp(14px, 1.4vw, 22px) 0 0;
   color: #f5fafd;
   /* peso médio, como na referência: nada do extra-bold da versão antiga */
@@ -100,9 +102,9 @@
 
 .aq-benefits__item {
   padding-block: clamp(15px, 1.55vw, 24px);
-  border-top: 1px solid rgba(226, 242, 250, .26);
+  border-top: 1px solid rgba(226, 242, 250, .26);                  /* linha fina translúcida acima de cada item */
 }
-.aq-benefits__item:last-child {
+.aq-benefits__item:last-child {                                    /* só o último item ganha também a linha de baixo */
   border-bottom: 1px solid rgba(226, 242, 250, .26);
 }
 
@@ -123,17 +125,17 @@
 }
 
 /* --------------------------------------------------------------- CTA */
-.aq-benefits__acao {
+.aq-benefits__acao {                                               /* bloco com id #solicitar-demonstracao */
   margin-top: clamp(24px, 2.6vw, 42px);
   scroll-margin-top: calc(var(--header-h, 110px) + 16px);
 }
 
-.aq-benefits__cta {
+.aq-benefits__cta {                                                /* botão "Solicitar demonstração" */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  min-height: 54px;
+  gap: 14px;                                                       /* espaço entre texto e seta */
+  min-height: 54px;                                                /* área de toque confortável */
   padding: 14px 30px;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -143,32 +145,32 @@
   font-weight: 700;
   line-height: 1.2;
   cursor: pointer;
-  transition:
+  transition:                                                      /* anima a cor de fundo e o leve afundamento ao clicar */
     background-color var(--dur, .28s) var(--ease, ease),
     transform var(--dur, .28s) var(--ease, ease);
 }
-.aq-benefits__cta:hover { background: #c2f1ff; }
-.aq-benefits__cta:active { transform: translateY(1px); }
+.aq-benefits__cta:hover { background: #c2f1ff; }                   /* mouse sobre o botão: clareia */
+.aq-benefits__cta:active { transform: translateY(1px); }           /* pressionado: desce 1px */
 .aq-benefits__cta .aq-icon {
   width: 19px;
   height: 19px;
   transition: transform var(--dur, .28s) var(--ease, ease);
 }
-.aq-benefits__cta:hover .aq-icon { transform: translateX(4px); }
+.aq-benefits__cta:hover .aq-icon { transform: translateX(4px); }   /* a seta avança 4px no hover */
 
 /* foco visível sobre a fotografia, sem depender só da cor */
-.aq-benefits__cta:focus-visible {
+.aq-benefits__cta:focus-visible {                                  /* :focus-visible = foco vindo do teclado (não aparece no clique do mouse) */
   outline: 3px solid #f5fafd;
   outline-offset: 3px;
 }
 
-.aq-benefits__aviso {
+.aq-benefits__aviso {                                              /* "Canal de contato em preparação" */
   margin: 14px 0 0;
   color: #d9eaf3;
   font-size: .95rem;
   line-height: 1.45;
 }
-.aq-benefits__aviso[hidden] { display: none; }
+.aq-benefits__aviso[hidden] { display: none; }                     /* garante que o atributo hidden esconda, mesmo com display definido acima */
 
 /* --------------------------------------------- larguras intermediárias */
 /*
@@ -191,7 +193,7 @@
 }
 
 @media (max-width: 980px) {
-  .aq-benefits__veu {
+  .aq-benefits__veu {                                              /* véu mais forte: o texto ocupa mais da foto */
     background: linear-gradient(90deg,
       rgba(6, 34, 62, .06) 14%,
       rgba(6, 34, 62, .42) 40%,
@@ -219,14 +221,14 @@
 */
 @media (max-width: 760px) {
   .aq-benefits {
-    padding: 0;
+    padding: 0;                                                    /* o espaçamento passa para o bloco de conteúdo */
   }
 
   /* puxa o recorte para a barragem, que fica na faixa central da fotografia */
   .aq-benefits__foto { object-position: 18% 50%; }
 
   .aq-benefits__veu {
-    background: linear-gradient(180deg,
+    background: linear-gradient(180deg,                            /* degradê de cima (180deg) para baixo */
       rgba(6, 34, 62, .30) 0%,
       rgba(6, 34, 62, .58) 22%,
       rgba(7, 36, 64, .74) 46%,
@@ -237,7 +239,7 @@
     width: auto;
     margin: 0;
     /* faixa superior livre para a fotografia aparecer antes do texto */
-    padding: clamp(180px, 46vw, 260px) 22px clamp(44px, 9vw, 60px);
+    padding: clamp(180px, 46vw, 260px) 22px clamp(44px, 9vw, 60px); /* cima | laterais | baixo */
   }
 
   .aq-benefits__titulo {
@@ -249,13 +251,13 @@
   .aq-benefits__item-texto { font-size: 1rem; }
 
   .aq-benefits__cta {
-    width: 100%;
+    width: 100%;                                                   /* botão ocupa a largura toda no celular */
     padding-inline: 20px;
   }
 }
 
 /* ------------------------------------------------- movimento reduzido */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {                          /* sem animações para quem pediu menos movimento */
   .aq-benefits__cta,
   .aq-benefits__cta .aq-icon { transition: none; }
   .aq-benefits__cta:hover .aq-icon { transform: none; }

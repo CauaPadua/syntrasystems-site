@@ -1,5 +1,10 @@
 <?php
 /** Aquapulse — Monitoramento / Precipitação. */
+/*
+ * Chuva na bacia de UMA represa: medida (24h, 7 dias, mês), distribuição por
+ * estação e previsão de 5 dias. Dados de GET api/v1/monitoring/precipitation.php,
+ * carregados por assets/js/pages/rain.js (com monitor-page.js).
+ */
 
 declare(strict_types=1);
 
@@ -20,7 +25,7 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
   echo aq_kpi(['id' => 'rain_24h', 'label' => 'Precipitação 24h', 'icon' => 'cloud-rain', 'unit' => 'mm', 'tip' => 'Chuva acumulada nas últimas 24 horas na bacia.']);
   echo aq_kpi(['id' => 'rain_7d', 'label' => 'Acumulado em 7 dias', 'icon' => 'cloud-rain', 'unit' => 'mm', 'tip' => 'Soma da chuva registrada nos últimos sete dias.']);
   echo aq_kpi(['id' => 'rain_month', 'label' => 'Acumulado no mês', 'icon' => 'cloud-rain', 'unit' => 'mm', 'tip' => 'Total acumulado no mês corrente.']);
-  echo aq_kpi(['id' => 'intensity', 'label' => 'Intensidade atual', 'icon' => 'gauge', 'tone' => 'warning', 'tip' => 'Classificação da chuva registrada agora.']);
+  echo aq_kpi(['id' => 'intensity', 'label' => 'Intensidade atual', 'icon' => 'gauge', 'tone' => 'warning', 'tip' => 'Classificação da chuva registrada agora.']); // Baixa / Moderada / Alta
   ?>
 </div>
 
@@ -32,7 +37,7 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
         ['label' => 'Acumulado (mm)', 'color' => '#0b5bea'],
     ], true); ?>
     <div data-content="chart" hidden>
-      <?php echo aq_chart(['id' => 'grafico-chuva', 'size' => 'lg', 'desc' => 'Precipitação diária e acumulado do período.']); ?>
+      <?php echo aq_chart(['id' => 'grafico-chuva', 'size' => 'lg', 'desc' => 'Precipitação diária e acumulado do período.']); // gráfico misto: barras (data.chart.daily) + linha (data.chart.accumulated) ?>
     </div>
     <?php echo aq_states('chart'); ?>
   </article>
@@ -41,12 +46,12 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
     <?php echo aq_card_head(['title' => 'Condição atual', 'tip' => 'Situação registrada pela estação meteorológica.']); ?>
     <div data-content="current" hidden style="text-align:center">
       <span style="display:inline-flex;color:var(--aq-text-secondary)" aria-hidden="true">
-        <?php echo aq_icon('cloud-rain', 'aq-weather-icon'); ?>
+        <?php echo aq_icon('cloud-rain', 'aq-weather-icon'); // ícone grande de chuva (classe extra aumenta o tamanho) ?>
       </span>
       <p class="aq-kpi__value" style="justify-content:center;font-size:2.1rem;margin-top:8px">
         <span data-field="current.value">—</span><span class="aq-kpi__unit">mm</span>
       </p>
-      <p style="font-weight:700;color:var(--aq-warning);margin-top:4px" data-field="current.label"></p>
+      <p style="font-weight:700;color:var(--aq-warning);margin-top:4px" data-field="current.label"></p> <?php /* "Chuva moderada" */ ?>
 
       <div class="aq-grid aq-grid--2" style="margin-top:18px">
         <div style="border:1px solid var(--aq-border);border-radius:10px;padding:12px">
@@ -66,8 +71,8 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Distribuição na bacia', 'tip' => 'Chuva medida por região da bacia hidrográfica.']); ?>
-    <div class="aq-list" data-basin></div>
-    <?php echo aq_legend([
+    <div class="aq-list" data-basin></div> <?php /* data.basin: chuva por estação classificada em low/medium/high */ ?>
+    <?php echo aq_legend([                                                // mesmos limites (10 e 20 mm) usados no MonitoringService
         ['label' => 'Baixa (< 10 mm)', 'color' => '#16a34a', 'style' => 'square'],
         ['label' => 'Média (10 – 20 mm)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Alta (> 20 mm)', 'color' => '#f59e0b', 'style' => 'square'],
@@ -76,7 +81,7 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
 
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Previsão para os próximos 5 dias', 'tip' => 'Previsão demonstrativa — será substituída por serviço meteorológico real.']); ?>
-    <div data-forecast style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;text-align:center"></div>
+    <div data-forecast style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;text-align:center"></div> <?php /* 5 colunas iguais, uma por dia (data.forecast) */ ?>
     <?php echo aq_legend([['label' => 'Precipitação prevista (mm)', 'color' => '#0b5bea', 'style' => 'square']]); ?>
   </article>
 
@@ -95,12 +100,12 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
           <th scope="col">Status</th>
         </tr>
       </thead>
-      <tbody data-stations></tbody>
+      <tbody data-stations></tbody> <?php /* data.stations */ ?>
     </table>
     <?php echo aq_table_close(); ?>
   </article>
 </div>
 
-<div data-warning hidden></div>
+<div data-warning hidden></div> <?php /* aviso de chuva intensa: o JS mostra quando data.warning.active é true (15 mm ou mais) */ ?>
 
-<?php aq_page_end(['scripts' => ['pages/rain.js'], 'monitor' => true]);
+<?php aq_page_end(['scripts' => ['pages/rain.js'], 'monitor' => true]); // lógica desta tela

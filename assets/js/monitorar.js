@@ -20,13 +20,15 @@
  * Transição: a fotografia que entra vai para cima da atual e abre o recorte
  * da direita para a esquerda, enquanto assenta de scale(1.025) para 1. A
  * anterior segue preenchendo o painel até o fim, então não há fundo vazio.
+ *
+ * HTML: includes/sections/informacoes.php | CSS: assets/css/monitorar.css
  */
 (function () {
   'use strict';
 
-  var INTERVALO_PADRAO = 3000;
-  var TRANSICAO_PADRAO = 650;
-  var FRACAO_VISIVEL = 0.35;
+  var INTERVALO_PADRAO = 3000;                                        // ms entre trocas, se data-intervalo não for informado
+  var TRANSICAO_PADRAO = 650;                                         // ms da animação de revelação
+  var FRACAO_VISIVEL = 0.35;                                          // o carrossel só roda com pelo menos 35% dele visível na tela
 
   /** matchMedia antigo do Safari usa addListener. */
   function escutarMedia(mq, aoMudar) {
@@ -34,8 +36,12 @@
     else if (typeof mq.addListener === 'function') mq.addListener(aoMudar);
   }
 
+  /**
+   * Inicializa um carrossel.
+   * @param {HTMLElement} raiz elemento com data-monitorar-carrossel
+   */
   function iniciar(raiz) {
-    if (!raiz || raiz.getAttribute('data-monitorar-pronto') === 'true') return;
+    if (!raiz || raiz.getAttribute('data-monitorar-pronto') === 'true') return; // já inicializado: não duplica ouvintes
 
     var slides = Array.prototype.slice.call(raiz.querySelectorAll('[data-monitorar-slide]'));
     if (slides.length < 2) return; // um slide só não é carrossel
@@ -45,31 +51,32 @@
     var botaoProximo = raiz.querySelector('[data-monitorar-proximo]');
     var pontos = Array.prototype.slice.call(raiz.querySelectorAll('[data-monitorar-ponto]'));
 
-    if (!controles || !botaoAnterior || !botaoProximo) return;
+    if (!controles || !botaoAnterior || !botaoProximo) return;        // HTML incompleto: não inicia
 
     raiz.setAttribute('data-monitorar-pronto', 'true');
 
-    var intervalo = parseInt(raiz.getAttribute('data-intervalo'), 10) || INTERVALO_PADRAO;
+    var intervalo = parseInt(raiz.getAttribute('data-intervalo'), 10) || INTERVALO_PADRAO; // parseInt(..., 10) = número em base decimal
     var transicao = parseInt(raiz.getAttribute('data-transicao'), 10) || TRANSICAO_PADRAO;
 
     var mqMovimento = window.matchMedia('(prefers-reduced-motion: reduce)');
-    var mqPonteiro = window.matchMedia('(hover: hover) and (pointer: fine)');
+    var mqPonteiro = window.matchMedia('(hover: hover) and (pointer: fine)'); // dispositivo com mouse (em telas de toque "hover" não existe)
 
-    var indice = 0;
-    var versao = 0;
-    var timerCiclo = null;
-    var timerFim = null;
-    var emTransicao = false;
+    // Estado do carrossel
+    var indice = 0;                                                   // slide atualmente em exibição
+    var versao = 0;                                                   // aumenta a cada pedido de troca; descarta respostas atrasadas
+    var timerCiclo = null;                                            // temporizador da próxima troca automática
+    var timerFim = null;                                              // temporizador do fim da animação
+    var emTransicao = false;                                          // true enquanto uma revelação está acontecendo
     var pendente = null;      // última escolha feita durante uma transição
-    var pausas = Object.create(null);
-    var validos = slides.map(function (_, i) { return i; });
+    var pausas = Object.create(null);                                 // motivos de pausa ativos (objeto sem protótipo: só as chaves que criarmos)
+    var validos = slides.map(function (_, i) { return i; });          // índices dos slides cujas imagens carregaram ([0, 1, 2, 3])
 
     /* ----------------------------------------------------- pausas temporárias */
 
-    function pausar(motivo) { pausas[motivo] = true; agendar(); }
-    function liberar(motivo) { delete pausas[motivo]; agendar(); }
+    function pausar(motivo) { pausas[motivo] = true; agendar(); }     // registra um motivo e reavalia o agendamento (que será cancelado)
+    function liberar(motivo) { delete pausas[motivo]; agendar(); }    // remove o motivo; se não sobrar nenhum, volta a agendar
     function estaPausado() {
-      for (var k in pausas) { if (pausas[k]) return true; }
+      for (var k in pausas) { if (pausas[k]) return true; }           // basta um motivo ativo para ficar pausado
       return false;
     }
 
@@ -93,13 +100,19 @@
 
     /* --------------------------------------------------------- navegação */
 
+    /**
+     * Índice do slide vizinho entre os válidos.
+     * @param {number} de    índice de partida
+     * @param {number} passo +1 (próximo) ou -1 (anterior)
+     */
     function seguinte(de, passo) {
       if (!validos.length) return de;
       var pos = validos.indexOf(de);
       if (pos === -1) return validos[0];
-      return validos[(pos + passo + validos.length) % validos.length];
+      return validos[(pos + passo + validos.length) % validos.length]; // "+ validos.length" evita resto negativo ao voltar do primeiro
     }
 
+    /** Remove um slide cuja imagem falhou do ciclo. */
     function invalidar(i) {
       var pos = validos.indexOf(i);
       if (pos === -1) return;
@@ -121,19 +134,20 @@
        para não depender do carregamento de um elemento recortado.
     */
     function garantirCarregada(img) {
-      return new Promise(function (resolve, reject) {
+      return new Promise(function (resolve, reject) {                 // Promise: resolve quando a imagem existe, reject se falhar
         if (!img) { reject(new Error('sem imagem')); return; }
-        if (img.getAttribute('loading') === 'lazy') img.removeAttribute('loading');
-        if (img.complete) {
-          if (img.naturalWidth > 0) resolve();
+        if (img.getAttribute('loading') === 'lazy') img.removeAttribute('loading'); // força o download imediato
+        if (img.complete) {                                           // já terminou de carregar (com sucesso ou não)
+          if (img.naturalWidth > 0) resolve();                        // largura real > 0 = imagem válida
           else reject(new Error('imagem indisponível'));
           return;
         }
-        img.addEventListener('load', function () { resolve(); }, { once: true });
+        img.addEventListener('load', function () { resolve(); }, { once: true });   // once: o ouvinte se remove sozinho depois de disparar
         img.addEventListener('error', function () { reject(new Error('imagem indisponível')); }, { once: true });
       });
     }
 
+    /** Decodifica a imagem antes de mostrá-la, para a animação não travar no primeiro quadro. */
     function decodificar(img) {
       if (!img || typeof img.decode !== 'function') return Promise.resolve();
       return img.decode().catch(function () { /* decode falhou: o load já bastou */ });
@@ -168,15 +182,15 @@
      * termina. `versao` descarta respostas de carregamento que chegaram tarde.
      */
     function irPara(alvo) {
-      if (typeof alvo !== 'number' || alvo === indice) { agendar(); return; }
+      if (typeof alvo !== 'number' || alvo === indice) { agendar(); return; } // já está nele: só reinicia a contagem
 
-      if (emTransicao) { pendente = alvo; return; }
+      if (emTransicao) { pendente = alvo; return; }                   // guarda para depois da animação atual
 
-      var minha = ++versao;
+      var minha = ++versao;                                           // número deste pedido
       var img = imagemDe(alvo);
 
       garantirCarregada(img).then(function () {
-        if (minha !== versao) return;
+        if (minha !== versao) return;                                 // outro pedido chegou depois: este é descartado
         return decodificar(img).then(function () {
           if (minha !== versao) return;
           revelar(alvo);
@@ -188,6 +202,7 @@
       });
     }
 
+    /** Executa a animação de troca do slide atual para `alvo`. */
     function revelar(alvo) {
       var anterior = slides[indice];
       var novo = slides[alvo];
@@ -204,9 +219,9 @@
       void novo.offsetWidth;               // fixa o estado inicial antes de animar
       novo.classList.add('is-revelada');   // abre da direita para a esquerda
 
-      var espera = mqMovimento.matches ? 0 : transicao;
+      var espera = mqMovimento.matches ? 0 : transicao;               // sem animação: troca imediata
       if (timerFim !== null) window.clearTimeout(timerFim);
-      timerFim = window.setTimeout(function () {
+      timerFim = window.setTimeout(function () {                      // fim da animação
         timerFim = null;
         // troca de papéis num só bloco: o estilo só é recalculado no fim,
         // então não existe quadro intermediário nem piscada
@@ -216,7 +231,7 @@
 
         emTransicao = false;
 
-        if (pendente !== null) {
+        if (pendente !== null) {                                      // houve clique durante a animação: executa agora
           var proximo = pendente;
           pendente = null;
           irPara(proximo);
@@ -226,9 +241,10 @@
 
     /* -------------------------------------------------- movimento reduzido */
 
+    /** Ajusta duração e reprodução automática conforme a preferência de movimento. */
     function aplicarMovimento() {
       if (mqMovimento.matches) {
-        raiz.style.setProperty('--mon-transicao', '0ms');
+        raiz.style.setProperty('--mon-transicao', '0ms');             // variável CSS lida em monitorar.css
         pausas.movimento = true;           // sem reprodução automática
       } else {
         raiz.style.setProperty('--mon-transicao', transicao + 'ms');
@@ -246,7 +262,7 @@
     botaoProximo.addEventListener('click', function () { irPara(seguinte(indice, 1)); });
 
     pontos.forEach(function (ponto, i) {
-      ponto.addEventListener('click', function () { irPara(i); });
+      ponto.addEventListener('click', function () { irPara(i); });   // cada ponto leva direto ao seu slide
     });
 
     // ponteiro e foco nos controles seguram a troca só enquanto durarem
@@ -254,13 +270,13 @@
       controles.addEventListener('mouseenter', function () { pausar('ponteiro'); });
       controles.addEventListener('mouseleave', function () { liberar('ponteiro'); });
     }
-    controles.addEventListener('focusin', function () { pausar('foco'); });
+    controles.addEventListener('focusin', function () { pausar('foco'); }); // focusin/focusout "sobem" dos botões internos até a barra
     controles.addEventListener('focusout', function () {
       // só libera quando o foco realmente saiu da barra de controles
       if (!controles.contains(document.activeElement)) liberar('foco');
     });
 
-    document.addEventListener('visibilitychange', function () {
+    document.addEventListener('visibilitychange', function () {       // trocou de aba ou minimizou
       if (document.hidden) pausar('aba');
       else liberar('aba');
     });
@@ -271,18 +287,18 @@
        reprodução automática não arranca sozinha.
     */
     if ('IntersectionObserver' in window) {
-      pausas.fora = true;
+      pausas.fora = true;                                             // começa pausado até o observador confirmar que está visível
       var observador = new IntersectionObserver(function (entradas) {
         entradas.forEach(function (entrada) {
           if (entrada.isIntersecting && entrada.intersectionRatio >= FRACAO_VISIVEL) liberar('fora');
           else pausar('fora');
         });
-      }, { threshold: [0, FRACAO_VISIVEL, 0.6] });
+      }, { threshold: [0, FRACAO_VISIVEL, 0.6] });                    // pontos de visibilidade em que o navegador avisa
       observador.observe(raiz);
     }
 
     aplicarMovimento();
-    escutarMedia(mqMovimento, aplicarMovimento);
+    escutarMedia(mqMovimento, aplicarMovimento);                      // reage se o usuário mudar a preferência com a página aberta
 
     controles.hidden = false;   // só agora os controles fazem sentido
     marcar(0);
@@ -291,7 +307,7 @@
 
   try {
     var raizes = document.querySelectorAll('[data-monitorar-carrossel]');
-    Array.prototype.forEach.call(raizes, iniciar);
+    Array.prototype.forEach.call(raizes, iniciar);                    // inicializa cada carrossel encontrado (hoje há um)
   } catch (erro) {
     // um erro aqui não pode derrubar o resto da página
     if (window.console && console.error) console.error('[monitorar] falha ao iniciar:', erro);

@@ -10,35 +10,40 @@
    6. Estado autenticado
    7. Rodapé
    8. Responsividade
+
+   Tokens = variáveis CSS (--nome) como --navy-800, --r-md, --dur e --ease,
+   definidas em style.css e lidas aqui com var(--nome).
+   Atributos como [hidden], [aria-invalid] e [data-loading] são ligados e
+   desligados por assets/js/login.js; o CSS só reage a eles.
    ========================================================================= */
 
 /* --------------------------------------------------------- 1. página e cartão */
-.login-page {
-  --login-bg: #e9f1fb;
+.login-page {                                                      /* classe do <body> de login.php */
+  --login-bg: #e9f1fb;                                             /* variáveis locais: valem só dentro da página de login */
   --login-panel: #fbfdff;
   --login-field-border: #e4ebf7;
   --login-placeholder: #97a5c0;
-  --login-cta: #0f47c4;
+  --login-cta: #0f47c4;                                            /* cor do botão principal (CTA = chamada para ação) */
   --login-cta-hover: #0b3aa6;
-  --login-pad: clamp(14px, 2.4vw, 46px);
+  --login-pad: clamp(14px, 2.4vw, 46px);                           /* margem em volta do cartão; reduzida no celular */
 
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100vh;                                               /* reserva para navegadores sem a unidade dvh */
+  min-height: 100dvh;                                              /* dvh = altura visível real (desconta as barras do navegador no celular) */
   background: var(--login-bg);
 }
 
-.login-page__deco {
-  position: fixed;
-  right: -140px;
+.login-page__deco {                                                /* ilustração decorativa no canto inferior direito */
+  position: fixed;                                                 /* presa à janela, não rola com a página */
+  right: -140px;                                                   /* valores negativos: parte da imagem fica fora da tela */
   bottom: -60px;
   width: min(620px, 46vw);
   opacity: .5;
-  z-index: 0;
-  pointer-events: none;
+  z-index: 0;                                                      /* atrás do conteúdo (.login usa z-index 1) */
+  pointer-events: none;                                            /* cliques atravessam a imagem */
   user-select: none;
 }
 
-.login {
+.login {                                                           /* <main>: cartão em cima, rodapé embaixo */
   position: relative;
   z-index: 1;
   display: flex;
@@ -48,25 +53,25 @@
   padding: var(--login-pad);
 }
 
-.login__card {
-  flex: 1 1 auto;
+.login__card {                                                     /* cartão com os dois painéis lado a lado */
+  flex: 1 1 auto;                                                  /* cresce para ocupar a altura que sobra acima do rodapé */
   display: grid;
-  grid-template-columns: 53fr 47fr;
+  grid-template-columns: 53fr 47fr;                                /* 53% marca | 47% formulário */
   min-height: 620px;
   border: 1px solid rgba(255, 255, 255, .85);
   border-radius: var(--r-xl);
   background: #fff;
   box-shadow: 0 26px 70px rgba(11, 35, 80, .10);
-  overflow: hidden;
+  overflow: hidden;                                                /* recorta a foto nos cantos arredondados */
 }
 
 /* ---------------------------------------------------------- 2. painel de marca */
 .login__brand {
-  position: relative;
-  isolation: isolate;
+  position: relative;                                              /* referência para foto, malha e véu posicionados em absolute */
+  isolation: isolate;                                              /* contexto de empilhamento próprio para os z-index internos */
   overflow: hidden;
   display: flex;
-  flex-direction: column;
+  flex-direction: column;                                          /* logo e título em cima; o selo desce com margin-top: auto */
   padding: clamp(26px, 3.1vw, 56px);
   background: linear-gradient(180deg, #f4f9fe 0%, #e2eefb 100%);
 }
@@ -75,21 +80,21 @@
    natural — como na referência — e não um preenchimento do painel inteiro.
    A máscara dissolve a borda superior no fundo azul-claro. */
 .login__photo,
-.login__overlay {
+.login__overlay {                                                  /* regras comuns às duas imagens sobrepostas */
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 0;                                                       /* presas à base do painel */
   z-index: 0;
   width: 100%;
   pointer-events: none;
 }
 .login__photo {
   height: 68%;
-  object-fit: cover;
-  object-position: 50% 44%;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 20%);
+  object-fit: cover;                                               /* preenche a faixa cortando as sobras, sem distorcer */
+  object-position: 50% 44%;                                        /* ponto da foto mantido visível ao cortar */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%); /* prefixo para Safari/Chrome antigos */
+  mask-image: linear-gradient(180deg, transparent 0%, #000 20%);   /* máscara: transparente no topo, opaca a partir de 20% */
 }
 /* Malha tecnologica: mesma faixa da fotografia, recortada mais acima para que
    os nos com icones fiquem sobre a agua, como na referencia. */
@@ -97,7 +102,7 @@
   height: 74%;
   object-fit: cover;
   object-position: 50% 26%;
-  opacity: .72;
+  opacity: .72;                                                    /* deixa a foto aparecer através da malha */
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%);
   mask-image: linear-gradient(180deg, transparent 0%, #000 20%);
 }
@@ -105,26 +110,26 @@
 /* Reforço muito leve no topo, apenas para garantir a leitura do texto. */
 .login__wash {
   position: absolute;
-  inset: -1px;
-  z-index: 1;
+  inset: -1px;                                                     /* 1px além das bordas evita frestas por arredondamento */
+  z-index: 1;                                                      /* acima das imagens, abaixo do texto (z-index 2) */
   background:
     linear-gradient(180deg,
       rgba(244, 249, 254, .92) 0%,
       rgba(240, 247, 254, .55) 26%,
-      rgba(236, 245, 253, 0) 44%);
+      rgba(236, 245, 253, 0) 44%);                                 /* some por completo a partir de 44% da altura */
 }
 
 .login__brand-top,
-.login__assurance { position: relative; z-index: 2; }
+.login__assurance { position: relative; z-index: 2; }              /* textos por cima da foto e do véu */
 
 .login__logo {
   width: clamp(200px, 15vw, 258px);
-  height: auto;
+  height: auto;                                                    /* mantém a proporção da imagem */
 }
 
 .login__title {
   margin-top: clamp(46px, 6vw, 96px);
-  font-size: clamp(1.9rem, 1.1rem + 1.9vw, 2.75rem);
+  font-size: clamp(1.9rem, 1.1rem + 1.9vw, 2.75rem);               /* valor ideal combina rem fixo + parte proporcional à tela */
   line-height: 1.16;
   letter-spacing: -.025em;
   color: var(--navy-800);
@@ -137,51 +142,51 @@
   color: #3f5478;
 }
 
-.login__assurance {
+.login__assurance {                                                /* selo de segurança translúcido na base do painel */
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: auto;
-  width: fit-content;
+  margin-top: auto;                                                /* em coluna flex, empurra o selo para o fim do painel */
+  width: fit-content;                                              /* largura do próprio conteúdo */
   max-width: 100%;
   padding: 18px 26px 18px 20px;
   border: 1px solid rgba(255, 255, 255, .8);
   border-radius: var(--r-md);
   background: rgba(255, 255, 255, .8);
-  backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);                      /* desfoca a foto atrás do selo (efeito vidro fosco) */
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   box-shadow: 0 10px 28px rgba(11, 35, 80, .10);
   font-size: .93rem;
   line-height: 1.55;
   color: var(--navy-700);
 }
-.login__assurance-icon { color: var(--blue-600); flex: none; }
+.login__assurance-icon { color: var(--blue-600); flex: none; }     /* flex: none = o ícone nunca encolhe */
 .login__assurance-icon .aq-icon { width: 40px; height: 40px; stroke-width: 1.5; }
 
 /* ------------------------------------------------------ 3. painel do formulário */
 .login__panel {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center;                                         /* centraliza a caixa nos dois eixos */
   padding: clamp(22px, 2.6vw, 48px);
   background: linear-gradient(180deg, #ffffff 0%, var(--login-panel) 100%);
 }
 
-.login-box {
+.login-box {                                                       /* caixa do formulário (e da visão "sessão ativa") */
   width: min(100%, 556px);
-  padding: clamp(26px, 2.4vw, 42px) clamp(22px, 2.4vw, 44px) clamp(24px, 2.2vw, 36px);
+  padding: clamp(26px, 2.4vw, 42px) clamp(22px, 2.4vw, 44px) clamp(24px, 2.2vw, 36px); /* cima | laterais | baixo */
   border: 1px solid #edf2fa;
   border-radius: var(--r-lg);
   background: #fff;
   box-shadow: 0 12px 36px rgba(11, 35, 80, .05);
   text-align: center;
 }
-.login-box[hidden] { display: none; }
+.login-box[hidden] { display: none; }                              /* login.js alterna entre as caixas pelo atributo hidden */
 
 .login-box__logo {
   width: clamp(176px, 13vw, 220px);
   height: auto;
-  margin: 0 auto clamp(22px, 2.4vw, 38px);
+  margin: 0 auto clamp(22px, 2.4vw, 38px);                         /* auto nas laterais centraliza a imagem */
 }
 
 .login-box__title {
@@ -196,19 +201,19 @@
   color: var(--ink-soft);
 }
 
-.login-form { margin-top: clamp(20px, 2vw, 30px); text-align: left; }
+.login-form { margin-top: clamp(20px, 2vw, 30px); text-align: left; } /* campos alinhados à esquerda dentro da caixa centralizada */
 
-.login-form__row {
+.login-form__row {                                                 /* linha "Lembrar de mim" + "Esqueci minha senha" */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 16px;
+  flex-wrap: wrap;                                                 /* quebra em duas linhas se faltar espaço */
+  gap: 10px 16px;                                                  /* vão entre linhas | entre colunas */
   margin-top: 18px;
 }
 
 /* ---------------------------------------------------------------- 4. campos */
-.field + .field { margin-top: 18px; }
+.field + .field { margin-top: 18px; }                              /* "+" = só campos precedidos por outro campo ganham espaço */
 
 .field__label {
   display: block;
@@ -218,44 +223,44 @@
   color: var(--navy-800);
 }
 
-.field__control { position: relative; display: flex; align-items: center; }
+.field__control { position: relative; display: flex; align-items: center; } /* referência para o ícone e o botão de olho */
 
-.field__icon {
+.field__icon {                                                     /* ícone dentro do campo, à esquerda */
   position: absolute;
   left: 16px;
   display: inline-flex;
   color: var(--login-placeholder);
-  pointer-events: none;
+  pointer-events: none;                                            /* o clique chega ao input embaixo */
 }
 .field__icon .aq-icon { width: 20px; height: 20px; }
 
 .field__input {
   width: 100%;
   height: 52px;
-  padding: 0 16px 0 50px;
+  padding: 0 16px 0 50px;                                          /* 50px à esquerda deixam lugar para o ícone */
   border: 1px solid var(--login-field-border);
   border-radius: var(--r-sm);
   background: #fff;
-  font-family: inherit;
+  font-family: inherit;                                            /* inputs não herdam a fonte da página por padrão */
   font-size: .98rem;
   color: var(--navy-800);
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.field__input--password { padding-right: 54px; }
+.field__input--password { padding-right: 54px; }                   /* espaço para o botão mostrar/ocultar senha */
 .field__input::placeholder { color: var(--login-placeholder); }
 
 .field__input:hover { border-color: #d5e1f3; }
 .field__input:focus,
 .field__input:focus-visible {
-  outline: none;
+  outline: none;                                                   /* troca o contorno padrão pelo anel abaixo */
   border-color: var(--blue-500);
-  box-shadow: 0 0 0 4px rgba(44, 114, 240, .16);
+  box-shadow: 0 0 0 4px rgba(44, 114, 240, .16);                   /* sombra sem desfoque = anel de 4px em volta */
 }
 
-.field__input[aria-invalid="true"] { border-color: #d94848; }
+.field__input[aria-invalid="true"] { border-color: #d94848; }      /* login.js marca aria-invalid quando a validação falha */
 .field__input[aria-invalid="true"]:focus { box-shadow: 0 0 0 4px rgba(217, 72, 72, .16); }
 
-.field__toggle {
+.field__toggle {                                                   /* botão de olho no campo de senha */
   position: absolute;
   right: 7px;
   display: inline-flex;
@@ -272,9 +277,9 @@
 }
 .field__toggle:hover { color: var(--blue-600); background: var(--blue-50); }
 .field__toggle .aq-icon { width: 21px; height: 21px; }
-.field__toggle [hidden] { display: none; }
+.field__toggle [hidden] { display: none; }                         /* só um dos ícones (olho aberto/fechado) aparece por vez */
 
-.field__error {
+.field__error {                                                    /* mensagem de erro abaixo do campo */
   margin-top: 7px;
   font-size: .84rem;
   font-weight: 600;
@@ -283,19 +288,19 @@
 .field__error[hidden] { display: none; }
 
 /* caixa de seleção */
-.checkbox {
+.checkbox {                                                        /* <label> que envolve o checkbox: clicar no texto também marca */
   display: inline-flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
   user-select: none;
 }
-.checkbox__input {
+.checkbox__input {                                                 /* checkbox nativo invisível, mas ainda acessível ao teclado e leitores de tela */
   position: absolute;
   width: 1px; height: 1px;
   opacity: 0;
 }
-.checkbox__box {
+.checkbox__box {                                                   /* quadrado desenhado que substitui o visual nativo */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -307,22 +312,22 @@
   color: #fff;
   transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
-.checkbox__box .aq-icon { width: 14px; height: 14px; opacity: 0; stroke-width: 2.6; }
-.checkbox__input:checked + .checkbox__box {
+.checkbox__box .aq-icon { width: 14px; height: 14px; opacity: 0; stroke-width: 2.6; } /* ícone de "check" escondido até marcar */
+.checkbox__input:checked + .checkbox__box {                        /* checkbox marcado: o quadrado vizinho fica azul */
   background: var(--login-cta);
   border-color: var(--login-cta);
 }
 .checkbox__input:checked + .checkbox__box .aq-icon { opacity: 1; }
-.checkbox__input:focus-visible + .checkbox__box {
+.checkbox__input:focus-visible + .checkbox__box {                  /* foco pelo teclado aparece no quadrado desenhado */
   outline: 3px solid var(--blue-500);
   outline-offset: 2px;
 }
 .checkbox__label { font-size: .91rem; color: var(--navy-700); }
 
 /* ---------------------------------------------- 5. botões e utilitários do login */
-.btn--block { width: 100%; }
+.btn--block { width: 100%; }                                       /* botão ocupando a largura toda da caixa */
 
-.btn--outline {
+.btn--outline {                                                    /* variante com borda e fundo branco (complementa .btn de style.css) */
   border-color: #cfdcf5;
   background: #fff;
   color: var(--login-cta);
@@ -333,13 +338,13 @@
    azul sólido, para o botão de envio principal — sem esta regra mais
    específica, uma variante `.btn--outline` combinada com ela herdava esse
    fundo e ficava com texto azul sobre fundo azul. */
-.login-submit.btn--outline {
+.login-submit.btn--outline {                                       /* duas classes juntas = especificidade maior que cada uma sozinha */
   background: #fff;
   color: var(--login-cta);
 }
 .login-submit.btn--outline:hover { background: var(--blue-50); }
 
-.login-link {
+.login-link {                                                      /* <button> com aparência de link ("Esqueci minha senha") */
   padding: 2px;
   border: 0;
   background: none;
@@ -350,7 +355,7 @@
 }
 .login-link:hover { color: var(--login-cta-hover); text-decoration: underline; }
 
-.login-note {
+.login-note {                                                      /* aviso informativo azul (#aviso-senha) */
   margin-top: 12px;
   padding: 10px 14px;
   border: 1px solid var(--blue-100);
@@ -362,7 +367,7 @@
 }
 .login-note[hidden] { display: none; }
 
-.login-alert {
+.login-alert {                                                     /* alerta vermelho de erro vindo da API (ex.: credenciais inválidas) */
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -379,8 +384,8 @@
 .login-alert__icon { flex: none; color: #d14343; }
 .login-alert__icon .aq-icon { width: 19px; height: 19px; }
 
-.login-submit {
-  height: 52px;
+.login-submit {                                                    /* botão "Entrar" (e "Encerrar sessão") */
+  height: 52px;                                                    /* mesma altura dos campos */
   margin-top: 20px;
   padding-inline: 22px;
   border-radius: var(--r-sm);
@@ -389,23 +394,23 @@
   font-size: 1rem;
 }
 .login-submit:hover { background: var(--login-cta-hover); border-color: var(--login-cta-hover); }
-.login-submit[disabled] { opacity: .68; cursor: not-allowed; transform: none; }
+.login-submit[disabled] { opacity: .68; cursor: not-allowed; transform: none; } /* desabilitado enquanto a requisição está em andamento */
 
-.login-submit__spinner {
+.login-submit__spinner {                                           /* círculo giratório de carregamento */
   display: none;
   width: 18px; height: 18px;
   flex: none;
   border: 2.2px solid rgba(255, 255, 255, .45);
-  border-top-color: #fff;
+  border-top-color: #fff;                                          /* só o topo mais claro: ao girar parece um arco correndo */
   border-radius: 50%;
-  animation: login-spin .7s linear infinite;
+  animation: login-spin .7s linear infinite;                       /* uma volta a cada 0,7 s, sem parar */
 }
-.login-submit[data-loading] .login-submit__spinner { display: block; }
+.login-submit[data-loading] .login-submit__spinner { display: block; } /* com data-loading (login.js) o spinner substitui o ícone */
 .login-submit[data-loading] .login-submit__icon { display: none; }
 
-@keyframes login-spin { to { transform: rotate(360deg); } }
+@keyframes login-spin { to { transform: rotate(360deg); } }        /* animação: de 0 até uma volta completa */
 
-.login-divider {
+.login-divider {                                                   /* separador "── ou ──" */
   display: flex;
   align-items: center;
   gap: 14px;
@@ -414,14 +419,14 @@
   font-size: .86rem;
 }
 .login-divider::before,
-.login-divider::after {
+.login-divider::after {                                            /* as duas linhas são pseudo-elementos, uma de cada lado do texto */
   content: "";
-  flex: 1 1 auto;
+  flex: 1 1 auto;                                                  /* cada linha estica para ocupar o espaço livre */
   height: 1px;
   background: #e7eef8;
 }
 
-.login-back { margin-top: 20px; font-size: .9rem; }
+.login-back { margin-top: 20px; font-size: .9rem; }                /* link "Voltar para o site" */
 .login-back a {
   display: inline-flex;
   align-items: center;
@@ -433,7 +438,7 @@
 .login-back .aq-icon { width: 17px; height: 17px; }
 
 /* ------------------------------------------------------- 6. estado autenticado */
-.login-box__badge {
+.login-box__badge {                                                /* círculo verde com ícone de confirmação */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -445,7 +450,7 @@
 }
 .login-box__badge .aq-icon { width: 34px; height: 34px; stroke-width: 2; }
 
-.session-card {
+.session-card {                                                    /* <dl> com os dados da sessão */
   display: grid;
   gap: 2px;
   margin: 26px 0 6px;
@@ -455,14 +460,14 @@
   background: #f9fbff;
   text-align: left;
 }
-.session-card > div {
+.session-card > div {                                              /* cada par termo/valor em uma linha */
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between;                                  /* termo à esquerda, valor à direita */
   gap: 16px;
   padding: 13px 0;
 }
-.session-card > div + div { border-top: 1px solid #edf2fa; }
+.session-card > div + div { border-top: 1px solid #edf2fa; }       /* linha divisória entre os pares, não antes do primeiro */
 .session-card dt {
   font-size: .82rem;
   font-weight: 700;
@@ -471,12 +476,12 @@
   color: var(--ink-soft);
 }
 .session-card dd {
-  margin: 0;
+  margin: 0;                                                       /* <dd> tem recuo padrão do navegador */
   font-size: .95rem;
   font-weight: 600;
   color: var(--navy-800);
   text-align: right;
-  overflow-wrap: anywhere;
+  overflow-wrap: anywhere;                                         /* quebra e-mails longos em qualquer ponto em vez de estourar */
 }
 
 /* ---------------------------------------------------------------- 7. rodapé */
@@ -502,32 +507,32 @@
 /* -------------------------------------------------------- 8. responsividade */
 
 /* Empilha os painéis: o formulário vem primeiro, a marca vira uma faixa. */
-@media (max-width: 1024px) {
+@media (max-width: 1024px) {                                       /* telas de até 1024px */
   .login__card {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);                         /* uma coluna só */
     min-height: 0;
   }
   .login__brand {
-    order: 2;
+    order: 2;                                                      /* order muda a posição visual sem mexer no HTML: a marca vai para baixo */
     min-height: 340px;
     padding: clamp(24px, 4vw, 40px);
   }
   .login__title { margin-top: 26px; font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.2rem); }
   .login__photo,
   .login__overlay { height: 58%; object-position: 50% 48%; }
-  .login__panel { order: 1; padding: clamp(24px, 4vw, 44px) clamp(18px, 4vw, 40px); }
+  .login__panel { order: 1; padding: clamp(24px, 4vw, 44px) clamp(18px, 4vw, 40px); } /* formulário primeiro */
   .login__assurance { margin-top: 32px; }
 }
 
-@media (max-width: 600px) {
-  .login-page { --login-pad: 12px; }
+@media (max-width: 600px) {                                        /* celular */
+  .login-page { --login-pad: 12px; }                               /* só redefine a variável: .login já a usa no padding */
 
   .login__card { border-radius: var(--r-lg); }
 
   .login__brand { min-height: 0; padding: 26px 20px 30px; }
   .login__logo { width: 172px; }
   .login__title { margin-top: 20px; }
-  .login__title br { display: none; }
+  .login__title br { display: none; }                              /* ignora quebras de linha manuais do título: o texto flui livre */
   .login__text { margin-top: 14px; font-size: .95rem; }
   .login__text br { display: none; }
   .login__photo,
@@ -541,7 +546,7 @@
   }
   .login__assurance-icon .aq-icon { width: 32px; height: 32px; }
 
-  .login-box {
+  .login-box {                                                     /* sem moldura: a caixa se funde ao cartão */
     padding: 26px 18px 24px;
     border: 0;
     box-shadow: none;
@@ -553,17 +558,17 @@
 
   .login-form__row { gap: 12px; }
 
-  .session-card > div {
+  .session-card > div {                                            /* termo em cima, valor embaixo */
     flex-direction: column;
     align-items: flex-start;
     gap: 3px;
   }
   .session-card dd { text-align: left; }
 
-  .login-page__deco { display: none; }
+  .login-page__deco { display: none; }                             /* sem ilustração decorativa no celular */
 }
 
 /* O usuário pediu menos movimento: nada de giro no botão. */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {                          /* preferência de acessibilidade do sistema operacional */
   .login-submit__spinner { animation: none; }
 }

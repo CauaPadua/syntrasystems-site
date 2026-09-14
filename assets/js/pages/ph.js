@@ -1,4 +1,8 @@
 /** Aquapulse — Monitoramento / pH. */
+/*
+ * Página: dashboard/monitoramento/ph.php | API: GET api/v1/monitoring/ph.php.
+ * Represa, período, estados e recarga ficam em AqMonitorPage; aqui só o render().
+ */
 (function () {
   'use strict';
 
@@ -10,7 +14,7 @@
     scopes: ['variation', 'scale', 'daily'],
     fetch: function (p) { return window.AqApi.ph(p); },
 
-    render: function (d) {
+    render: function (d) {                                            // d = MonitoringService::ph()
       var k = d.kpis;
 
       // o pH não tem unidade: apenas o número, com vírgula na apresentação
@@ -18,7 +22,7 @@
         'ph.value': F.num(k.ph.value, 1), 'ph.foot': k.ph.note,
         'min.value': F.num(k.min.value, 1), 'min.foot': k.min.note,
         'max.value': F.num(k.max.value, 1), 'max.foot': k.max.note,
-        'condition.value': { html: '<span style="color:var(--aq-success)">' + k.condition.label + '</span>' },
+        'condition.value': { html: '<span style="color:var(--aq-success)">' + k.condition.label + '</span>' }, // sempre em verde, mesmo se o rótulo for "Atenção"
         'condition.foot': k.condition.note,
         'scale.value': F.num(d.scale.value, 1),
         'scale.label': d.scale.label,
@@ -36,11 +40,11 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ min: 0, max: 10, decimals: 0 }),
-          plugins: G.plugins('', 1, {
+          scales: G.scales({ min: 0, max: 10, decimals: 0 }),         // eixo de pH 0 a 10
+          plugins: G.plugins('', 1, {                                 // sem unidade no tooltip
             annotation: {
               annotations: {
-                ideal: G.band(v.ideal_min, v.ideal_max, G.colors.success, 'Faixa ideal\n6,5 – 8,5')
+                ideal: G.band(v.ideal_min, v.ideal_max, G.colors.success, 'Faixa ideal\n6,5 – 8,5') // faixa verde translúcida de 6,5 a 8,5
               }
             }
           })
@@ -55,7 +59,7 @@
         min: sc.min,
         max: sc.max,
         cutout: '68%',
-        segments: [
+        segments: [                                                   // 7 faixas de cor (~14,3% cada): do vermelho (ácido) ao azul-escuro (alcalino)
           { size: 14.3, color: '#ef4444' },
           { size: 14.3, color: '#f59e0b' },
           { size: 14.3, color: '#fbbf24' },
@@ -69,8 +73,8 @@
       // ponteiro: 0 -> -90°, 14 -> +90°
       var needle = document.querySelector('[data-ph-needle]');
       if (needle) {
-        var angle = ((sc.value - sc.min) / (sc.max - sc.min)) * 180 - 90;
-        needle.style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
+        var angle = ((sc.value - sc.min) / (sc.max - sc.min)) * 180 - 90; // converte o pH em ângulo: 0 = esquerda, 7 = em pé, 14 = direita
+        needle.style.transform = 'translateX(-50%) rotate(' + angle + 'deg)'; // translateX(-50%) centraliza a agulha sobre o ponto de giro
       }
 
       /* ----------------------------------------- média diária 7 dias */
@@ -87,7 +91,7 @@
           scales: G.scales({ min: 0, max: 10, decimals: 0 }),
           plugins: G.plugins('', 1, {
             annotation: {
-              annotations: { ideal: G.band(dl.ideal_min, dl.ideal_max, G.colors.success) }
+              annotations: { ideal: G.band(dl.ideal_min, dl.ideal_max, G.colors.success) } // mesma faixa ideal, sem rótulo
             }
           })
         }
@@ -101,7 +105,7 @@
           + ' stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/>'
           + '<circle cx="12" cy="10" r="2.6"/></svg></span>' + S.esc(p.name) + '</span></td>'
           + '<td class="is-num">' + F.num(p.ph, 1) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>'
+          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>' // status fixo "Normal" (não usa p.status)
           + '</tr>';
       }).join('');
 

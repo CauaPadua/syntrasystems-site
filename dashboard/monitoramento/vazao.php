@@ -1,26 +1,34 @@
 <?php
 /** Aquapulse — Monitoramento / Volume de vazão. */
+/*
+ * Tela detalhada de vazão de UMA represa: entrada (afluência) e saída
+ * (defluência) de água. Dados de GET api/v1/monitoring/flow.php, carregados por
+ * assets/js/pages/flow.js com apoio de monitor-page.js (seletor de represa e período).
+ *
+ * As oito telas desta pasta seguem o mesmo esqueleto:
+ *   AQ_DEPTH 2 -> page.php -> aq_page_start -> aq_monitor_bar -> KPIs -> cards -> aq_page_end(monitor)
+ */
 
 declare(strict_types=1);
 
-define('AQ_DEPTH', 2);
-require dirname(__DIR__) . '/includes/page.php';
+define('AQ_DEPTH', 2);                                                    // dashboard/monitoramento/: a raiz do projeto está dois níveis acima
+require dirname(__DIR__) . '/includes/page.php';                          // dirname(__DIR__) = pasta dashboard/
 
 aq_page_start([
-    'route'    => 'monitoring.flow',
+    'route'    => 'monitoring.flow',                                      // abre o submenu Monitoramento e destaca "Volume de vazão"
     'title'    => 'Volume de vazão',
     'subtitle' => 'Acompanhe a entrada e a saída de água em tempo real',
 ]);
 
-echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últimos 7 dias']]);
+echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últimos 7 dias']]); // barra com represa, código, telemetria e período (só 24h e 7d nesta tela)
 ?>
 
-<div class="aq-grid aq-grid--4">
+<div class="aq-grid aq-grid--4"> <?php /* quatro cards preenchidos com data.kpis */ ?>
   <?php
   echo aq_kpi(['id' => 'flow', 'label' => 'Vazão atual', 'icon' => 'waves', 'unit' => 'm³/s', 'tip' => 'Vazão instantânea medida pelos sensores da represa.']);
   echo aq_kpi(['id' => 'inflow', 'label' => 'Afluência', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s', 'tip' => 'Volume de água que entra no reservatório.']);
   echo aq_kpi(['id' => 'outflow', 'label' => 'Defluência', 'icon' => 'arrow-up-circle', 'unit' => 'm³/s', 'tip' => 'Volume de água que sai do reservatório.']);
-  echo aq_kpi(['id' => 'balance', 'label' => 'Saldo hídrico', 'icon' => 'droplet', 'unit' => 'm³/s', 'tip' => 'Diferença entre afluência e defluência.']);
+  echo aq_kpi(['id' => 'balance', 'label' => 'Saldo hídrico', 'icon' => 'droplet', 'unit' => 'm³/s', 'tip' => 'Diferença entre afluência e defluência.']); // afluência - defluência
   ?>
 </div>
 
@@ -28,7 +36,7 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Vazão em tempo real', 'tip' => 'Afluência e defluência medidas ao longo do período selecionado.']); ?>
     <div data-content="realtime" hidden>
-      <?php echo aq_chart(['id' => 'grafico-vazao', 'size' => 'lg', 'axis' => 'm³/s', 'desc' => 'Afluência e defluência ao longo do período.']); ?>
+      <?php echo aq_chart(['id' => 'grafico-vazao', 'size' => 'lg', 'axis' => 'm³/s', 'desc' => 'Afluência e defluência ao longo do período.']); // duas linhas: data.realtime.inflow e .outflow ?>
       <?php echo aq_legend([
           ['label' => 'Afluência (entrada)', 'color' => '#0b5bea'],
           ['label' => 'Defluência (saída)', 'color' => '#6ea8fe'],
@@ -41,22 +49,22 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
     <?php echo aq_card_head(['title' => 'Condição da vazão', 'tip' => 'Posição da vazão atual dentro da faixa operacional esperada.']); ?>
     <div data-content="condition" hidden style="text-align:center">
       <div style="max-width:300px;margin:0 auto">
-        <?php echo aq_chart(['id' => 'medidor-vazao', 'size' => 'sm', 'desc' => 'Medidor semicircular da condição da vazão.']); ?>
+        <?php echo aq_chart(['id' => 'medidor-vazao', 'size' => 'sm', 'desc' => 'Medidor semicircular da condição da vazão.']); // meia rosca que funciona como medidor ?>
       </div>
-      <p style="font-size:1.35rem;font-weight:800;margin-top:-46px;color:var(--aq-success)" data-field="condition.status">—</p>
+      <p style="font-size:1.35rem;font-weight:800;margin-top:-46px;color:var(--aq-success)" data-field="condition.status">—</p> <?php /* margem negativa sobe o texto para dentro do medidor */ ?>
       <p class="aq-card__sub" style="margin-top:34px" data-field="condition.text"></p>
       <p style="margin-top:12px" data-field="condition.badge"></p>
-      <p class="aq-card__sub" style="margin-top:14px" data-field="condition.range"></p>
+      <p class="aq-card__sub" style="margin-top:14px" data-field="condition.range"></p> <?php /* "Faixa ideal: 40,0 – 80,0 m³/s" */ ?>
     </div>
     <?php echo aq_states('condition'); ?>
   </article>
 </div>
 
-<div class="aq-grid aq-grid--5-4-7">
+<div class="aq-grid aq-grid--5-4-7"> <?php /* três cards com larguras 5:4:7 */ ?>
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Média diária — últimos 7 dias', 'tip' => 'Média de afluência e defluência por dia.']); ?>
     <div data-content="daily" hidden>
-    <?php echo aq_chart(['id' => 'grafico-media-diaria', 'size' => 'md', 'axis' => 'm³/s', 'desc' => 'Média diária de afluência e defluência.']); ?>
+    <?php echo aq_chart(['id' => 'grafico-media-diaria', 'size' => 'md', 'axis' => 'm³/s', 'desc' => 'Média diária de afluência e defluência.']); // barras com data.daily ?>
     <?php echo aq_legend([
         ['label' => 'Afluência (média)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Defluência (média)', 'color' => '#b6d3fe', 'style' => 'square'],
@@ -67,7 +75,7 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
 
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Sensores de vazão', 'tip' => 'Situação dos sensores instalados na represa.']); ?>
-    <div class="aq-list" data-sensors></div>
+    <div class="aq-list" data-sensors></div> <?php /* data.sensors: nome, local e status online/offline */ ?>
     <p style="margin-top:12px"><a class="aq-card__link" href="operacional.php">Ver todos os sensores <?php aq_the_icon('arrow-right'); ?></a></p>
   </article>
 
@@ -75,7 +83,7 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
     <?php echo aq_card_head([
         'title'   => 'Últimas leituras',
         'tip'     => 'Registros mais recentes enviados pela telemetria.',
-        'actions' => '<a class="aq-card__link" href="#">Ver histórico completo ' . aq_icon('arrow-right') . '</a>',
+        'actions' => '<a class="aq-card__link" href="#">Ver histórico completo ' . aq_icon('arrow-right') . '</a>', // link ainda sem destino
     ]); ?>
     <?php echo aq_table_open('Últimas leituras de vazão'); ?>
     <table class="aq-table aq-table--tight">
@@ -88,11 +96,11 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
           <th scope="col">Status</th>
         </tr>
       </thead>
-      <tbody data-readings></tbody>
+      <tbody data-readings></tbody> <?php /* 5 leituras mais recentes (data.readings) */ ?>
     </table>
     <?php echo aq_table_close(); ?>
     <p class="aq-card__sub" style="margin-top:12px">Atualização automática a cada 5 minutos</p>
   </article>
 </div>
 
-<?php aq_page_end(['scripts' => ['pages/flow.js'], 'monitor' => true]);
+<?php aq_page_end(['scripts' => ['pages/flow.js'], 'monitor' => true]); // monitor => true carrega monitor-page.js antes de flow.js

@@ -1,32 +1,52 @@
+# Aquapulse — publicação automática do site (GitHub Actions).
+# Toda vez que um commit chega à branch main, o GitHub executa este fluxo:
+# baixa o código do repositório e envia os arquivos por FTP para a hospedagem
+# InfinityFree. Não há etapa de build: o site é PHP, publicado como está.
 name: Deploy para InfinityFree
 
+# Gatilho: quando o fluxo roda.
 on:
   push:
+    # Só pushes na branch main disparam o deploy (outras branches não publicam).
     branches:
       - main
 
+# Tarefas executadas pelo fluxo (aqui, uma só: deploy).
 jobs:
   deploy:
+    # Máquina virtual Linux fornecida pelo GitHub para rodar os passos.
     runs-on: ubuntu-latest
 
     steps:
+      # Passo 1: copia o código do repositório para a máquina do GitHub.
       - name: Checkout do código
         uses: actions/checkout@v4
 
+      # Passo 2: envia os arquivos para o servidor com uma ação pronta da comunidade.
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
+          # Endereço, usuário e senha do FTP NÃO ficam no arquivo: vêm dos "secrets"
+          # cadastrados nas configurações do repositório no GitHub (FTP_SERVER,
+          # FTP_USERNAME e FTP_PASSWORD), que o GitHub injeta só durante a execução.
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          # FTP comum na porta 21 (sem criptografia no transporte).
           protocol: ftp
           port: 21
 
+          # Pasta pública da hospedagem (htdocs) e pasta local enviada (a raiz do repositório).
           server-dir: /htdocs/
           local-dir: ./
 
+          # Arquivo que a ação grava no servidor com o "retrato" do último envio:
+          # nas próximas execuções só os arquivos alterados são transferidos.
           state-name: ftp-deploy-sync-state.json
 
+          # Arquivos e pastas que NÃO são publicados: controle de versão, este fluxo,
+          # documentação, referências visuais e resultados de validação.
+          # (Comentários não podem ir dentro da lista abaixo: ela é um bloco de texto.)
           exclude: |
             **/.git*
             **/.git*/**

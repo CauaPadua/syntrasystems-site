@@ -23,17 +23,24 @@
   16. Contenção horizontal
   17. Complementos de tabela
   18. Ajustes das faixas densas de KPI
+
+   Carregado por dashboard/includes/page.php em todas as páginas internas,
+   seguido de dashboard-responsive.css (ajustes por largura de tela).
+   Estados visuais são ligados pelo JavaScript (alguns já pelo PHP) com classes (is-open,
+   is-active, is-selected) e atributos ([hidden], [aria-expanded],
+   [aria-checked], [aria-selected], [data-loading]); o CSS só reage a eles.
+   Notação BEM: .aq-bloco__elemento e .aq-bloco--variante.
    ========================================================================= */
 
 /* ---------------------------------------------------------------- 1. tokens */
-:root {
+:root {                                                            /* variáveis globais do dashboard (prefixo --aq- evita colisão com style.css) */
   --aq-bg: #f6f9fd;
   --aq-surface: #ffffff;
-  --aq-sidebar: #05295f;
+  --aq-sidebar: #05295f;                                           /* azul da barra lateral; --aq-sidebar-deep é o fim do degradê */
   --aq-sidebar-deep: #031e49;
-  --aq-primary: #0b5bea;
+  --aq-primary: #0b5bea;                                           /* cor de ação: botões, links, item ativo do menu */
   --aq-primary-hover: #084bcc;
-  --aq-primary-soft: #eaf2ff;
+  --aq-primary-soft: #eaf2ff;                                      /* versões "soft" = fundos claros da mesma cor (selos, ícones) */
   --aq-primary-lighter: #f3f7ff;
   --aq-text: #09245a;
   /* contraste sobre o branco: 5,9:1 e 4,6:1 — ambos passam no AA (4,5:1)
@@ -41,8 +48,8 @@
   --aq-text-secondary: #48608f;
   --aq-text-muted: #62759a;
   --aq-border: #e2eaf4;
-  --aq-grid: rgba(32, 79, 146, 0.10);
-  --aq-success: #16a34a;
+  --aq-grid: rgba(32, 79, 146, 0.10);                              /* cor de linha de grade; charts.js usa um valor próprio parecido */
+  --aq-success: #16a34a;                                           /* cores de status: normal (verde), atenção (âmbar), crítico (vermelho) */
   --aq-success-soft: #eaf8ef;
   --aq-warning: #f59e0b;
   --aq-warning-soft: #fff6e4;
@@ -50,23 +57,23 @@
   --aq-danger-soft: #fff0f0;
   --aq-info: #2563eb;
   --aq-info-soft: #edf4ff;
-  --aq-radius-card: 14px;
-  --aq-radius-control: 9px;
+  --aq-radius-card: 14px;                                          /* raio dos cartões */
+  --aq-radius-control: 9px;                                        /* raio de campos e botões */
   --aq-shadow-card: 0 8px 24px rgba(8, 37, 86, 0.05);
-  --aq-sidebar-width: 264px;
-  --aq-header-height: 88px;
-  --aq-content-gap: 16px;
-  --aq-transition: 180ms ease;
+  --aq-sidebar-width: 264px;                                       /* largura da sidebar; .aq-main usa o mesmo valor como margem */
+  --aq-header-height: 88px;                                        /* altura mínima da topbar; também posiciona o menu do usuário */
+  --aq-content-gap: 16px;                                          /* espaço entre blocos e entre cartões das grades */
+  --aq-transition: 180ms ease;                                     /* duração + curva padrão das transições */
 
   --aq-font: "Manrope", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ------------------------------------------------------------ 2. base */
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }                 /* width/height passam a incluir padding e borda */
 
 html { -webkit-text-size-adjust: 100%; }
 
-body.aq-app {
+body.aq-app {                                                      /* <body class="aq-app"> de dashboard/includes/page.php */
   margin: 0;
   font-family: var(--aq-font);
   font-size: 14px;
@@ -74,7 +81,7 @@ body.aq-app {
   color: var(--aq-text);
   background: var(--aq-bg);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: hidden;                                              /* nenhuma rolagem horizontal na página */
 }
 
 .aq-app img, .aq-app svg { display: block; max-width: 100%; }
@@ -85,18 +92,18 @@ body.aq-app {
 /* `:where()` não soma especificidade: assim este reset vale (0,1,0) e qualquer
    variante de componente escrita com uma classe (`.aq-btn--primary`, `.aq-tab`,
    `.aq-chip`…) continua vencendo pela ordem, sem precisar repetir seletores. */
-.aq-app :where(a) { color: var(--aq-primary); text-decoration: none; }
+.aq-app :where(a) { color: var(--aq-primary); text-decoration: none; } /* especificidade (0,1,0): qualquer classe de componente vence */
 .aq-app :where(button) { font: inherit; color: inherit; }
 
-.aq-app :focus-visible {
+.aq-app :focus-visible {                                           /* anel de foco só na navegação por teclado */
   outline: 3px solid var(--aq-primary);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-.aq-icon { width: 20px; height: 20px; flex: none; }
+.aq-icon { width: 20px; height: 20px; flex: none; }                /* SVGs gerados por aq_the_icon() (includes/icons.php) */
 
-.aq-visually-hidden {
+.aq-visually-hidden {                                              /* invisível na tela, mas lido por leitores de tela */
   position: absolute !important;
   width: 1px; height: 1px;
   margin: -1px; padding: 0;
@@ -106,26 +113,26 @@ body.aq-app {
   border: 0;
 }
 
-.aq-skip {
+.aq-skip {                                                         /* link "pular para o conteúdo", escondido acima da tela */
   position: absolute; left: 16px; top: -60px; z-index: 999;
   padding: 10px 18px; border-radius: var(--aq-radius-control);
   background: var(--aq-primary); color: #fff; font-weight: 700;
   transition: top var(--aq-transition);
 }
-.aq-skip:focus { top: 12px; }
+.aq-skip:focus { top: 12px; }                                      /* aparece ao receber foco pelo Tab */
 
 /* ------------------------------------------------------- 3. sidebar */
-.aq-shell { display: flex; min-height: 100vh; }
+.aq-shell { display: flex; min-height: 100vh; }                    /* contêiner geral: sidebar + área principal */
 
 .aq-sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
+  position: fixed;                                                 /* sidebar presa à janela; não rola com o conteúdo */
+  inset: 0 auto 0 0;                                               /* top 0 | right auto | bottom 0 | left 0: coluna colada à esquerda */
   width: var(--aq-sidebar-width);
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, var(--aq-sidebar) 0%, var(--aq-sidebar-deep) 100%);
   color: #fff;
-  z-index: 60;
+  z-index: 60;                                                     /* acima do backdrop (55) no modo gaveta */
 }
 
 .aq-sidebar__brand {
@@ -136,11 +143,11 @@ body.aq-app {
 .aq-sidebar__brand img { width: 190px; height: auto; }
 
 .aq-sidebar__nav {
-  flex: 1 1 auto;
-  overflow-y: auto;
+  flex: 1 1 auto;                                                  /* o menu ocupa a altura que sobra entre logo e rodapé */
+  overflow-y: auto;                                                /* rola por dentro se os itens não couberem */
   padding: 0 14px 16px;
 }
-.aq-sidebar__nav::-webkit-scrollbar { width: 6px; }
+.aq-sidebar__nav::-webkit-scrollbar { width: 6px; }                /* barra de rolagem fina (Chrome/Edge/Safari) */
 .aq-sidebar__nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 3px; }
 
 .aq-nav__item { margin-bottom: 3px; }
@@ -162,12 +169,12 @@ body.aq-app {
   transition: background-color var(--aq-transition), color var(--aq-transition);
 }
 .aq-nav__link:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
-.aq-nav__link.is-active { background: var(--aq-primary); color: #fff; }
+.aq-nav__link.is-active { background: var(--aq-primary); color: #fff; } /* is-active é marcado no PHP pela página atual */
 .aq-nav__link .aq-icon { width: 21px; height: 21px; }
 
-.aq-nav__label { flex: 1 1 auto; }
+.aq-nav__label { flex: 1 1 auto; }                                 /* o texto estica e empurra o badge/seta para a direita */
 
-.aq-nav__badge {
+.aq-nav__badge {                                                   /* contador vermelho (ex.: alertas) */
   min-width: 22px; height: 22px;
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 6px;
@@ -179,15 +186,15 @@ body.aq-app {
 }
 
 .aq-nav__caret { transition: transform var(--aq-transition); }
-.aq-nav__link[aria-expanded="true"] .aq-nav__caret { transform: rotate(180deg); }
+.aq-nav__link[aria-expanded="true"] .aq-nav__caret { transform: rotate(180deg); } /* submenu aberto: a seta gira 180° */
 
 /* submenu de Monitoramento */
 .aq-nav__submenu {
-  overflow: hidden;
-  max-height: 0;
+  overflow: hidden;                                                /* esconde os itens enquanto a altura é menor que o conteúdo */
+  max-height: 0;                                                   /* fechado; height: auto não anima, por isso se anima max-height */
   transition: max-height 240ms ease;
 }
-.aq-nav__submenu.is-open { max-height: 460px; }
+.aq-nav__submenu.is-open { max-height: 460px; }                    /* dashboard-shell.js alterna is-open; 460px cabe todos os itens */
 
 .aq-nav__sublink {
   display: flex;
@@ -203,7 +210,7 @@ body.aq-app {
   font-weight: 600;
   transition: background-color var(--aq-transition), color var(--aq-transition);
 }
-.aq-nav__sublink::before {
+.aq-nav__sublink::before {                                         /* bolinha à esquerda de cada subitem */
   content: "";
   width: 7px; height: 7px;
   flex: none;
@@ -217,7 +224,7 @@ body.aq-app {
 
 .aq-sidebar__footer { padding: 12px 18px 14px; }
 
-.aq-secure {
+.aq-secure {                                                       /* quadro "ambiente seguro" no rodapé da sidebar */
   display: flex;
   gap: 12px;
   padding: 14px 15px;
@@ -231,9 +238,9 @@ body.aq-app {
 
 /* ------------------------------------------------------------ 4. topbar */
 .aq-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin-left: var(--aq-sidebar-width);
+  flex: 1 1 auto;                                                  /* ocupa toda a largura ao lado da sidebar */
+  min-width: 0;                                                    /* permite encolher: sem isso gráficos e tabelas alargariam a página */
+  margin-left: var(--aq-sidebar-width);                            /* reserva o espaço da sidebar fixa */
   display: flex;
   flex-direction: column;
 }
@@ -248,7 +255,7 @@ body.aq-app {
   border-bottom: 1px solid var(--aq-border);
 }
 
-.aq-topbar__title { flex: 1 1 auto; min-width: 0; }
+.aq-topbar__title { flex: 1 1 auto; min-width: 0; }                /* título da página ocupa o espaço livre */
 .aq-topbar__title h1 { font-size: 1.6rem; line-height: 1.2; }
 .aq-topbar__title p { margin-top: 4px; font-size: 0.9rem; color: var(--aq-text-secondary); }
 
@@ -269,7 +276,7 @@ body.aq-app {
 }
 .aq-meta-item .aq-icon { width: 18px; height: 18px; color: var(--aq-text-muted); }
 
-.aq-refresh {
+.aq-refresh {                                                      /* botão "Atualizado há..." (data-refresh) */
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -283,11 +290,11 @@ body.aq-app {
   transition: background-color var(--aq-transition), border-color var(--aq-transition);
 }
 .aq-refresh:hover { background: var(--aq-primary-lighter); border-color: var(--aq-border); color: var(--aq-primary); }
-.aq-refresh[data-loading] .aq-icon { animation: aq-spin 900ms linear infinite; }
+.aq-refresh[data-loading] .aq-icon { animation: aq-spin 900ms linear infinite; } /* dashboard-shell.js põe data-loading durante a recarga: ícone gira */
 
-@keyframes aq-spin { to { transform: rotate(360deg); } }
+@keyframes aq-spin { to { transform: rotate(360deg); } }           /* uma volta completa */
 
-.aq-user {
+.aq-user {                                                         /* botão com avatar e nome do usuário */
   display: flex;
   align-items: center;
   gap: 11px;
@@ -298,7 +305,7 @@ body.aq-app {
   cursor: pointer;
 }
 .aq-user:hover { background: var(--aq-primary-lighter); }
-.aq-user__avatar {
+.aq-user__avatar {                                                 /* círculo com as iniciais */
   width: 40px; height: 40px;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%;
@@ -312,10 +319,10 @@ body.aq-app {
 .aq-user__name { display: block; font-size: 0.9rem; font-weight: 700; color: var(--aq-text); }
 .aq-user__role { display: block; font-size: 0.8rem; color: var(--aq-text-secondary); }
 
-.aq-user-menu {
+.aq-user-menu {                                                    /* menu suspenso do usuário */
   position: absolute;
   right: 26px;
-  top: calc(var(--aq-header-height) - 6px);
+  top: calc(var(--aq-header-height) - 6px);                        /* logo abaixo da topbar */
   z-index: 70;
   min-width: 190px;
   padding: 8px;
@@ -324,7 +331,7 @@ body.aq-app {
   background: var(--aq-surface);
   box-shadow: 0 14px 40px rgba(8, 37, 86, 0.14);
 }
-.aq-user-menu[hidden] { display: none; }
+.aq-user-menu[hidden] { display: none; }                           /* aberto/fechado pelo atributo hidden (dashboard-shell.js) */
 .aq-user-menu a, .aq-user-menu button {
   display: flex; align-items: center; gap: 10px;
   width: 100%; padding: 9px 11px;
@@ -336,7 +343,7 @@ body.aq-app {
 
 /* mobile: botão de menu */
 .aq-menu-toggle {
-  display: none;
+  display: none;                                                   /* só aparece abaixo de 1024px (dashboard-responsive.css) */
   width: 42px; height: 42px;
   align-items: center; justify-content: center;
   border: 1px solid var(--aq-border);
@@ -346,10 +353,10 @@ body.aq-app {
   cursor: pointer;
   flex: none;
 }
-.aq-backdrop { display: none; }
+.aq-backdrop { display: none; }                                    /* fundo escuro da gaveta; ativado em dashboard-responsive.css */
 
 /* --------------------------------------------------------- 5. contexto */
-.aq-content {
+.aq-content {                                                      /* <main>: coluna de blocos da página */
   flex: 1 1 auto;
   padding: var(--aq-content-gap) 26px 26px;
   display: flex;
@@ -357,7 +364,7 @@ body.aq-app {
   gap: var(--aq-content-gap);
 }
 
-.aq-context {
+.aq-context {                                                      /* barra de filtros (empresa, represa, período) */
   display: flex;
   align-items: center;
   gap: 20px;
@@ -366,14 +373,14 @@ body.aq-app {
   border-radius: var(--aq-radius-card);
   background: var(--aq-surface);
   box-shadow: var(--aq-shadow-card);
-  flex-wrap: wrap;
+  flex-wrap: wrap;                                                 /* filtros descem de linha quando falta espaço */
 }
 
 .aq-context__label {
   display: flex;
   align-items: center;
   gap: 13px;
-  padding-right: 24px;
+  padding-right: 24px;                                             /* rótulo separado dos filtros por uma linha vertical */
   border-right: 1px solid var(--aq-border);
   flex: none;
 }
@@ -387,7 +394,7 @@ body.aq-app {
 .aq-select, .aq-input {
   height: 42px;
   min-width: 210px;
-  padding: 0 38px 0 14px;
+  padding: 0 38px 0 14px;                                          /* 38px à direita reservam o lugar da seta */
   border: 1px solid var(--aq-border);
   border-radius: var(--aq-radius-control);
   background-color: var(--aq-surface);
@@ -396,14 +403,14 @@ body.aq-app {
   font-weight: 600;
   color: var(--aq-text);
   cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2348608f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
+  appearance: none;                                                /* remove a seta nativa do <select> para desenhar a própria */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2348608f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E"); /* seta desenhada em SVG embutido na própria URL (sem arquivo extra) */
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right 12px center;                          /* seta a 12px da borda direita, centralizada na vertical */
   background-size: 17px;
   transition: border-color var(--aq-transition), box-shadow var(--aq-transition);
 }
-.aq-input {
+.aq-input {                                                        /* campo de texto: mesmo visual do select, sem a seta */
   padding-right: 14px;
   background-image: none;
   cursor: text;
@@ -413,9 +420,9 @@ body.aq-app {
 .aq-select:focus-visible, .aq-input:focus-visible {
   outline: none;
   border-color: var(--aq-primary);
-  box-shadow: 0 0 0 3px rgba(11, 91, 234, 0.16);
+  box-shadow: 0 0 0 3px rgba(11, 91, 234, 0.16);                   /* anel de foco de 3px */
 }
-.aq-select:disabled { background-color: var(--aq-bg); color: var(--aq-text-muted); cursor: not-allowed; }
+.aq-select:disabled { background-color: var(--aq-bg); color: var(--aq-text-muted); cursor: not-allowed; } /* campo desabilitado: fundo acinzentado e cursor de bloqueio */
 
 /* variante compacta: cabe no cabeçalho de um cartão, ao lado do título */
 .aq-select--sm {
@@ -445,7 +452,7 @@ body.aq-app {
   max-width: 250px;
 }
 .aq-context__note .aq-icon { width: 15px; height: 15px; color: var(--aq-text-muted); flex: none; }
-.aq-context__spacer { flex: 1 1 auto; }
+.aq-context__spacer { flex: 1 1 auto; }                            /* espaçador flexível: empurra os itens seguintes para a direita */
 
 .aq-context__pill {
   display: inline-flex;
@@ -460,14 +467,14 @@ body.aq-app {
 }
 
 /* --------------------------------------------------------- 6. cards/grades */
-.aq-grid { display: grid; gap: var(--aq-content-gap); }
-.aq-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.aq-grid { display: grid; gap: var(--aq-content-gap); }            /* grades; o número do modificador = quantidade de colunas */
+.aq-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }  /* repeat(2, minmax(0, 1fr)) = 2 colunas iguais que podem encolher */
 .aq-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .aq-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .aq-grid--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .aq-grid--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .aq-grid--7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.aq-grid--2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.aq-grid--2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } /* modificadores com hífens = proporções (2fr + 1fr) */
 .aq-grid--1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .aq-grid--3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
 /* proporções irregulares vindas das referências: a última coluna recebe a
@@ -483,14 +490,14 @@ body.aq-app {
 .aq-card {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-width: 0;                                                    /* o cartão pode encolher dentro da grade */
   padding: 18px 20px;
   border: 1px solid var(--aq-border);
   border-radius: var(--aq-radius-card);
   background: var(--aq-surface);
   box-shadow: var(--aq-shadow-card);
 }
-.aq-card--flush { padding: 0; }
+.aq-card--flush { padding: 0; }                                    /* sem respiro interno (ex.: Configurações, filtros do mapa) */
 /* cartões de uma linha com três tabelas lado a lado: menos respiro lateral
    para que nenhuma delas precise rolar dentro do próprio wrapper */
 .aq-card--dense { padding: 18px 12px; }
@@ -511,7 +518,7 @@ body.aq-app {
   gap: 9px;
   font-size: 1.02rem;
   font-weight: 700;
-  flex: 1 1 auto;
+  flex: 1 1 auto;                                                  /* o título estica e empurra as ações para a direita */
   /* `min-content` deixa o título encolher, mas nunca abaixo da maior palavra:
      com `0` o texto vazava da própria caixa e passava por baixo das ações */
   min-width: min-content;
@@ -528,22 +535,22 @@ body.aq-app {
 .aq-card__link .aq-icon { width: 16px; height: 16px; }
 
 /* dica em ícone */
-.aq-tip {
+.aq-tip {                                                          /* ícone "i" com dica ao passar o mouse */
   position: relative;
   display: inline-flex;
   width: 17px; height: 17px;
   border: 0; padding: 0; background: none;
   color: var(--aq-text-muted);
-  cursor: help;
+  cursor: help;                                                    /* cursor com "?" indicando ajuda */
   flex: none;
 }
 .aq-tip .aq-icon { width: 17px; height: 17px; }
-.aq-tip::after {
-  content: attr(data-tip);
+.aq-tip::after {                                                   /* a bolha é um pseudo-elemento, sem HTML extra */
+  content: attr(data-tip);                                         /* texto vem do atributo data-tip (components.php) */
   position: absolute;
-  left: 50%; bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  width: max-content; max-width: 230px;
+  left: 50%; bottom: calc(100% + 8px);                             /* acima do ícone, 8px de distância */
+  transform: translateX(-50%);                                     /* centraliza a bolha em relação ao ícone */
+  width: max-content; max-width: 230px;                            /* largura do texto, até 230px (depois quebra linha) */
   padding: 8px 11px;
   border-radius: 8px;
   background: var(--aq-text);
@@ -551,15 +558,15 @@ body.aq-app {
   font-size: 0.78rem;
   font-weight: 500;
   line-height: 1.4;
-  opacity: 0; visibility: hidden;
+  opacity: 0; visibility: hidden;                                  /* escondida; visibility também a tira do alcance do mouse */
   transition: opacity var(--aq-transition);
   z-index: 30;
-  pointer-events: none;
+  pointer-events: none;                                            /* a bolha não captura o mouse */
 }
-.aq-tip:hover::after, .aq-tip:focus-visible::after { opacity: 1; visibility: visible; }
+.aq-tip:hover::after, .aq-tip:focus-visible::after { opacity: 1; visibility: visible; } /* mostra no hover ou no foco pelo teclado */
 
 /* ------------------------------------------------------------- 7. KPIs */
-.aq-kpi { position: relative; }
+.aq-kpi { position: relative; }                                    /* cartão de indicador (KPI = indicador-chave de desempenho) */
 .aq-kpi__head { display: flex; align-items: flex-start; gap: 12px; }
 
 .aq-kpi__icon {
@@ -583,7 +590,7 @@ body.aq-app {
   margin-bottom: 6px;
 }
 .aq-kpi__value {
-  display: flex; align-items: baseline; gap: 5px;
+  display: flex; align-items: baseline; gap: 5px;                  /* número e unidade alinhados pela base do texto */
   font-size: 1.85rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
 }
 .aq-kpi__unit { font-size: 0.92rem; font-weight: 700; color: var(--aq-text-secondary); }
@@ -592,28 +599,28 @@ body.aq-app {
   margin-top: 9px;
   font-size: 0.8rem; color: var(--aq-text-secondary);
 }
-.aq-kpi__value--success { color: var(--aq-success); }
+.aq-kpi__value--success { color: var(--aq-success); }              /* cor do valor conforme o status calculado no backend */
 .aq-kpi__value--warning { color: var(--aq-warning); }
 .aq-kpi__value--danger  { color: var(--aq-danger); }
 
-.aq-trend { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.aq-trend { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; } /* variação (seta + percentual) no rodapé do KPI */
 .aq-trend--up { color: var(--aq-success); }
 .aq-trend--down { color: var(--aq-danger); }
 .aq-trend .aq-icon { width: 14px; height: 14px; }
 
 /* anel pequeno de progresso dentro do KPI */
-.aq-ring { position: relative; width: 46px; height: 46px; flex: none; }
-.aq-ring svg { transform: rotate(-90deg); }
+.aq-ring { position: relative; width: 46px; height: 46px; flex: none; } /* anel SVG de percentual */
+.aq-ring svg { transform: rotate(-90deg); }                        /* gira o SVG para o preenchimento começar no topo (12h) */
 .aq-ring__track { stroke: var(--aq-border); }
-.aq-ring__fill { stroke: var(--aq-primary); stroke-linecap: round; transition: stroke-dashoffset 600ms ease; }
-.aq-ring__text {
+.aq-ring__fill { stroke: var(--aq-primary); stroke-linecap: round; transition: stroke-dashoffset 600ms ease; } /* dashboard-shell.js reduz stroke-dashoffset para "encher" o anel */
+.aq-ring__text {                                                   /* percentual escrito no centro do anel */
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.68rem; font-weight: 800; color: var(--aq-primary);
 }
 
 /* --------------------------------------------------------- 8. badges */
-.aq-badge {
+.aq-badge {                                                        /* selo de status (normal/atenção/crítico) gerado por badge() em components.php */
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -625,12 +632,12 @@ body.aq-app {
 }
 .aq-badge .aq-icon { width: 14px; height: 14px; }
 .aq-badge--normal    { background: var(--aq-success-soft); color: var(--aq-success); }
-.aq-badge--attention { background: var(--aq-warning-soft); color: #b26a02; }
+.aq-badge--attention { background: var(--aq-warning-soft); color: #b26a02; } /* âmbar mais escuro no texto para ter contraste sobre o fundo claro */
 .aq-badge--critical  { background: var(--aq-danger-soft);  color: #c92626; }
 .aq-badge--info      { background: var(--aq-info-soft);    color: var(--aq-info); }
 .aq-badge--neutral   { background: var(--aq-bg);           color: var(--aq-text-secondary); }
 
-.aq-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; }
+.aq-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; } /* bolinha colorida de status */
 .aq-dot--normal { background: var(--aq-success); }
 .aq-dot--attention { background: var(--aq-warning); }
 .aq-dot--critical { background: var(--aq-danger); }
@@ -640,7 +647,7 @@ body.aq-app {
 .aq-status-text { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
 
 /* botões */
-.aq-btn {
+.aq-btn {                                                          /* base dos botões do dashboard; variantes .aq-btn--* */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -664,10 +671,10 @@ body.aq-app {
 .aq-btn--outline { border-color: var(--aq-primary); background: var(--aq-surface); color: var(--aq-primary); }
 .aq-btn--outline:hover { background: var(--aq-primary-soft); }
 .aq-btn--sm { height: 34px; padding: 0 12px; font-size: 0.82rem; }
-.aq-btn--icon { width: 34px; height: 34px; padding: 0; }
+.aq-btn--icon { width: 34px; height: 34px; padding: 0; }           /* botão quadrado só com ícone */
 .aq-btn[disabled] { opacity: 0.6; cursor: not-allowed; }
 
-.aq-chip {
+.aq-chip {                                                         /* botão de filtro rápido (ex.: status no mapa, período em Níveis) */
   display: inline-flex; align-items: center; gap: 7px;
   height: 38px; padding: 0 16px;
   border: 1px solid var(--aq-border);
@@ -675,14 +682,14 @@ body.aq-app {
   background: var(--aq-surface);
   font-size: 0.86rem; font-weight: 700; color: var(--aq-text-secondary);
   cursor: pointer;
-  transition: all var(--aq-transition);
+  transition: all var(--aq-transition);                            /* anima todas as propriedades que mudarem */
 }
 .aq-chip:hover { border-color: #cfdcee; }
-.aq-chip.is-active { border-color: var(--aq-primary); background: var(--aq-primary-soft); color: var(--aq-primary); }
+.aq-chip.is-active { border-color: var(--aq-primary); background: var(--aq-primary-soft); color: var(--aq-primary); } /* chip selecionado (classe definida pelo JS da página) */
 
 /* ------------------------------------------------------------ 9. gráficos */
-.aq-chart {
-  position: relative;
+.aq-chart {                                                        /* contêiner do <canvas> do Chart.js */
+  position: relative;                                              /* o Chart.js responsivo precisa de um pai posicionado */
   width: 100%;
   min-height: 0;
 }
@@ -695,7 +702,7 @@ body.aq-app {
 .aq-chart--lg  { height: 300px; }
 .aq-chart--xl  { height: 340px; }
 
-.aq-chart canvas { display: block; }
+.aq-chart canvas { display: block; }                               /* evita o espaço fantasma abaixo do canvas */
 
 .aq-chart__axis {
   font-size: 0.76rem;
@@ -703,7 +710,7 @@ body.aq-app {
   margin-bottom: 4px;
 }
 
-.aq-legend {
+.aq-legend {                                                       /* legenda feita em HTML, abaixo do gráfico */
   display: flex;
   align-items: center;
   gap: 20px;
@@ -716,20 +723,20 @@ body.aq-app {
 }
 .aq-legend--plain { border-top: 0; padding-top: 0; margin-top: 10px; }
 .aq-legend__item { display: inline-flex; align-items: center; gap: 8px; }
-.aq-legend__key { width: 22px; height: 3px; border-radius: 2px; flex: none; }
+.aq-legend__key { width: 22px; height: 3px; border-radius: 2px; flex: none; } /* amostra de linha (22×3px) */
 .aq-legend__key--square { width: 12px; height: 12px; border-radius: 3px; }
 .aq-legend__key--dashed {
-  height: 0; border-top: 2.5px dashed currentColor; background: none !important;
+  height: 0; border-top: 2.5px dashed currentColor; background: none !important; /* tracejado usa a cor do texto (color inline); !important garante fundo vazio */
 }
 
 /* descrição textual do canvas (acessibilidade) */
 .aq-chart__desc { font-size: 0.8rem; color: var(--aq-text-secondary); margin-top: 8px; }
 
 /* ---------------------------------------------------------- 10. tabelas */
-.aq-table-wrap { width: 100%; overflow-x: auto; }
-.aq-table-wrap:focus-visible { outline: 3px solid var(--aq-primary); outline-offset: -3px; }
+.aq-table-wrap { width: 100%; overflow-x: auto; }                  /* a tabela rola na horizontal dentro deste wrapper */
+.aq-table-wrap:focus-visible { outline: 3px solid var(--aq-primary); outline-offset: -3px; } /* wrapper focável pelo teclado para rolar com as setas; outline para dentro */
 
-.aq-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.aq-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; } /* border-collapse: bordas das células se fundem em uma só */
 .aq-table th {
   padding: 10px 12px;
   text-align: left;
@@ -744,9 +751,9 @@ body.aq-app {
   color: var(--aq-text);
   vertical-align: middle;
 }
-.aq-table tbody tr:last-child td { border-bottom: 0; }
+.aq-table tbody tr:last-child td { border-bottom: 0; }             /* última linha sem borda inferior */
 .aq-table tbody tr:hover { background: var(--aq-primary-lighter); }
-.aq-table td.is-num, .aq-table th.is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.aq-table td.is-num, .aq-table th.is-num { text-align: right; font-variant-numeric: tabular-nums; } /* números alinhados à direita com algarismos de largura igual */
 .aq-table__name { display: flex; align-items: center; gap: 10px; font-weight: 700; }
 .aq-table__icon {
   width: 30px; height: 30px; flex: none;
@@ -754,9 +761,9 @@ body.aq-app {
   border-radius: 8px; background: var(--aq-primary-soft); color: var(--aq-primary);
 }
 .aq-table__icon .aq-icon { width: 16px; height: 16px; }
-.aq-table tr.is-selected { background: var(--aq-primary-soft); }
+.aq-table tr.is-selected { background: var(--aq-primary-soft); }   /* linha selecionada (alerts.js) */
 
-.aq-table--bordered tr { border-left: 3px solid transparent; }
+.aq-table--bordered tr { border-left: 3px solid transparent; }     /* faixa colorida à esquerda indicando o status da linha */
 .aq-table--bordered tr.is-normal { border-left-color: var(--aq-success); }
 .aq-table--bordered tr.is-attention { border-left-color: var(--aq-warning); }
 .aq-table--bordered tr.is-critical { border-left-color: var(--aq-danger); }
@@ -770,7 +777,7 @@ body.aq-app {
   font-size: 0.84rem; color: var(--aq-text-secondary);
 }
 .aq-pagination__pages { display: flex; align-items: center; gap: 5px; }
-.aq-page-btn {
+.aq-page-btn {                                                     /* botão de página da paginação */
   min-width: 32px; height: 32px;
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 8px;
@@ -785,7 +792,7 @@ body.aq-app {
 .aq-page-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 
 /* ------------------------------------------------- 11. listas e painéis */
-.aq-list { display: flex; flex-direction: column; }
+.aq-list { display: flex; flex-direction: column; }                /* lista vertical de itens (alertas, eventos) */
 .aq-list__item {
   display: flex;
   align-items: flex-start;
@@ -807,19 +814,19 @@ body.aq-app {
 .aq-list__body { flex: 1 1 auto; min-width: 0; }
 .aq-list__title { font-size: 0.9rem; font-weight: 700; }
 .aq-list__meta { font-size: 0.81rem; color: var(--aq-text-secondary); margin-top: 2px; }
-.aq-list__side { flex: none; display: flex; align-items: center; gap: 10px; font-size: 0.81rem; color: var(--aq-text-secondary); }
+.aq-list__side { flex: none; display: flex; align-items: center; gap: 10px; font-size: 0.81rem; color: var(--aq-text-secondary); } /* coluna da direita do item (horário, selo) */
 
 /* barra de progresso horizontal */
-.aq-bar { display: flex; flex-direction: column; gap: 7px; }
+.aq-bar { display: flex; flex-direction: column; gap: 7px; }       /* barra de progresso horizontal */
 .aq-bar__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.85rem; }
-.aq-bar__track { height: 9px; border-radius: 6px; background: var(--aq-border); overflow: hidden; }
-.aq-bar__fill { height: 100%; border-radius: 6px; background: var(--aq-primary); transition: width 500ms ease; }
+.aq-bar__track { height: 9px; border-radius: 6px; background: var(--aq-border); overflow: hidden; } /* trilho cinza */
+.aq-bar__fill { height: 100%; border-radius: 6px; background: var(--aq-primary); transition: width 500ms ease; } /* preenchimento; a largura (%) é definida inline pelo JS/PHP */
 .aq-bar__fill--normal { background: var(--aq-success); }
 .aq-bar__fill--attention { background: var(--aq-warning); }
 .aq-bar__fill--critical { background: var(--aq-danger); }
 
 /* --------------------------------------------- 12. estados da interface */
-.aq-state {
+.aq-state {                                                        /* aviso de carregando/vazio/erro de um bloco (data-state) */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -829,7 +836,7 @@ body.aq-app {
   text-align: center;
   min-height: 150px;
 }
-.aq-state[hidden] { display: none; }
+.aq-state[hidden] { display: none; }                               /* setState() em dashboard-shell.js esconde os avisos que não se aplicam */
 .aq-state__icon {
   width: 48px; height: 48px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -843,21 +850,21 @@ body.aq-app {
 .aq-state__text { font-size: 0.85rem; color: var(--aq-text-secondary); max-width: 340px; }
 
 /* skeleton de carregamento */
-.aq-skeleton {
+.aq-skeleton {                                                     /* retângulo cinza animado no lugar do conteúdo que ainda vai chegar */
   border-radius: 8px;
-  background: linear-gradient(90deg, #eef3fa 25%, #f7fafd 50%, #eef3fa 75%);
-  background-size: 200% 100%;
+  background: linear-gradient(90deg, #eef3fa 25%, #f7fafd 50%, #eef3fa 75%); /* faixa clara no meio do degradê */
+  background-size: 200% 100%;                                      /* degradê com o dobro da largura, para poder deslizar */
   animation: aq-shimmer 1.3s linear infinite;
 }
-@keyframes aq-shimmer { to { background-position: -200% 0; } }
+@keyframes aq-shimmer { to { background-position: -200% 0; } }     /* desliza o degradê: efeito de brilho passando */
 .aq-skeleton--text { height: 12px; margin-bottom: 8px; }
 .aq-skeleton--title { height: 26px; width: 55%; margin-bottom: 12px; }
 .aq-skeleton--block { height: 100%; min-height: 120px; }
 
-.is-loading > .aq-loadable { visibility: hidden; }
+.is-loading > .aq-loadable { visibility: hidden; }                 /* esconde o conteúdo mantendo o espaço (nenhum HTML/JS usa hoje) */
 
 /* ------------------------------------------------------------- 13. mapa */
-.aq-map {
+.aq-map {                                                          /* contêiner do mapa Leaflet */
   width: 100%;
   border-radius: var(--aq-radius-card);
   overflow: hidden;
@@ -867,33 +874,33 @@ body.aq-app {
 .aq-map--sm { height: 260px; }
 .aq-map--lg { height: 640px; }
 
-.aq-map .leaflet-container { font-family: var(--aq-font); height: 100%; width: 100%; }
+.aq-map .leaflet-container { font-family: var(--aq-font); height: 100%; width: 100%; } /* classes .leaflet-* são criadas pela biblioteca Leaflet */
 .aq-map .leaflet-popup-content-wrapper { border-radius: 12px; }
 .aq-map .leaflet-popup-content { margin: 12px 14px; font-size: 0.85rem; }
 
-.aq-map__fallback {
-  position: absolute; inset: 0; z-index: 500;
+.aq-map__fallback {                                                /* aviso exibido se o mapa não carregar */
+  position: absolute; inset: 0; z-index: 500;                      /* cobre o mapa; 500 fica acima das camadas do Leaflet */
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 10px; padding: 24px; text-align: center;
   background: var(--aq-bg);
 }
 .aq-map__fallback[hidden] { display: none; }
 
-.aq-marker {
+.aq-marker {                                                       /* marcador (divIcon criado em maps.js) */
   display: flex; align-items: center; justify-content: center;
   width: 30px; height: 30px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
+  border-radius: 50% 50% 50% 0;                                    /* três cantos redondos e um reto = formato de gota */
+  transform: rotate(-45deg);                                       /* gira para a ponta da gota apontar para baixo */
   border: 2.5px solid #fff;
   box-shadow: 0 3px 10px rgba(8, 37, 86, 0.28);
 }
-.aq-marker .aq-icon { transform: rotate(45deg); width: 15px; height: 15px; color: #fff; }
+.aq-marker .aq-icon { transform: rotate(45deg); width: 15px; height: 15px; color: #fff; } /* desfaz a rotação no ícone para ele ficar em pé */
 .aq-marker--normal { background: var(--aq-success); }
 .aq-marker--attention { background: var(--aq-warning); }
 .aq-marker--critical { background: var(--aq-danger); }
 
 /* rótulo permanente ao lado do marcador (Visão geral de uma represa) */
-.aq-map .aq-map-tip {
+.aq-map .aq-map-tip {                                              /* className do tooltip permanente em maps.js */
   padding: 6px 10px;
   border: 1px solid var(--aq-border);
   border-radius: 9px;
@@ -905,9 +912,9 @@ body.aq-app {
   white-space: nowrap;
 }
 .aq-map .aq-map-tip strong { font-weight: 700; }
-.aq-map .aq-map-tip::before { border-top-color: var(--aq-border); }
+.aq-map .aq-map-tip::before { border-top-color: var(--aq-border); } /* setinha do tooltip (desenhada pelo Leaflet com bordas) */
 
-.aq-map-legend {
+.aq-map-legend {                                                   /* legenda de cores sobreposta ao mapa */
   display: flex; flex-direction: column; gap: 8px;
   padding: 12px 14px;
   border-radius: 10px;
@@ -918,22 +925,22 @@ body.aq-app {
 .aq-map-legend strong { font-size: 0.85rem; }
 .aq-map-legend div { display: flex; align-items: center; gap: 8px; }
 
-.aq-popup__title { font-weight: 800; font-size: 0.94rem; margin-bottom: 6px; }
+.aq-popup__title { font-weight: 800; font-size: 0.94rem; margin-bottom: 6px; } /* conteúdo do popup ao clicar em um marcador */
 .aq-popup__row { display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
 .aq-popup__row span:first-child { color: var(--aq-text-secondary); }
 .aq-popup__row span:last-child { font-weight: 700; }
 
 /* --------------------------------------------- 14. formulários e abas */
-.aq-tabs {
+.aq-tabs {                                                         /* barra de abas (Configurações) */
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--aq-border);
-  overflow-x: auto;
+  overflow-x: auto;                                                /* abas rolam na horizontal se não couberem */
 }
 .aq-tab {
   display: inline-flex; align-items: center; gap: 9px;
   padding: 15px 18px;
-  border: 0; border-bottom: 3px solid transparent;
+  border: 0; border-bottom: 3px solid transparent;                 /* sublinhado reservado, visível só na aba ativa */
   background: none;
   font-size: 0.9rem; font-weight: 700; color: var(--aq-text-secondary);
   white-space: nowrap; cursor: pointer;
@@ -941,11 +948,11 @@ body.aq-app {
 }
 .aq-tab .aq-icon { width: 18px; height: 18px; }
 .aq-tab:hover { color: var(--aq-primary); }
-.aq-tab[aria-selected="true"] { color: var(--aq-primary); border-bottom-color: var(--aq-primary); }
+.aq-tab[aria-selected="true"] { color: var(--aq-primary); border-bottom-color: var(--aq-primary); } /* aba ativa marcada por aria-selected (settings.js) */
 
 .aq-tabpanel[hidden] { display: none; }
 
-.aq-switch {
+.aq-switch {                                                       /* interruptor liga/desliga (<button role="switch">) */
   position: relative;
   width: 44px; height: 25px;
   flex: none;
@@ -954,17 +961,17 @@ body.aq-app {
   cursor: pointer;
   transition: background-color var(--aq-transition);
 }
-.aq-switch::after {
+.aq-switch::after {                                                /* bolinha branca do interruptor */
   content: ""; position: absolute;
   top: 3px; left: 3px;
   width: 19px; height: 19px;
   border-radius: 50%; background: #fff;
   transition: transform var(--aq-transition);
 }
-.aq-switch[aria-checked="true"] { background: var(--aq-primary); }
-.aq-switch[aria-checked="true"]::after { transform: translateX(19px); }
+.aq-switch[aria-checked="true"] { background: var(--aq-primary); } /* ligado: settings.js alterna aria-checked */
+.aq-switch[aria-checked="true"]::after { transform: translateX(19px); } /* a bolinha desliza para a direita */
 
-.aq-check {
+.aq-check {                                                        /* caixa de seleção desenhada (settings.js) */
   width: 20px; height: 20px;
   flex: none;
   border: 1.6px solid var(--aq-border);
@@ -979,7 +986,7 @@ body.aq-app {
 .aq-check[aria-checked="true"] { background: var(--aq-primary); border-color: var(--aq-primary); }
 .aq-check[aria-checked="true"] .aq-icon { opacity: 1; }
 
-.aq-form-row {
+.aq-form-row {                                                     /* linha rótulo + controle em listas de configurações */
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; padding: 11px 0;
   border-bottom: 1px solid var(--aq-border);
@@ -988,7 +995,7 @@ body.aq-app {
 .aq-form-row:last-child { border-bottom: 0; }
 
 /* ------------------------------------------------- 15. modal e feedback */
-.aq-modal {
+.aq-modal {                                                        /* janela modal com fundo escurecido cobrindo a tela */
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
@@ -997,7 +1004,7 @@ body.aq-app {
 .aq-modal[hidden] { display: none; }
 .aq-modal__box {
   width: min(520px, 100%);
-  max-height: 90vh;
+  max-height: 90vh;                                                /* nunca mais alto que 90% da janela; rola por dentro */
   overflow-y: auto;
   padding: 24px;
   border-radius: var(--aq-radius-card);
@@ -1008,21 +1015,21 @@ body.aq-app {
 .aq-modal__head h2 { font-size: 1.15rem; flex: 1 1 auto; }
 .aq-modal__foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
-.aq-toast {
+.aq-toast {                                                        /* aviso flutuante no canto (notify() em dashboard-shell.js) */
   position: fixed;
   right: 24px; bottom: 24px;
-  z-index: 300;
+  z-index: 300;                                                    /* acima do modal (200) */
   display: flex; align-items: flex-start; gap: 11px;
   max-width: 380px;
   padding: 14px 16px;
   border: 1px solid var(--aq-border);
-  border-left: 4px solid var(--aq-success);
+  border-left: 4px solid var(--aq-success);                        /* faixa lateral: verde por padrão; variantes error/info trocam */
   border-radius: 11px;
   background: var(--aq-surface);
   box-shadow: 0 14px 40px rgba(8, 37, 86, 0.16);
   font-size: 0.87rem;
 }
-.aq-toast[hidden] { display: none; }
+.aq-toast[hidden] { display: none; }                               /* some sozinho após 4,5 s (dashboard-shell.js) */
 .aq-toast--error { border-left-color: var(--aq-danger); }
 .aq-toast--info { border-left-color: var(--aq-info); }
 .aq-toast__icon { color: var(--aq-success); flex: none; }
@@ -1032,7 +1039,7 @@ body.aq-app {
 .aq-toast span { color: var(--aq-text-secondary); }
 
 /* aviso de dados demonstrativos */
-.aq-demo-note {
+.aq-demo-note {                                                    /* faixa azul informando que os dados são de demonstração */
   display: flex; align-items: flex-start; gap: 11px;
   padding: 13px 16px;
   border: 1px solid var(--aq-border);
@@ -1046,12 +1053,12 @@ body.aq-app {
 
 /* respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
-  .aq-app *, .aq-app *::before, .aq-app *::after {
+  .aq-app *, .aq-app *::before, .aq-app *::after {                 /* praticamente zera animações e transições de todo o dashboard */
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  .aq-skeleton { animation: none; background: #eef3fa; }
+  .aq-skeleton { animation: none; background: #eef3fa; }           /* skeleton parado, cor sólida */
 }
 
 /* ícone grande da condição meteorológica (tela de Precipitação) */
@@ -1070,18 +1077,18 @@ body.aq-app {
       grade ela ultrapassava a área útil, então passa a abrir para a esquerda.
       `.aq-shell` recebe um recorte só horizontal como rede de segurança.
    ------------------------------------------------------------------------- */
-.aq-table-wrap { max-width: 100%; min-width: 0; contain: paint; }
-.aq-card > * { min-width: 0; }
+.aq-table-wrap { max-width: 100%; min-width: 0; contain: paint; }  /* itens (a) e (b) acima */
+.aq-card > * { min-width: 0; }                                     /* filhos do cartão também podem encolher */
 .aq-list__body { min-width: 0; }
-.aq-list__title, .aq-list__meta { overflow-wrap: anywhere; }
+.aq-list__title, .aq-list__meta { overflow-wrap: anywhere; }       /* palavras longas quebram em vez de alargar a lista */
 
-.aq-grid > *:last-child .aq-tip::after,
+.aq-grid > *:last-child .aq-tip::after,                            /* item (c): tooltip do último cartão abre para a esquerda */
 .aq-card:last-child .aq-tip::after {
   left: auto;
   right: 0;
   transform: none;
 }
-.aq-shell { overflow-x: clip; }
+.aq-shell { overflow-x: clip; }                                    /* clip corta sem criar área de rolagem (diferente de hidden) */
 
 /* -------------------------------------------------------------------------
    17. Complementos de tabela
@@ -1096,7 +1103,7 @@ body.aq-app {
 .aq-table .is-nowrap { white-space: nowrap; }
 
 /* variante compacta para tabelas com muitas colunas em cartões estreitos */
-.aq-table--tight { font-size: 0.8rem; }
+.aq-table--tight { font-size: 0.8rem; }                            /* fonte e espaçamentos menores */
 .aq-table--tight th,
 .aq-table--tight td { padding: 9px 5px; }
 .aq-table--tight .aq-badge { padding: 3px 7px; font-size: 0.72rem; gap: 4px; }
@@ -1112,7 +1119,7 @@ body.aq-app {
 }
 .aq-arrow .aq-icon { width: 14px; height: 14px; }
 .aq-arrow--up   { background: var(--aq-success); }
-.aq-arrow--down { background: var(--aq-warning); }
+.aq-arrow--down { background: var(--aq-warning); }                 /* queda em âmbar (atenção), não vermelho */
 .aq-arrow--flat { background: var(--aq-text-muted); }
 
 /* -------------------------------------------------------------------------
@@ -1129,7 +1136,7 @@ body.aq-app {
   /* duas linhas reservadas: os valores dos seis cartões ficam alinhados
      mesmo quando um rótulo quebra e outro não */
   align-items: flex-start;
-  min-height: 2.4em;
+  min-height: 2.4em;                                               /* 2 × altura da linha ≈ 2 linhas de rótulo */
 }
 
 .aq-grid--6 .aq-kpi__icon,
@@ -1144,12 +1151,12 @@ body.aq-app {
 .aq-kpi__inline { font-size: 0.75rem; line-height: 1.4; white-space: nowrap; }
 
 /* Escala percentual ao lado da coluna de capacidade (tela de Nível). */
-.aq-scale {
+.aq-scale {                                                        /* lista de marcações (100%, 75%...) ao lado da barra */
   flex: none;
-  height: 250px;
+  height: 250px;                                                   /* mesma altura da coluna de capacidade ao lado (nivel.php) */
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: space-between;                                  /* distribui as marcações igualmente na altura */
   font-size: 0.71rem;
   color: var(--aq-text-muted);
 }
@@ -1160,7 +1167,7 @@ body.aq-app {
   gap: 5px;
   line-height: 1;
 }
-.aq-scale li::after {
+.aq-scale li::after {                                              /* tracinho de 8px à direita de cada valor */
   content: "";
   width: 8px;
   height: 1px;
@@ -1180,7 +1187,7 @@ body.aq-app {
 /* Valor de KPI que é texto (ex.: "Normal", "Atenção") e não um número:
    corpo menor para caber nas faixas densas, cor conforme a situação. */
 .aq-kpi__value--text { font-size: 1.15rem; }
-.aq-status--normal    { color: var(--aq-success); }
+.aq-status--normal    { color: var(--aq-success); }                /* classes montadas no JS (levels.js, overview.js) com a chave do status */
 .aq-status--attention { color: var(--aq-warning); }
 .aq-status--critical  { color: var(--aq-danger); }
 

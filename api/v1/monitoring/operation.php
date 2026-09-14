@@ -1,5 +1,9 @@
 <?php
 /** GET /api/v1/monitoring/operation.php?reservoir_id={id} — situação operacional. */
+/*
+ * Chamado por: assets/js/pages/operation.js (monitoramento/operacional.php).
+ * Não recebe período: mostra o estado atual dos equipamentos da represa.
+ */
 
 declare(strict_types=1);
 
@@ -11,10 +15,10 @@ use Aquapulse\Support\Validator;
 
 [$repo] = aq_api_boot();
 
-$reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');
+$reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');    // represa obrigatória
 
 $service = new MonitoringService($repo);
-$data    = $service->operation($reservoirId);
+$data    = $service->operation($reservoirId);                             // sensores, comportas, alertas, eventos e manutenções
 
 if ($data === []) {
     ApiResponse::error('NO_DATA', 'Não há dados operacionais para esta represa.', 404);

@@ -17,13 +17,16 @@
  *   - ao retomar, uma única troca é agendada, sem compensar o tempo parado;
  *   - os 3 s contam entre INÍCIOS de transição: a duração da revelação não se
  *     soma ao intervalo.
+ *
+ * HTML: includes/sections/sistema.php | CSS: assets/css/sistema.css
+ * A lógica é a mesma de monitorar.js (ver os comentários de lá para detalhes).
  */
 (function () {
   'use strict';
 
-  var INTERVALO_PADRAO = 3000;
-  var TRANSICAO_PADRAO = 650;
-  var FRACAO_VISIVEL = 0.35;
+  var INTERVALO_PADRAO = 3000;                                        // ms entre trocas
+  var TRANSICAO_PADRAO = 650;                                         // ms da revelação
+  var FRACAO_VISIVEL = 0.35;                                          // fração mínima visível para rodar
 
   /** matchMedia antigo do Safari usa addListener. */
   function escutarMedia(mq, aoMudar) {
@@ -31,11 +34,12 @@
     else if (typeof mq.addListener === 'function') mq.addListener(aoMudar);
   }
 
+  /** Inicializa o carrossel dentro de `raiz` (elemento com data-sistema-carrossel). */
   function iniciar(raiz) {
-    if (!raiz || raiz.getAttribute('data-sistema-pronto') === 'true') return;
+    if (!raiz || raiz.getAttribute('data-sistema-pronto') === 'true') return; // evita inicializar duas vezes
 
     var telas = Array.prototype.slice.call(raiz.querySelectorAll('[data-sistema-tela]'));
-    var saidaAtual = raiz.querySelector('[data-sistema-atual]');
+    var saidaAtual = raiz.querySelector('[data-sistema-atual]');      // número "01" do contador
 
     if (telas.length < 2) return; // uma tela só não é carrossel
 
@@ -47,14 +51,14 @@
     var mqMovimento = window.matchMedia('(prefers-reduced-motion: reduce)');
     var mqPonteiro = window.matchMedia('(hover: hover) and (pointer: fine)');
 
-    var indice = 0;
-    var versao = 0;
+    var indice = 0;                                                   // captura em exibição
+    var versao = 0;                                                   // descarta carregamentos atrasados
     var timerCiclo = null;
     var timerFim = null;
     var emTransicao = false;
     var pendente = null;
-    var pausas = Object.create(null);
-    var validos = telas.map(function (_, i) { return i; });
+    var pausas = Object.create(null);                                 // motivos de pausa ativos
+    var validos = telas.map(function (_, i) { return i; });           // capturas que carregaram
 
     /* ----------------------------------------------------- pausas temporárias */
 
@@ -85,13 +89,15 @@
 
     /* --------------------------------------------------------- navegação */
 
+    /** Próxima captura válida (sempre para frente: não há botão "anterior" aqui). */
     function seguinte(de) {
       if (!validos.length) return de;
       var pos = validos.indexOf(de);
       if (pos === -1) return validos[0];
-      return validos[(pos + 1) % validos.length];
+      return validos[(pos + 1) % validos.length];                     // % volta ao início depois da última
     }
 
+    /** Tira do ciclo uma captura que não carregou. */
     function invalidar(i) {
       var pos = validos.indexOf(i);
       if (pos !== -1) validos.splice(pos, 1);
@@ -139,7 +145,7 @@
         else tela.setAttribute('aria-hidden', 'true');
       });
       // o contador não fica em região live: as trocas não são anunciadas
-      if (saidaAtual) saidaAtual.textContent = (alvo + 1 < 10 ? '0' : '') + (alvo + 1);
+      if (saidaAtual) saidaAtual.textContent = (alvo + 1 < 10 ? '0' : '') + (alvo + 1); // completa com zero à esquerda: 1 -> "01"
       indice = alvo;
     }
 
@@ -170,6 +176,7 @@
       });
     }
 
+    /** Anima a troca da captura atual para `alvo`. */
     function revelar(alvo) {
       var anterior = telas[indice];
       var nova = telas[alvo];
@@ -209,7 +216,7 @@
     /* Sem reprodução automática e sem revelação: fica na primeira captura. */
     function aplicarMovimento() {
       if (mqMovimento.matches) {
-        raiz.style.setProperty('--sis-transicao', '0ms');
+        raiz.style.setProperty('--sis-transicao', '0ms');             // variável CSS lida em sistema.css
         pausas.movimento = true;
       } else {
         raiz.style.setProperty('--sis-transicao', transicao + 'ms');
@@ -220,7 +227,7 @@
 
     /* ------------------------------------------------------- interações */
 
-    if (mqPonteiro.matches) {
+    if (mqPonteiro.matches) {                                         // com mouse: pausa enquanto o ponteiro estiver sobre o carrossel
       raiz.addEventListener('mouseenter', function () { pausar('ponteiro'); });
       raiz.addEventListener('mouseleave', function () { liberar('ponteiro'); });
     }
@@ -236,7 +243,7 @@
        troca automática não arranca sozinha.
     */
     if ('IntersectionObserver' in window) {
-      pausas.fora = true;
+      pausas.fora = true;                                             // só começa quando a seção entrar na tela
       var observador = new IntersectionObserver(function (entradas) {
         entradas.forEach(function (entrada) {
           if (entrada.isIntersecting && entrada.intersectionRatio >= FRACAO_VISIVEL) liberar('fora');
@@ -249,8 +256,8 @@
     aplicarMovimento();
     escutarMedia(mqMovimento, aplicarMovimento);
 
-    marcar(0);
-    agendar();
+    marcar(0);                                                        // estado inicial: primeira captura
+    agendar();                                                        // agenda a primeira troca (se não houver pausa)
   }
 
   try {

@@ -1,5 +1,11 @@
 <?php
 /** Aquapulse — Monitoramento / Previsão de duração da água. */
+/*
+ * Por quantos dias a reserva de UMA represa atende a demanda, em três cenários
+ * de consumo. Dados de GET api/v1/monitoring/duration.php (DurationForecastService),
+ * carregados por assets/js/pages/duration.js (com monitor-page.js).
+ * O seletor desta tela é um HORIZONTE futuro, não um período passado.
+ */
 
 declare(strict_types=1);
 
@@ -12,11 +18,11 @@ aq_page_start([
     'subtitle' => 'Estime por quanto tempo a reserva poderá atender à demanda',
 ]);
 
-echo aq_monitor_bar([
-    'period_id'    => 'filtro-horizonte',
+echo aq_monitor_bar([                                                     // a mesma barra das outras telas, com o seletor de período reconfigurado
+    'period_id'    => 'filtro-horizonte',                                 // id diferente: duration.js lê este campo e envia como ?horizon=
     'period_label' => 'Horizonte de previsão',
-    'periods'      => ['30d' => 'Próximos 30 dias', '60d' => 'Próximos 60 dias', '90d' => 'Próximos 90 dias', '180d' => 'Próximos 180 dias'],
-    'period_value' => '90d',
+    'periods'      => ['30d' => 'Próximos 30 dias', '60d' => 'Próximos 60 dias', '90d' => 'Próximos 90 dias', '180d' => 'Próximos 180 dias'], // mesma allowlist do endpoint
+    'period_value' => '90d',                                              // 90 dias marcado por padrão
 ]);
 ?>
 
@@ -33,7 +39,7 @@ echo aq_monitor_bar([
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Projeção da reserva', 'tip' => 'Evolução do volume nos três cenários de consumo.']); ?>
     <div data-content="projection" hidden>
-      <?php echo aq_chart(['id' => 'grafico-projecao', 'size' => 'lg', 'axis' => 'Volume (hm³)', 'desc' => 'Projeção do volume da reserva em três cenários de consumo.']); ?>
+      <?php echo aq_chart(['id' => 'grafico-projecao', 'size' => 'lg', 'axis' => 'Volume (hm³)', 'desc' => 'Projeção do volume da reserva em três cenários de consumo.']); // três linhas: data.projection.current / high / saving ?>
       <?php echo aq_legend([
           ['label' => 'Consumo atual', 'color' => '#0b5bea'],
           ['label' => 'Consumo elevado (+20%)', 'color' => '#f59e0b', 'style' => 'dashed'],
@@ -47,12 +53,12 @@ echo aq_monitor_bar([
     <?php echo aq_card_head(['title' => 'Estimativa atual', 'tip' => 'Duração projetada no cenário base.']); ?>
     <div data-content="estimate" hidden style="text-align:center">
       <div style="max-width:280px;margin:0 auto">
-        <?php echo aq_chart(['id' => 'medidor-duracao', 'size' => 'md', 'desc' => 'Indicador circular da duração estimada.']); ?>
+        <?php echo aq_chart(['id' => 'medidor-duracao', 'size' => 'md', 'desc' => 'Indicador circular da duração estimada.']); // rosca: dias estimados em relação a estimate.max_days ?>
       </div>
       <p class="aq-card__sub" style="margin-top:10px">
         <span class="aq-status-text" style="font-weight:inherit">
           <?php aq_the_icon('calendar'); ?>
-          <span>Data estimada: <strong data-field="estimate.date">—</strong></span>
+          <span>Data estimada: <strong data-field="estimate.date">—</strong></span> <?php /* ex.: "14 de agosto de 2024" */ ?>
         </span>
       </p>
       <p style="margin-top:10px" data-field="estimate.badge"></p>
@@ -62,12 +68,12 @@ echo aq_monitor_bar([
   </article>
 </div>
 
-<div class="aq-grid aq-grid--3-3-3-4-8">
-  <div data-scenarios style="display:contents"></div>
+<div class="aq-grid aq-grid--3-3-3-4-8"> <?php /* grade de 5 colunas: 3 cards de cenário + fatores + histórico */ ?>
+  <div data-scenarios style="display:contents"></div> <?php /* display:contents: os cards gerados pelo JS entram direto na grade, como se este div não existisse */ ?>
 
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Fatores considerados', 'tip' => 'Variáveis usadas pelo cálculo demonstrativo.']); ?>
-    <div class="aq-list" data-factors></div>
+    <div class="aq-list" data-factors></div> <?php /* data.factors */ ?>
   </article>
 
   <article class="aq-card">
@@ -86,14 +92,14 @@ echo aq_monitor_bar([
           <th scope="col" class="is-num">Confiança</th>
         </tr>
       </thead>
-      <tbody data-estimates></tbody>
+      <tbody data-estimates></tbody> <?php /* data.history */ ?>
     </table>
     <?php echo aq_table_close(); ?>
     <p class="aq-card__sub" style="margin-top:12px">Atualização automática a cada 5 minutos</p>
   </article>
 </div>
 
-<article class="aq-card" style="flex-direction:row;align-items:center;gap:18px">
+<article class="aq-card" style="flex-direction:row;align-items:center;gap:18px"> <?php /* faixa de recomendação (data.insight) */ ?>
   <span class="aq-kpi__icon" aria-hidden="true"><?php aq_the_icon('chart-bars'); ?></span>
   <div style="flex:1 1 auto">
     <h3 style="font-size:1rem">Insight importante</h3>
@@ -101,7 +107,7 @@ echo aq_monitor_bar([
   </div>
   <div style="text-align:center;padding:12px 26px;border-radius:12px;background:var(--aq-primary-soft)">
     <p class="aq-kpi__value" style="color:var(--aq-primary);font-size:1.7rem">
-      <span data-field="insight.gain">—</span><span class="aq-kpi__unit" style="color:var(--aq-primary)">dias</span>
+      <span data-field="insight.gain">—</span><span class="aq-kpi__unit" style="color:var(--aq-primary)">dias</span> <?php /* dias ganhos com economia de 10% */ ?>
     </p>
     <p style="font-size:.8rem;color:var(--aq-text-secondary)">Ganho estimado</p>
   </div>
@@ -113,4 +119,4 @@ echo aq_monitor_bar([
   <code>DurationForecastService</code>. O modelo definitivo será implementado junto com o banco de dados.</span>
 </div>
 
-<?php aq_page_end(['scripts' => ['pages/duration.js'], 'monitor' => true]);
+<?php aq_page_end(['scripts' => ['pages/duration.js'], 'monitor' => true]); // lógica desta tela
