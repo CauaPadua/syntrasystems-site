@@ -2,16 +2,17 @@
 /**
  * Aquapulse — implementação SIMULADA do repositório de monitoramento.
  *
- * TEMPORÁRIA: lê backend/storage/mock/monitoring.php. Não há banco de dados,
- * escrita nem persistência.
+ * Lê backend/storage/mock/monitoring.php. Não escreve nem persiste nada: é a
+ * origem usada quando o sistema roda SEM banco de dados configurado.
  *
  * DETERMINISMO: as séries são geradas por uma função senoidal com semente fixa
  * derivada do ID da represa e da métrica. Nunca usa rand()/time(). O ÚLTIMO
  * ponto de toda série é forçado ao valor atual do KPI, garantindo que gráfico
  * e card nunca se contradigam.
  *
- * SUBSTITUIÇÃO: criar PdoMonitoringRepository implementando
- * MonitoringRepositoryInterface. Ver docs/database-handoff.md.
+ * SITUAÇÃO: o PdoMonitoringRepository já existe e lê o MySQL. Esta versão
+ * simulada continua sendo a origem usada quando não há banco configurado
+ * (sem DB_HOST no backend/.env) — desenvolvimento e demonstração offline.
  *
  * É a implementação usada hoje sempre que não existe DB_HOST (Support\Container).
  * O arquivo de dados guarda só os valores "atuais" de cada represa; o histórico

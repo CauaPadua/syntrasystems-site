@@ -8,7 +8,7 @@
  *  - Não há cadastro, edição nem remoção nesta etapa: os dados são somente leitura.
  *  - Na etapa do banco, este arquivo é descartado junto com o MockUserRepository.
  *
- * Credencial exclusivamente local (documentada em docs/api-contract.md):
+ * Credencial exclusivamente local:
  *   e-mail: demo@aquapulse.local
  *   senha:  definida na documentação local — o hash abaixo foi gerado com password_hash()
  */

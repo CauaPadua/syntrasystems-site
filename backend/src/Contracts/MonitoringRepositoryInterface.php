@@ -14,7 +14,7 @@
  *
  * Nenhuma tela, JavaScript, endpoint ou contrato de API precisa ser alterado.
  *
- * Ver docs/database-handoff.md para as entidades e campos esperados.
+ * Os campos esperados de cada entidade são os de backend/storage/mock/monitoring.php.
  *
  * Situação atual do código: a implementação com banco já existe em
  * backend/src/Repositories/PdoMonitoringRepository.php (sem a subpasta Pdo/),
@@ -47,7 +47,7 @@ interface MonitoringRepositoryInterface
      *
      * @param string $companyId ID da empresa ou 'all'.
      * @return array<int,array<string,mixed>> Cada item traz os campos descritos
-     *         em docs/database-handoff.md (entidade "represas").
+     *         em backend/storage/mock/monitoring.php (chave "reservoirs").
      */
     public function reservoirs(string $companyId = 'all'): array;
 

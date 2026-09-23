@@ -18,7 +18,7 @@ require dirname(__DIR__, 3) . '/backend/bootstrap.php';
 use Aquapulse\Auth\AuthService;
 use Aquapulse\Http\JsonResponse;
 use Aquapulse\Http\Request;
-use Aquapulse\Repositories\MockUserRepository;
+use Aquapulse\Support\Container;
 
 if (!Request::isMethod('GET')) {                                         // consulta apenas: só GET é aceito
     JsonResponse::methodNotAllowed(['GET']);
@@ -26,8 +26,9 @@ if (!Request::isMethod('GET')) {                                         // cons
 
 aq_start_session();                                                      // lê o cookie de sessão e aplica as regras de expiração
 
-// TROCA FUTURA: substituir MockUserRepository por PdoUserRepository.
-$auth = new AuthService(new MockUserRepository());
+// O repositório de usuários vem do Container: com DB_HOST definido é o
+// PdoUserRepository (tabela users do MySQL); sem ele, o MockUserRepository.
+$auth = new AuthService(Container::users());
 
 $user = $auth->currentUser();                                            // usuário da sessão, ou null
 

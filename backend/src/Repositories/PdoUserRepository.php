@@ -18,13 +18,19 @@ use PDO;
 
 final class PdoUserRepository implements UserRepositoryInterface
 {
+    /** Conexão compartilhada, aberta por Support\Database e entregue pelo Container. */
+    private PDO $pdo;
+
     /**
      * Recebe a conexão já aberta (Support\Database::conexao(), via Container).
-     * "private readonly" declara e preenche a propriedade $this->pdo em uma linha,
-     * e impede que ela seja trocada depois da construção.
+     *
+     * A propriedade é declarada acima e atribuída aqui, em vez de usar a
+     * promoção com "private readonly" no parâmetro: readonly só existe a
+     * partir do PHP 8.1, e o projeto precisa rodar também em PHP 8.0.
      */
-    public function __construct(private readonly PDO $pdo)
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**

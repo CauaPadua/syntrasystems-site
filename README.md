@@ -4,27 +4,15 @@
 - **Etapa 2** — tela de login com autenticação PHP funcional (`login.php` + `api/v1/auth/`
   + `backend/`), sustentada por um repositório **simulado**.
 - **Etapa 3** — sistema interno completo (`dashboard/` + `api/v1/`), com 14 telas,
-  17 endpoints e dados **simulados e determinísticos**. Sem banco de dados.
-
-> **Começando agora?** Leia primeiro o [`GUIA-DO-PROJETO.md`](GUIA-DO-PROJETO.md):
-> ele explica, em linguagem simples, o que é front-end, o que é back-end e o que
-> cada pasta faz. Cada pasta principal tem também o seu `LEIA-ME.md`.
-
-Documentação:
-
-| Documento | Assunto |
-| --- | --- |
-| [`docs/login-stage.md`](docs/login-stage.md) | etapa do login |
-| [`docs/api-contract.md`](docs/api-contract.md) | contrato da API de autenticação |
-| [`docs/api-monitoring.md`](docs/api-monitoring.md) | contrato da API do sistema interno |
-| [`docs/mock-data.md`](docs/mock-data.md) | como os dados simulados funcionam |
-| [`docs/database-handoff.md`](docs/database-handoff.md) | guia para a equipe de banco de dados |
-
+  17 endpoints e dados **simulados e determinísticos**.
+- **Etapa 4** — integração com **banco de dados MySQL**: 21 tabelas, instalador,
+  seeds e testes. Os dados simulados continuam disponíveis para rodar sem banco.
 
 ## Stack
 
 PHP (apenas para estruturar e servir a página), HTML semântico, CSS e JavaScript
-puro. Sem frameworks, bundlers, dependências ou banco de dados.
+puro, e MySQL na camada de dados. Sem frameworks, bundlers ou dependências
+externas — a conexão usa PDO, que já vem no PHP.
 
 ## Como executar
 
@@ -79,8 +67,9 @@ api/v1/
   _boot.php                     sessão, cabeçalhos e container compartilhados
 
 backend/
+  database/                     migrations, seeds, instalador e testes do MySQL
   src/Contracts/                MonitoringRepositoryInterface (ponto de troca)
-  src/Repositories/Mock/        implementação simulada
+  src/Repositories/             implementações PDO (MySQL) e simulada
   src/Services/                 regras de negócio (status, visão geral, previsão)
   src/Support/                  relógio, validação, resposta, container, guarda
   storage/mock/                 dados simulados (fora da pasta pública)
@@ -93,7 +82,6 @@ assets/
   vendor/                       Chart.js e Leaflet locais (sem CDN)
   images/                       imagens públicas otimizadas
 
-docs/                           contratos da API e guias de etapa
 reference/                      material de referência original (não alterado)
 validation/screenshots/         capturas de validação
 ```
@@ -107,10 +95,10 @@ validation/screenshots/         capturas de validação
   não um dashboard funcional.
 - O sistema interno (`dashboard/`) exige sessão: sem login, a página redireciona
   para `login.php` e a API responde **401 em JSON**.
-- Os dados do sistema interno são **simulados e determinísticos** — atualizar a
-  página não muda os números. Ver [`docs/mock-data.md`](docs/mock-data.md).
-- **Não há banco de dados** em nenhuma etapa. A troca está preparada por
-  interface: ver [`docs/database-handoff.md`](docs/database-handoff.md).
+- A origem dos dados é escolhida pela variável `DB_HOST` (em `backend/.env`):
+  com ela, o sistema lê o **MySQL**; sem ela, usa os arquivos **simulados**, que
+  continuam determinísticos.
+- Para criar o banco: `php backend/database/migrate.php install`.
 
 ## Evidências de validação
 

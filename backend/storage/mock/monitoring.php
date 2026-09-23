@@ -11,9 +11,10 @@
  *  - As séries temporais são derivadas destes âncoras pelo repositório, sempre
  *    terminando exatamente no valor atual do KPI correspondente.
  *
- * SUBSTITUIÇÃO PELO BANCO: ver docs/database-handoff.md. Este arquivo será
- * descartado junto com o MockMonitoringRepository; o PdoMonitoringRepository
- * deverá devolver as mesmas estruturas.
+ * RELAÇÃO COM O BANCO: estes mesmos valores foram carregados no MySQL — são a
+ * origem do seed (backend/database/seeds/) e dos âncoras usados para gerar o
+ * histórico de leituras. O arquivo NÃO foi descartado: é a fonte usada quando
+ * o sistema roda sem banco.
  *
  * COORDENADAS: são DEMONSTRATIVAS (região de Rio Claro/SP) e deverão ser
  * substituídas pelas coordenadas reais vindas do banco.
