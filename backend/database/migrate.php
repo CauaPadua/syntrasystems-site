@@ -268,10 +268,7 @@ function semearUsuarios(PDO $pdo): int
                                  status = VALUES(status), password_hash = VALUES(password_hash)'
     );
     $limpar = $pdo->prepare('DELETE FROM user_company_access WHERE user_id = :user');
-    $vinculo = $pdo->prepare(
-        "INSERT INTO user_company_access (user_id, company_id, role, permissions)
-         VALUES (:user, :company, :role, '[]')"
-    );
+    $vinculo = $pdo->prepare('INSERT INTO user_company_access (user_id, company_id) VALUES (:user, :company)');
 
     foreach ($usuarios as $u) {
         $conta->execute([
@@ -286,7 +283,7 @@ function semearUsuarios(PDO $pdo): int
         // A carga define exatamente os vínculos listados para a conta.
         $limpar->execute(['user' => $u['id']]);
         foreach ($u['companies'] as $empresa) {
-            $vinculo->execute(['user' => $u['id'], 'company' => $empresa, 'role' => $u['role']]);
+            $vinculo->execute(['user' => $u['id'], 'company' => $empresa]);
         }
     }
 
@@ -294,24 +291,19 @@ function semearUsuarios(PDO $pdo): int
 }
 
 /**
- * Gera e grava o histórico simulado: leituras das represas, dos pontos de pH e
- * das estações pluviométricas, terminando no momento da carga.
- *
- * Cada bloco roda dentro de uma transação: ou entra tudo, ou nada entra.
- *
- * @return array{readings:int,ph:int,chuva:int}
+ * Gera e grava o histórico simulado das leituras de cada represa, terminando no
+ * momento da carga. Tudo entra em uma transação: ou entra tudo, ou nada entra.
  */
-function semearHistorico(PDO $pdo): array
+function semearHistorico(PDO $pdo): int
 {
     $inicial = valoresIniciais();
     $agora = Clock::now();
-    $total = ['readings' => 0, 'ph' => 0, 'chuva' => 0];
+    $total = 0;
 
-    /* ---------------------------------------------- leituras por represa */
     $inserir = $pdo->prepare(
         'INSERT INTO readings (sensor_id, reservoir_id, metric, value, recorded_at)
          VALUES (:sensor_id, :reservoir_id, :metric, :value, :recorded_at)
-         ON DUPLICATE KEY UPDATE value = VALUES(value), sensor_id = VALUES(sensor_id)'
+         ON DUPLICATE KEY UPDATE value = VALUES(value)'
     );
 
     $represas = $pdo->query('SELECT id, capacity_hm3, cota_min_m, cota_max_m FROM reservoirs ORDER BY sort_order')->fetchAll();
@@ -332,45 +324,7 @@ function semearHistorico(PDO $pdo): array
 
         foreach (HistoryGenerator::reservoirReadings($represa, $partida, $equipamentos[$represa['id']] ?? [], $agora) as $linha) {
             $inserir->execute($linha);
-            $total['readings']++;
-        }
-    }
-    $pdo->commit();
-
-    /* ------------------------------------------ medições dos pontos de pH */
-    $inserirPh = $pdo->prepare(
-        'INSERT INTO ph_point_readings (ph_point_id, ph, water_temp_c, recorded_at)
-         VALUES (:pid, :ph, :temp, :quando)
-         ON DUPLICATE KEY UPDATE ph = VALUES(ph), water_temp_c = VALUES(water_temp_c)'
-    );
-
-    $pdo->beginTransaction();
-    foreach ($pdo->query('SELECT id, reservoir_id, name FROM ph_points ORDER BY id')->fetchAll() as $ponto) {
-        $ph = (float) ($inicial['ph_points'][$ponto['reservoir_id']][$ponto['name']] ?? 7.2);
-        $temp = (float) ($inicial['reservoirs'][$ponto['reservoir_id']]['water_temp'] ?? 22.0);
-        $chave = $ponto['reservoir_id'] . '|ph|' . $ponto['name'];
-
-        foreach (HistoryGenerator::phPointReadings($chave, $ph, $temp, $agora) as [$valor, $temperatura, $quando]) {
-            $inserirPh->execute(['pid' => $ponto['id'], 'ph' => $valor, 'temp' => $temperatura, 'quando' => $quando]);
-            $total['ph']++;
-        }
-    }
-    $pdo->commit();
-
-    /* ------------------------------- medições das estações pluviométricas */
-    $inserirChuva = $pdo->prepare(
-        'INSERT INTO rain_station_readings (station_id, rain_mm, recorded_at)
-         VALUES (:sid, :mm, :quando)
-         ON DUPLICATE KEY UPDATE rain_mm = VALUES(rain_mm)'
-    );
-
-    $pdo->beginTransaction();
-    foreach ($pdo->query('SELECT id FROM rain_stations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN) as $estacao) {
-        $acumulado = (float) ($inicial['rain_stations'][$estacao] ?? 10.0);
-
-        foreach (HistoryGenerator::rainStationReadings((string) $estacao, $acumulado, $agora) as [$mm, $quando]) {
-            $inserirChuva->execute(['sid' => $estacao, 'mm' => $mm, 'quando' => $quando]);
-            $total['chuva']++;
+            $total++;
         }
     }
     $pdo->commit();
@@ -427,13 +381,7 @@ function comandoSeed(): void
     saida('  contas de acesso carregadas: ' . semearUsuarios($pdo));
 
     saida('  gerando histórico simulado (pode levar alguns segundos)...');
-    $series = semearHistorico($pdo);
-    saida(sprintf(
-        '  leituras: %d das represas, %d de pontos de pH, %d de pluviômetros',
-        $series['readings'],
-        $series['ph'],
-        $series['chuva']
-    ));
+    saida('  leituras geradas: ' . semearHistorico($pdo));
 
     saida('  alertas abertos pelo estado atual: ' . semearAlertas($pdo));
 }

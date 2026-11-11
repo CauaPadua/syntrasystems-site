@@ -87,7 +87,6 @@ $alerts = array_map(static function (array $a) use ($nomes, $data): array {
         'timeline'         => array_map(static fn (array $t): array => [
             'at'   => $data($t['at']),
             'text' => $t['text'],
-            'done' => $t['done'],
         ], $a['timeline']),
     ];
 }, array_values(array_filter($repo->alerts($reservoirId, $severity, $status), $naEmpresa)));
@@ -105,7 +104,7 @@ $minutos = [];
 // Um contador por dia e situação, para o gráfico dos últimos 7 dias.
 $dias = [];
 for ($i = 0; $i < 7; $i++) {
-    $dias[$inicioDaSemana->modify("+{$i} days")->format('Y-m-d')] = ['critical' => 0, 'attention' => 0, 'info' => 0, 'resolved' => 0];
+    $dias[$inicioDaSemana->modify("+{$i} days")->format('Y-m-d')] = ['critical' => 0, 'attention' => 0, 'resolved' => 0];
 }
 
 foreach ($escopo as $a) {
@@ -143,7 +142,6 @@ ApiResponse::success([
         'labels'    => array_map(static fn (string $d): string => Clock::shortDate(Clock::parse($d)), array_keys($dias)),
         'critical'  => array_column($dias, 'critical'),
         'attention' => array_column($dias, 'attention'),
-        'info'      => array_column($dias, 'info'),
         'resolved'  => array_column($dias, 'resolved'),
     ],
     'period' => $inicioDaSemana->format('d/m/Y') . ' → ' . $agora->format('d/m/Y'),

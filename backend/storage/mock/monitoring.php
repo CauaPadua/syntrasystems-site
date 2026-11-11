@@ -59,40 +59,24 @@ return [
             ['id' => 'SEN-VAZ-02', 'name' => 'Defluência principal', 'location' => 'Saída da barragem',    'type' => 'outflow', 'status' => 'active',      'online' => true],
             ['id' => 'SEN-VAZ-03', 'name' => 'Canal de restituição', 'location' => 'Canal de restituição', 'type' => 'outflow', 'status' => 'maintenance', 'online' => false],
             ['id' => 'SEN-PH-01',  'name' => 'Sonda de pH',          'location' => 'Tomada d\'água',       'type' => 'ph',      'status' => 'active',      'online' => true],
+            ['id' => 'SEN-TMP-01', 'name' => 'Termômetro da água',      'location' => 'Tomada d\'água',     'type' => 'water_temp',    'status' => 'active', 'online' => true],
+            ['id' => 'SEN-PLU-01', 'name' => 'Pluviômetro da barragem', 'location' => 'Crista da barragem', 'type' => 'precipitation', 'status' => 'active', 'online' => true],
         ],
         'rio-verde' => [
             ['id' => 'SEN-NIV-11', 'name' => 'Régua de nível',       'location' => 'Barragem principal', 'type' => 'level',   'status' => 'active', 'online' => true],
             ['id' => 'SEN-VAZ-11', 'name' => 'Afluência principal',  'location' => 'Entrada principal',  'type' => 'inflow',  'status' => 'active', 'online' => true],
             ['id' => 'SEN-VAZ-12', 'name' => 'Defluência principal', 'location' => 'Saída da barragem',  'type' => 'outflow', 'status' => 'active', 'online' => true],
             ['id' => 'SEN-PH-11',  'name' => 'Sonda de pH',          'location' => 'Tomada d\'água',     'type' => 'ph',      'status' => 'active', 'online' => true],
+            ['id' => 'SEN-TMP-11', 'name' => 'Termômetro da água',      'location' => 'Tomada d\'água',     'type' => 'water_temp',    'status' => 'active', 'online' => true],
+            ['id' => 'SEN-PLU-11', 'name' => 'Pluviômetro da barragem', 'location' => 'Crista da barragem', 'type' => 'precipitation', 'status' => 'active', 'online' => true],
         ],
         'serra-azul' => [
             ['id' => 'SEN-NIV-21', 'name' => 'Régua de nível',       'location' => 'Barragem principal', 'type' => 'level',   'status' => 'active', 'online' => true],
             ['id' => 'SEN-VAZ-21', 'name' => 'Afluência principal',  'location' => 'Entrada principal',  'type' => 'inflow',  'status' => 'active', 'online' => true],
             ['id' => 'SEN-VAZ-22', 'name' => 'Defluência principal', 'location' => 'Saída da barragem',  'type' => 'outflow', 'status' => 'active', 'online' => false],
             ['id' => 'SEN-PH-21',  'name' => 'Sonda de pH',          'location' => 'Tomada d\'água',     'type' => 'ph',      'status' => 'active', 'online' => true],
-        ],
-    ],
-
-    'ph_points' => [
-        'santa-clara' => [['name' => 'Entrada principal', 'ph' => 7.1], ['name' => 'Centro do reservatório', 'ph' => 7.2], ['name' => 'Próximo à barragem', 'ph' => 7.3]],
-        'rio-verde'   => [['name' => 'Entrada principal', 'ph' => 7.3], ['name' => 'Centro do reservatório', 'ph' => 7.4], ['name' => 'Próximo à barragem', 'ph' => 7.5]],
-        'serra-azul'  => [['name' => 'Entrada principal', 'ph' => 7.2], ['name' => 'Centro do reservatório', 'ph' => 7.3], ['name' => 'Próximo à barragem', 'ph' => 7.4]],
-    ],
-
-    'rain_stations' => [
-        'santa-clara' => [
-            ['id' => 'P01', 'name' => 'Pluviômetro Norte', 'rain_24h' => 12.3, 'status' => 'online'],
-            ['id' => 'P02', 'name' => 'Pluviômetro Oeste', 'rain_24h' => 8.7,  'status' => 'online'],
-            ['id' => 'P03', 'name' => 'Pluviômetro Sul',   'rain_24h' => 18.6, 'status' => 'online'],
-        ],
-        'rio-verde' => [
-            ['id' => 'P11', 'name' => 'Pluviômetro Central', 'rain_24h' => 12.3, 'status' => 'online'],
-            ['id' => 'P12', 'name' => 'Pluviômetro Leste',   'rain_24h' => 9.4,  'status' => 'online'],
-        ],
-        'serra-azul' => [
-            ['id' => 'P21', 'name' => 'Pluviômetro Serra', 'rain_24h' => 8.7, 'status' => 'online'],
-            ['id' => 'P22', 'name' => 'Pluviômetro Vale',  'rain_24h' => 6.2, 'status' => 'offline'],
+            ['id' => 'SEN-TMP-21', 'name' => 'Termômetro da água',      'location' => 'Tomada d\'água',     'type' => 'water_temp',    'status' => 'active', 'online' => true],
+            ['id' => 'SEN-PLU-21', 'name' => 'Pluviômetro da barragem', 'location' => 'Crista da barragem', 'type' => 'precipitation', 'status' => 'active', 'online' => true],
         ],
     ],
 
@@ -105,7 +89,7 @@ return [
             'current_value' => '82,4%', 'threshold' => '80%',
             'detail' => 'Leitura do equipamento SEN-NIV-01', 'threshold_detail' => 'Limite de atenção',
             'timeline' => [
-                ['at' => '2024-05-22T08:45:00-03:00', 'text' => 'Alerta aberto automaticamente: 80,1% (limite 80%).', 'done' => true],
+                ['at' => '2024-05-22T08:45:00-03:00', 'text' => 'Alerta aberto automaticamente: 80,1% (limite 80%).'],
             ],
         ],
         [
@@ -115,9 +99,9 @@ return [
             'current_value' => '8,62', 'threshold' => '6,5 – 8,5',
             'detail' => 'Leitura do equipamento SEN-PH-11', 'threshold_detail' => 'Faixa ideal',
             'timeline' => [
-                ['at' => '2024-05-21T06:20:00-03:00', 'text' => 'Alerta aberto automaticamente: 8,62 (limite 6,5 – 8,5).', 'done' => true],
-                ['at' => '2024-05-21T06:31:00-03:00', 'text' => 'Alerta assumido por Ana Silva.', 'done' => true],
-                ['at' => '2024-05-21T07:05:00-03:00', 'text' => 'Alerta resolvido por Ana Silva.', 'done' => true],
+                ['at' => '2024-05-21T06:20:00-03:00', 'text' => 'Alerta aberto automaticamente: 8,62 (limite 6,5 – 8,5).'],
+                ['at' => '2024-05-21T06:31:00-03:00', 'text' => 'Alerta assumido por Ana Silva.'],
+                ['at' => '2024-05-21T07:05:00-03:00', 'text' => 'Alerta resolvido por Ana Silva.'],
             ],
         ],
     ],

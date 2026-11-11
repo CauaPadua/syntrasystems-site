@@ -95,6 +95,18 @@ final class MonitoringService
         return array_map(static fn (string $rotulo) => $porRotulo[$rotulo] ?? null, $labels);
     }
 
+    /**
+     * Equipamentos da represa que medem as grandezas informadas — lista exibida
+     * nas telas de vazão, pH e precipitação.
+     *
+     * @param array<int,array<string,mixed>> $sensors
+     * @param array<int,string>              $tipos
+     */
+    private function equipamentosDe(array $sensors, array $tipos): array
+    {
+        return array_values(array_filter($sensors, static fn (array $s): bool => in_array($s['type'], $tipos, true)));
+    }
+
     /** Média dos valores não nulos; 0 quando não há nenhum. */
     private function media(array $valores): float
     {
@@ -175,7 +187,7 @@ final class MonitoringService
                 'outflow' => $saidaDiaria,
                 'unit'    => 'm³/s',
             ],
-            'sensors'  => array_values(array_filter($sensors, static fn (array $s): bool => in_array($s['type'], ['inflow', 'outflow'], true))),
+            'sensors'  => $this->equipamentosDe($sensors, ['inflow', 'outflow']),
             'readings' => $this->repo->readings($reservoirId, 'inflow', 5),
         ];
     }
@@ -287,6 +299,7 @@ final class MonitoringService
             return [];
         }
 
+        $sensors = $this->repo->sensors($reservoirId);
         $serie = $this->repo->series($reservoirId, 'ph', $period);
         $diaria = $this->repo->series($reservoirId, 'ph', '7d');
 
@@ -297,7 +310,7 @@ final class MonitoringService
         $rotulo = $status === 'normal' ? 'Ideal' : 'Atenção';
 
         return [
-            'reservoir' => $this->head($r, $this->repo->sensors($reservoirId)),
+            'reservoir' => $this->head($r, $sensors),
             'kpis' => [
                 'ph'        => ['value' => $r['ph'], 'note' => $this->ultimaLeitura($r)],
                 'min'       => ['value' => $r['ph_min'], 'note' => 'Nas últimas 24 h'],
@@ -329,10 +342,7 @@ final class MonitoringService
                 'ideal_min' => $minimo,
                 'ideal_max' => $maximo,
             ],
-            'points'   => array_map(static function (array $p): array {
-                $p['status'] = StatusRules::describe($p['status']);
-                return $p;
-            }, $this->repo->phPoints($reservoirId)),
+            'sensors'  => $this->equipamentosDe($sensors, ['ph', 'water_temp']),
             'readings' => array_map(static function (array $linha): array {
                 $linha['status'] = StatusRules::describe($linha['status']);
                 return $linha;
@@ -444,10 +454,10 @@ final class MonitoringService
             $intensidade = $chuva >= $atencao / 2 ? 'Moderada' : 'Baixa';
         }
 
-        $estacoes = $this->repo->rainStations($reservoirId);
+        $sensors = $this->repo->sensors($reservoirId);
 
         return [
-            'reservoir' => $this->head($r, $this->repo->sensors($reservoirId)),
+            'reservoir' => $this->head($r, $sensors),
             'kpis' => [
                 'rain_24h'   => ['value' => $r['rain_24h_mm'], 'unit' => 'mm', 'note' => $this->ultimaLeitura($r)],
                 'rain_7d'    => ['value' => $r['rain_7d_mm'], 'unit' => 'mm', 'note' => 'Total nos últimos 7 dias'],
@@ -466,15 +476,7 @@ final class MonitoringService
                 'last'   => $this->ultimaLeitura($r),
                 'status' => $status,
             ],
-            'basin' => array_map(static function (array $s) use ($atencao): array {
-                $mm = (float) $s['rain_24h'];
-                return [
-                    'name'  => $s['name'],
-                    'mm'    => $mm,
-                    'level' => $mm >= $atencao ? 'high' : ($mm >= $atencao / 2 ? 'medium' : 'low'),
-                ];
-            }, $estacoes),
-            'stations' => $estacoes,
+            'sensors'  => $this->equipamentosDe($sensors, ['precipitation']),
             'warning'  => [
                 'active' => $status !== 'normal',
                 'title'  => $status === 'critical' ? 'Chuva acumulada em nível crítico' : 'Chuva acumulada em atenção',

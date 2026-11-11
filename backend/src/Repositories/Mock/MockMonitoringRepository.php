@@ -313,18 +313,6 @@ final class MockMonitoringRepository implements MonitoringRepositoryInterface
         return $lista;
     }
 
-    public function phPoints(string $reservoirId): array
-    {
-        return array_map(static function (array $p): array {
-            return ['name' => $p['name'], 'ph' => $p['ph'], 'status' => StatusRules::fromPh((float) $p['ph'])];
-        }, $this->db()['ph_points'][$reservoirId] ?? []);
-    }
-
-    public function rainStations(string $reservoirId): array
-    {
-        return $this->db()['rain_stations'][$reservoirId] ?? [];
-    }
-
     public function maintenances(string $reservoirId): array
     {
         return $this->db()['maintenances'][$reservoirId] ?? [];

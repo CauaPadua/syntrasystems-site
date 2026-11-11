@@ -44,8 +44,7 @@ jobs:
           # nas próximas execuções só os arquivos alterados são transferidos.
           state-name: ftp-deploy-sync-state.json
 
-          # Arquivos e pastas que NÃO são publicados: controle de versão, este fluxo,
-          # documentação, referências visuais e resultados de validação.
+          # Arquivos que NÃO são publicados: controle de versão, este fluxo e a documentação.
           # (Comentários não podem ir dentro da lista abaixo: ela é um bloco de texto.)
           exclude: |
             **/.git*
@@ -53,6 +52,3 @@ jobs:
             **/.github/**
             **/README.md
             **/CNAME
-            **/reference/**
-            **/validation/**
-            **/docs/**

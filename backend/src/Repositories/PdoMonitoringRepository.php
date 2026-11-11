@@ -700,62 +700,6 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
         return $lista;
     }
 
-    /** Pontos de coleta de pH com a medição mais recente de cada um. */
-    public function phPoints(string $reservoirId): array
-    {
-        $stmt = $this->pdo->prepare(
-            'SELECT p.name, l.ph
-               FROM ph_points p
-               JOIN ph_point_readings l ON l.ph_point_id = p.id
-               JOIN (SELECT ph_point_id, MAX(recorded_at) AS ultimo
-                       FROM ph_point_readings
-                      WHERE recorded_at <= :agora
-                      GROUP BY ph_point_id) u
-                 ON u.ph_point_id = l.ph_point_id AND u.ultimo = l.recorded_at
-              WHERE p.reservoir_id = :rid
-              ORDER BY p.sort_order, p.id'
-        );
-        $stmt->execute(['rid' => $reservoirId, 'agora' => Clock::sql()]);
-
-        $pontos = [];
-        foreach ($stmt->fetchAll() as $l) {
-            $ph = round((float) $l['ph'], 1);
-            $pontos[] = ['name' => (string) $l['name'], 'ph' => $ph, 'status' => StatusRules::fromPh($ph)];
-        }
-        return $pontos;
-    }
-
-    /** Estações pluviométricas com o acumulado das últimas 24 horas. */
-    public function rainStations(string $reservoirId): array
-    {
-        $agora = Clock::now();
-        $stmt = $this->pdo->prepare(
-            'SELECT e.id, e.name, e.status, COALESCE(SUM(l.rain_mm), 0) AS rain_24h
-               FROM rain_stations e
-               LEFT JOIN rain_station_readings l
-                 ON l.station_id = e.id AND l.recorded_at > :ontem AND l.recorded_at <= :agora
-              WHERE e.reservoir_id = :rid
-              GROUP BY e.id, e.name, e.status, e.sort_order
-              ORDER BY e.sort_order, e.id'
-        );
-        $stmt->execute([
-            'rid'   => $reservoirId,
-            'ontem' => Clock::sql($agora->modify('-24 hours')),
-            'agora' => Clock::sql($agora),
-        ]);
-
-        $estacoes = [];
-        foreach ($stmt->fetchAll() as $l) {
-            $estacoes[] = [
-                'id'       => (string) $l['id'],
-                'name'     => (string) $l['name'],
-                'rain_24h' => round((float) $l['rain_24h'], 1),
-                'status'   => (string) $l['status'],
-            ];
-        }
-        return $estacoes;
-    }
-
     /* ============================================================ alertas */
 
     public function alerts(string $reservoirId = 'all', string $severity = 'all', string $status = 'all'): array
@@ -821,13 +765,13 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
      * Etapas de vários alertas em uma única consulta (em vez de uma por alerta).
      *
      * @param array<int,string> $ids
-     * @return array<string,array<int,array{at:?string,text:string,done:bool}>>
+     * @return array<string,array<int,array{at:string,text:string}>>
      */
     private function linhasDoTempo(array $ids): array
     {
         $m = $this->marcadores($ids, 'a');
         $stmt = $this->pdo->prepare(
-            "SELECT alert_id, happened_at, description, done
+            "SELECT alert_id, happened_at, description
                FROM alert_timeline
               WHERE alert_id IN ({$m['sql']})
               ORDER BY alert_id, step_order"
@@ -837,9 +781,8 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
         $mapa = [];
         foreach ($stmt->fetchAll() as $l) {
             $mapa[(string) $l['alert_id']][] = [
-                'at'   => $l['happened_at'] === null ? null : Clock::iso(Clock::parse((string) $l['happened_at'])),
+                'at'   => Clock::iso(Clock::parse((string) $l['happened_at'])),
                 'text' => (string) $l['description'],
-                'done' => (bool) $l['done'],
             ];
         }
         return $mapa;
@@ -938,9 +881,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
         }
 
         $linhas = $this->pdo->query(
-            "SELECT metric, classification, min_value, max_value
-               FROM operational_limits
-              WHERE valid_to IS NULL AND scope_type = 'global'"
+            'SELECT metric, classification, min_value, max_value FROM operational_limits'
         )->fetchAll();
 
         $mapa = [];

@@ -81,17 +81,11 @@ interface MonitoringRepositoryInterface
      */
     public function sensors(string $reservoirId): array;
 
-    /** Pontos de coleta de pH. @return array<int,array{name:string,ph:float,status:string}> */
-    public function phPoints(string $reservoirId): array;
-
-    /** Estações pluviométricas. @return array<int,array{id:string,name:string,rain_24h:float,status:string}> */
-    public function rainStations(string $reservoirId): array;
-
     /**
      * Alertas, dos mais recentes para os mais antigos.
      *
      * @param string $reservoirId ID ou 'all'
-     * @param string $severity    all|critical|attention|info
+     * @param string $severity    all|critical|attention
      * @param string $status      all|new|analysis|resolved
      * @return array<int,array<string,mixed>>
      */

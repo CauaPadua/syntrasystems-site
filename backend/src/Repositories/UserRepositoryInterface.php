@@ -29,7 +29,7 @@ interface UserRepositoryInterface
     public function findById(int $id): ?array;
 
     /**
-     * Empresas que o usuário pode consultar (vínculos ativos em user_company_access).
+     * Empresas que o usuário pode consultar (tabela user_company_access).
      *
      * @return array<int,string> IDs das empresas; vazio quando não há vínculo
      */

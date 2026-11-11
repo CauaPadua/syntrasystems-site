@@ -358,9 +358,30 @@ window.AqShell = (function () {
     });
   }
 
-  /** O usuário logado é administrador? (a API confere de novo a cada gravação) */
-  function isAdmin() {
-    return body.getAttribute('data-role') === 'admin';
+
+  /**
+   * Lista de equipamentos (vazão, pH, precipitação): código, nome, última
+   * leitura e situação de comunicação calculada pelo servidor.
+   * @param {string} selector elemento que recebe a lista
+   * @param {Array}  sensors  itens de data.sensors
+   * @param {string} empty    texto quando não há equipamentos
+   */
+  function equipmentList(selector, sensors, empty) {
+    var dots = { online: 'normal', offline: 'offline', maintenance: 'attention', inactive: 'offline' };
+    var el = document.querySelector(selector);
+    if (!el) return;
+
+    el.innerHTML = sensors.map(function (s) {
+      var valor = s.last_value === null || s.last_value === undefined
+        ? ''
+        : window.AqFormat.num(s.last_value, s.type === 'ph' ? 2 : 1) + ' ' + s.unit + ' · ';
+      return '<div class="aq-list__item">'
+        + '<div class="aq-list__body"><p class="aq-list__title">' + esc(s.id) + ' · ' + esc(s.name) + '</p>'
+        + '<p class="aq-list__meta">' + esc(s.type_label) + ' · ' + esc(valor) + esc(s.last_reading_label) + '</p></div>'
+        + '<div class="aq-list__side"><span class="aq-status-text">'
+        + '<span class="aq-dot aq-dot--' + (dots[s.status] || 'offline') + '"></span>'
+        + esc(s.status_label) + '</span></div></div>';
+    }).join('') || '<p class="aq-card__sub">' + esc(empty) + '</p>';
   }
 
   /** Escapa texto que será inserido como HTML. */
@@ -378,7 +399,7 @@ window.AqShell = (function () {
     reload: function () { runReload(true); },
     setUpdated: setUpdated,
     showErrors: showErrors,
-    isAdmin: isAdmin,
+    equipmentList: equipmentList,
     openModal: openModal,
     closeModal: closeModal,
     fill: fill,

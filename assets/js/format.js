@@ -46,31 +46,7 @@ window.AqFormat = (function () {
     return s + num(value, decimals);
   }
 
-  /** Rótulo de status a partir da chave. */
-  function statusLabel(key) {
-    var map = {                                                       // mesmas traduções de StatusRules::describe() no PHP
-      normal: 'Normal',
-      attention: 'Atenção',
-      critical: 'Crítico',
-      info: 'Informação',
-      offline: 'Offline'
-    };
-    return map[key] || key;                                           // chave desconhecida aparece como veio
-  }
 
-  /** "há 2 min" a partir de um ISO 8601. */
-  function relative(iso) {
-    if (!iso) return '';
-    var then = new Date(iso).getTime();                               // instante informado, em milissegundos
-    var mins = Math.max(0, Math.round((Date.now() - then) / 60000));  // diferença para o relógio do navegador, em minutos (nunca negativa)
-
-    if (mins < 1) return 'agora';
-    if (mins === 1) return 'há 1 min';
-    if (mins < 60) return 'há ' + mins + ' min';
-
-    var h = Math.round(mins / 60);                                    // a partir de 1 hora, arredonda para horas
-    return h === 1 ? 'há 1 hora' : 'há ' + h + ' horas';
-  }
 
   // API pública do módulo: só estas funções ficam acessíveis fora da IIFE.
   return {
@@ -78,8 +54,6 @@ window.AqFormat = (function () {
     int: int,
     unit: unit,
     pct: pct,
-    signed: signed,
-    statusLabel: statusLabel,
-    relative: relative
+    signed: signed
   };
 })();

@@ -11,9 +11,6 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
-  /** Cor do ponto de situação de um equipamento. */
-  var DOT = { online: 'normal', offline: 'offline', maintenance: 'attention', inactive: 'offline' };
-
   window.AqMonitorPage({
     scopes: ['realtime', 'condition', 'daily'],
     fetch: function (p) { return window.AqApi.flow(p); },
@@ -86,19 +83,7 @@
       });
 
       /* -------------------------------------------------- equipamentos */
-      document.querySelector('[data-sensors]').innerHTML = d.sensors.map(function (s) {
-        return '<div class="aq-list__item">'
-          + '<span class="aq-list__icon aq-list__icon--info" aria-hidden="true">'
-          + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
-          + ' stroke-linecap="round" stroke-linejoin="round">'
-          + '<path d="M2 7.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/>'
-          + '<path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/></svg></span>'
-          + '<div class="aq-list__body"><p class="aq-list__title">' + S.esc(s.id) + ' · ' + S.esc(s.name) + '</p>'
-          + '<p class="aq-list__meta">' + S.esc(s.type_label) + ' · ' + S.esc(s.last_reading_label) + '</p></div>'
-          + '<div class="aq-list__side"><span class="aq-status-text">'
-          + '<span class="aq-dot aq-dot--' + (DOT[s.status] || 'offline') + '"></span>'
-          + S.esc(s.status_label) + '</span></div></div>';
-      }).join('') || '<p class="aq-card__sub">Esta represa não possui equipamentos de vazão cadastrados.</p>';
+      S.equipmentList('[data-sensors]', d.sensors, 'Esta represa não possui equipamentos de vazão cadastrados.');
 
       /* ------------------------------------------------ últimas leituras */
       document.querySelector('[data-readings]').innerHTML = d.readings.map(function (r) {

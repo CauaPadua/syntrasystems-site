@@ -96,8 +96,8 @@ final class ReportService
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO reports (id, reservoir_id, name, type, period_label, period_start, period_end,
-                                  generated_at, owner, status, icon)
-             VALUES (:id, :rid, :name, :type, :label, :inicio, :fim, :quando, :owner, :status, :icon)'
+                                  generated_at, owner, icon)
+             VALUES (:id, :rid, :name, :type, :label, :inicio, :fim, :quando, :owner, :icon)'
         );
         $stmt->execute([
             'id'     => $id,
@@ -109,7 +109,6 @@ final class ReportService
             'fim'    => $fim->format('Y-m-d'),
             'quando' => Clock::sql(),
             'owner'  => $user['name'],
-            'status' => 'done',
             'icon'   => $cfg['icon'],
         ]);
 

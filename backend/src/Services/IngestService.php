@@ -92,7 +92,12 @@ final class IngestService
         $represa = (string) $equipamento['reservoir_id'];
         $sensor = (string) $equipamento['id'];
 
-        $this->pdo->beginTransaction();
+        // Leitura, cota/volume e alerta entram juntos ou nada entra. Se quem chama
+        // já abriu uma transação (ex.: os testes), ela é reaproveitada.
+        $propria = !$this->pdo->inTransaction();
+        if ($propria) {
+            $this->pdo->beginTransaction();
+        }
         try {
             $this->inserir($sensor, $represa, $grandeza, $valor, $quando);
 
@@ -107,12 +112,16 @@ final class IngestService
             $avaliado = $grandeza === 'precipitation' ? $this->chuva24h($represa, $quando) : $valor;
             $alerta = $this->alerts->evaluate($represa, $sensor, $grandeza, $avaliado, $quando);
 
-            $this->pdo->commit();
+            if ($propria) {
+                $this->pdo->commit();
+            }
         } catch (PDOException $e) {
-            $this->pdo->rollBack();
+            if ($propria) {
+                $this->pdo->rollBack();
+            }
 
             if ((int) ($e->errorInfo[1] ?? 0) === 1062) {     // 1062 = violação de chave única
-                throw new ApiException('DUPLICATE_READING', 'Já existe uma leitura desta grandeza para este instante.', 409);
+                throw new ApiException('DUPLICATE_READING', 'Este equipamento já enviou uma leitura para este mesmo instante.', 409);
             }
             throw $e;
         }

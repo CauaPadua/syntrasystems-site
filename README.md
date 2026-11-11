@@ -1,118 +1,144 @@
-# Aquapulse — landing page, login e sistema interno
+# Aquapulse — monitoramento de represas
 
-- **Etapa 1** — landing page institucional pública (`index.php`).
-- **Etapa 2** — tela de login com autenticação PHP funcional (`login.php` + `api/v1/auth/`
-  + `backend/`), sustentada por um repositório **simulado**.
-- **Etapa 3** — sistema interno completo (`dashboard/` + `api/v1/`), com 14 telas,
-  17 endpoints e dados **simulados e determinísticos**.
-- **Etapa 4** — integração com **banco de dados MySQL**: 21 tabelas, instalador,
-  seeds e testes. Os dados simulados continuam disponíveis para rodar sem banco.
+Site institucional, login e painel de monitoramento de represas, em PHP, MySQL,
+HTML, CSS e JavaScript puro (sem frameworks).
 
-## Stack
+## O fluxo do projeto
 
-PHP (apenas para estruturar e servir a página), HTML semântico, CSS e JavaScript
-puro, e MySQL na camada de dados. Sem frameworks, bundlers ou dependências
-externas — a conexão usa PDO, que já vem no PHP.
-
-## Como executar
-
-Com o PHP disponível no PATH, a partir da raiz do projeto:
-
-```bash
-php -S localhost:8000
+```
+simulador  →  API de ingestão  →  banco de dados  →  painel
+(equipamento)  (recebe e valida)    (readings)        (gráficos e alertas)
 ```
 
-Depois acesse <http://localhost:8000>.
+1. **Simulador** (`simulador/simulador.php`) faz o papel dos equipamentos: envia
+   medições de nível, vazão, pH, chuva e temperatura, cada uma com o código do
+   equipamento e o horário.
+2. **API** (`api/v1/ingest/readings.php`) confere a chave do equipamento, o
+   horário, a faixa do valor e se o equipamento está ativo, e grava a leitura.
+3. **Banco** guarda a leitura em `readings`. Se o valor passou de um limite
+   (`operational_limits`), um alerta é aberto em `alerts`.
+4. **Painel** (`dashboard/`) busca os dados a cada 15 segundos e mostra as
+   leituras, os gráficos e os alertas.
 
-Se o PHP não estiver no PATH (instalação via XAMPP no Windows, por exemplo):
+## Como rodar (XAMPP)
+
+1. Inicie o **MySQL** no painel do XAMPP.
+2. Copie `backend/.env.example` para `backend/.env` e preencha:
+   ```
+   DB_HOST=127.0.0.1
+   DB_NAME=aquapulse_dev
+   DB_USER=root
+   DB_PASS=
+   INGEST_API_KEY=uma-chave-qualquer
+   ```
+3. Crie o banco, as tabelas e os dados iniciais (a partir da raiz do projeto):
+   ```powershell
+   & C:\xampp\php\php.exe backend/database/migrate.php install
+   ```
+4. Suba o site:
+   ```powershell
+   & C:\xampp\php\php.exe -S localhost:8000
+   ```
+5. Abra <http://localhost:8000/login.php>.
+
+Em outro terminal, ligue o simulador:
 
 ```powershell
-& C:\xampp\php\php.exe -S localhost:8000 -t .
+& C:\xampp\php\php.exe simulador/simulador.php                       # todos os equipamentos, valores normais
+& C:\xampp\php\php.exe simulador/simulador.php --cenario=alerta      # leva nível, pH e chuva para a faixa de alerta
+& C:\xampp\php\php.exe simulador/simulador.php --represa=rio-verde   # só uma represa
+& C:\xampp\php\php.exe simulador/simulador.php --equipamento=SEN-PH-01 --valor=15   # valor inválido: a API recusa
+& C:\xampp\php\php.exe simulador/simulador.php --ajuda
 ```
 
-Também funciona ao colocar a pasta em `htdocs/` do Apache/XAMPP.
+### Contas de acesso
 
-## Estrutura
+Todas usam a senha do usuário de demonstração.
+
+| E-mail | Perfil | O que pode |
+| --- | --- | --- |
+| `demo@aquapulse.local` | Administrador | vê todas as empresas e cadastra equipamentos |
+| `operador@aquapulse.local` | Operador | vê só a Hidrovale; trata alertas e abre chamados |
+| `suspenso@aquapulse.local` | Operador suspenso | não consegue entrar |
+
+## Onde está cada coisa
 
 ```
-index.php                       documento principal
-includes/
-  config.php                    textos, navegação e helpers de escape
-  icons.php                     biblioteca de ícones SVG (traço linear)
-  header.php                    cabeçalho + navegação (com menu mobile)
-  footer.php                    rodapé
-  sections/
-    hero.php                    seção 1 — hero
-    informacoes.php             seção 2 — por que monitorar represas
-    sistema.php                 seção 3 — como o Aquapulse apoia a operação
-    vantagens.php               seção 4 — vantagens + chamada final
-login.php                       tela de login (front-end)
+index.php, login.php        site institucional e tela de login
+includes/                   partes do site institucional (cabeçalho, seções, ícones)
 
-dashboard/                      SISTEMA INTERNO (etapa 3)
-  index.php                     visão geral (consolidada e por represa)
-  relatorios.php  niveis.php  mapas.php  alertas.php  configuracoes.php
-  monitoramento/                as oito telas de monitoramento
-    vazao.php  nivel.php  ph.php  volume.php
-    precipitacao.php  duracao.php  operacional.php  comparativo.php
-  includes/
-    page.php                    shell comum (sidebar, topo, menu, scripts)
-    components.php              KPI, card, gráfico, tabela, badge, estados
+dashboard/                  telas do painel
+  index.php                 visão geral
+  equipamentos.php          CRUD de equipamentos
+  alertas.php  relatorios.php  niveis.php  mapas.php  configuracoes.php
+  monitoramento/            vazão, nível, pH, volume, precipitação, operação, comparativo
+  includes/                 layout comum (menu, topo) e componentes
 
-api/v1/
-  auth/                         login, logout, me (etapa 2)
-  companies.php  reservoirs.php  overview.php
-  settings.php  reports.php  alerts.php
-  map/reservoirs.php
-  monitoring/                   os oito endpoints de monitoramento
-  _boot.php                     sessão, cabeçalhos e container compartilhados
+api/v1/                     endpoints chamados pelo painel (respondem JSON)
+  ingest/                   recebe as leituras dos equipamentos (usado pelo simulador)
+  equipment.php             CRUD de equipamentos
+  alerts.php  reports.php   tratar alertas e gerar relatórios
+  monitoring/               dados de cada tela de monitoramento
 
 backend/
-  database/                     migrations, seeds, instalador e testes do MySQL
-  src/Contracts/                MonitoringRepositoryInterface (ponto de troca)
-  src/Repositories/             implementações PDO (MySQL) e simulada
-  src/Services/                 regras de negócio (status, visão geral, previsão)
-  src/Support/                  relógio, validação, resposta, container, guarda
-  storage/mock/                 dados simulados (fora da pasta pública)
+  src/Services/             regras: alertas, ingestão, limites, relatórios, telas
+  src/Repositories/         SQL (PdoMonitoringRepository, EquipmentRepository...)
+  src/Support/              conexão, relógio, sessão, validação, respostas
+  database/migrations/      criação das tabelas e das views (um arquivo por tabela)
+  database/seeds/           dados iniciais (empresas, represas, equipamentos, limites)
+  database/consultas_exemplo.sql   exemplos de SELECT, JOIN, subconsulta, views e CRUD
+  database/testar_banco.php        testes do banco
+  database/migrate.php             instalador
+  storage/mock/             dados usados só quando não há banco configurado
 
-assets/
-  css/style.css                 landing e login
-  css/dashboard.css             sistema interno (design tokens + componentes)
-  css/dashboard-responsive.css  pontos de quebra do sistema interno
-  js/                           cliente da API, gráficos, mapas, shell, telas
-  vendor/                       Chart.js e Leaflet locais (sem CDN)
-  images/                       imagens públicas otimizadas
-
-reference/                      material de referência original (não alterado)
-validation/screenshots/         capturas de validação
+simulador/simulador.php     simulador de equipamentos
+assets/                     CSS, JavaScript das telas, imagens e bibliotecas (Chart.js, Leaflet)
 ```
 
-## Observações
+## Banco de dados
 
-- Os botões **Entrar** e **Solicitar demonstração** (bloco final) estão apenas
-  preparados visualmente: exibem um aviso de indisponibilidade e não apontam
-  para páginas ou back-ends inexistentes.
-- O painel exibido na seção "sistema" é uma **prévia ilustrativa em imagem**,
-  não um dashboard funcional.
-- O sistema interno (`dashboard/`) exige sessão: sem login, a página redireciona
-  para `login.php` e a API responde **401 em JSON**.
-- A origem dos dados é escolhida pela variável `DB_HOST` (em `backend/.env`):
-  com ela, o sistema lê o **MySQL**; sem ela, usa os arquivos **simulados**, que
-  continuam determinísticos.
-- Para criar o banco: `php backend/database/migrate.php install`.
+11 tabelas e 2 views:
 
-## Evidências de validação
-
-A pasta `validation/screenshots/` guarda as capturas usadas na revisão visual
-(geradas com Chrome headless sobre o servidor local):
-
-| Arquivo | Conteúdo |
+| Tabela | Para quê |
 | --- | --- |
-| `desktop-1920-full.png` | página completa em 1920px (1920×4296) |
-| `hero-1920-centered.png` | hero em 1920px, com o container ampliado |
-| `desktop-1440-full.png` | página completa em 1440px (1440×4293) |
-| `mobile-375-full.png` | página completa em 375px (375×8015) |
-| `hero-1440.png` | hero em 1440px |
-| `informacoes-1440.png` | seção de informações em 1440px |
-| `sistema-1440.png` | seção do sistema em 1440px |
-| `vantagens-1440.png` | seção de vantagens em 1440px |
-| `hero-mobile-375.png` | hero em 375px |
+| `users`, `user_company_access` | contas e quais empresas cada uma pode ver |
+| `companies`, `reservoirs` | empresas e represas |
+| `sensors` | equipamentos (tabela do CRUD) |
+| `readings` | leituras enviadas pelos equipamentos |
+| `alerts`, `alert_timeline` | alertas e o histórico de tratamento |
+| `operational_limits` | limites Normal / Atenção / Crítico |
+| `reports`, `maintenances` | relatórios gerados e chamados de manutenção |
+
+| View | Para quê |
+| --- | --- |
+| `vw_ultimas_medicoes` | última leitura de cada equipamento |
+| `vw_resumo_represas` | valor atual de cada grandeza, por represa |
+
+Comandos úteis:
+
+```powershell
+& C:\xampp\php\php.exe backend/database/migrate.php status         # tabelas, views e quantidade de linhas
+& C:\xampp\php\php.exe backend/database/testar_banco.php           # testes (CRUD, chaves, views, ingestão)
+& C:\xampp\php\php.exe backend/database/migrate.php reset --force  # apaga o banco (depois rode install)
+```
+
+## Roteiro para a apresentação
+
+1. **Banco:** `migrate.php status` mostra as tabelas e as views; abrir
+   `consultas_exemplo.sql` para explicar SELECT, JOIN, subconsulta, views e CRUD.
+2. **Fluxo:** entrar como `demo@aquapulse.local`, abrir *Monitoramento › Nível* e
+   ligar o simulador. A cada 15 s a tela mostra a leitura nova ("Última leitura há X s").
+3. **Alerta:** rodar o simulador com `--cenario=alerta`. O nível passa de 80% e
+   depois de 90%, e os alertas aparecem em *Alertas*; assumir e resolver um alerta.
+4. **Validação:** `--equipamento=SEN-PH-01 --valor=15` (fora da faixa) e
+   `--equipamento=SEN-VAZ-03 --valor=40` (equipamento em manutenção) são recusados.
+5. **CRUD:** em *Equipamentos*, cadastrar, editar, colocar em manutenção e excluir
+   um equipamento.
+6. **Permissões:** entrar como operador (só vê a Hidrovale e não edita equipamentos)
+   e tentar entrar com a conta suspensa.
+
+## Publicação
+
+Cada envio para o branch `main` publica o site na InfinityFree pelo GitHub Actions
+(`.github/workflows/deploy.yml`). O arquivo `backend/.env` não vai para o
+repositório: no servidor ele precisa ser criado à parte.

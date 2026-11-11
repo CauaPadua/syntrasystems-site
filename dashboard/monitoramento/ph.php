@@ -79,15 +79,8 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Pontos de coleta', 'tip' => 'Última amostra registrada em cada ponto de coleta do reservatório.']); ?>
-    <?php echo aq_table_open('Pontos de coleta de pH'); ?>
-    <table class="aq-table aq-table--tight">
-      <thead>
-        <tr><th scope="col">Ponto de coleta</th><th scope="col" class="is-num">pH</th><th scope="col">Status</th></tr>
-      </thead>
-      <tbody data-points></tbody> <?php /* data.points (ph_points da represa) */ ?>
-    </table>
-    <?php echo aq_table_close(); ?>
+    <?php echo aq_card_head(['title' => 'Equipamentos de qualidade', 'tip' => 'Sonda de pH e termômetro da água desta represa, com a última leitura de cada um.']); ?>
+    <div class="aq-list" data-sensors></div> <?php /* data.sensors */ ?>
   </article>
 
   <article class="aq-card">

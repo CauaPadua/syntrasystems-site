@@ -88,8 +88,8 @@ $sessao = aq_session_config();                                            // mes
     <div class="aq-note" style="margin-top:14px">
       <?php aq_the_icon('info'); ?>
       <span>Estes limites classificam os valores em todas as telas (Normal, Atenção, Crítico) e decidem quando um
-      alerta é aberto. Ficam na tabela <code>operational_limits</code> do banco; cada alteração encerra o limite
-      anterior e registra um novo, preservando o histórico.</span>
+      alerta é aberto. Ficam na tabela <code>operational_limits</code> do banco e são carregados pelo arquivo
+      <code>backend/database/seeds/004_limits.sql</code>.</span>
     </div>
   </article>
 </div>

@@ -53,7 +53,7 @@ aq_page_start([
   </div>
   <?php
   echo aq_select(['id' => 'filtro-severidade', 'label' => 'Severidade', 'options' => [
-      'all' => 'Todas', 'critical' => 'Crítico', 'attention' => 'Atenção', 'info' => 'Informação',
+      'all' => 'Todas', 'critical' => 'Crítico', 'attention' => 'Atenção',
   ]]);
   echo aq_select(['id' => 'filtro-status', 'label' => 'Status', 'options' => [
       'all' => 'Todos', 'new' => 'Novo', 'analysis' => 'Em análise', 'resolved' => 'Resolvido',
@@ -138,7 +138,6 @@ aq_page_start([
   <?php echo aq_legend([
       ['label' => 'Abertos — críticos', 'color' => '#ef4444', 'style' => 'square'],
       ['label' => 'Abertos — atenção', 'color' => '#f59e0b', 'style' => 'square'],
-      ['label' => 'Abertos — informação', 'color' => '#3b82f6', 'style' => 'square'],
       ['label' => 'Resolvidos', 'color' => '#16a34a', 'style' => 'square'],
   ]); ?>
   </div>

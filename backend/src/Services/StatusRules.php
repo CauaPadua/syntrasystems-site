@@ -200,15 +200,6 @@ final class StatusRules
         }
     }
 
-    public static function reportTypeLabel(string $type): string
-    {
-        switch ($type) {
-            case 'operational':  return 'Operacional';
-            case 'hydrological': return 'Hidrológico';
-            case 'quality':      return 'Qualidade';
-            default:             return $type;
-        }
-    }
 
     /** 80.0 -> "80%"; 82.5 -> "82,5%" */
     public static function pct(float $value): string

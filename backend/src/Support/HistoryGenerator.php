@@ -211,49 +211,4 @@ final class HistoryGenerator
 
         return $linhas;
     }
-
-    /**
-     * Medições horárias de um ponto de coleta de pH.
-     *
-     * @return array<int,array{0:float,1:float,2:string}> [pH, temperatura, instante]
-     */
-    public static function phPointReadings(string $key, float $ph, float $temp, DateTimeImmutable $now): array
-    {
-        $horas = self::timeline($now)['hours'];
-        $semente = self::seed($key);
-
-        $phs = self::wave(count($horas), $ph, 0.12, 0.08, $semente, 2);
-        $temps = self::wave(count($horas), $temp, 0.5, 0.3, $semente, 1);
-
-        $linhas = [];
-        foreach ($horas as $i => $quando) {
-            $linhas[] = [$phs[$i], $temps[$i], Clock::sql($quando)];
-        }
-        return $linhas;
-    }
-
-    /**
-     * Medições horárias de uma estação pluviométrica. As últimas 24 h somam o
-     * acumulado informado; os blocos anteriores ficam mais secos.
-     *
-     * @return array<int,array{0:float,1:string}> [chuva em mm, instante]
-     */
-    public static function rainStationReadings(string $stationId, float $rain24h, DateTimeImmutable $now): array
-    {
-        $horas = self::timeline($now)['hours'];
-        $semente = self::seed('estacao|' . $stationId);
-
-        $blocos = [];
-        for ($b = 0; $b <= 2; $b++) {
-            $blocos[$b] = self::spreadRain(max(round($rain24h * (1.0 - 0.28 * $b), 1), 0.0), $semente);
-        }
-
-        $total = count($horas);
-        $linhas = [];
-        foreach ($horas as $i => $quando) {
-            $posicao = $total - 1 - $i;
-            $linhas[] = [$blocos[intdiv($posicao, 24)][23 - ($posicao % 24)], Clock::sql($quando)];
-        }
-        return $linhas;
-    }
 }

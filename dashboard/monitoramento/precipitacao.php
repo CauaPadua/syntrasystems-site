@@ -58,34 +58,10 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
   </article>
 </div>
 
-<div class="aq-grid aq-grid--1-2">
-  <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Distribuição na bacia', 'tip' => 'Chuva de 24 horas por estação. "Alta" é a partir do limite de atenção; "Média", a partir da metade dele.']); ?>
-    <div class="aq-list" data-basin></div> <?php /* data.basin: chuva por estação classificada em low/medium/high */ ?>
-    <?php echo aq_legend([                                                // mesmos limites (10 e 20 mm) usados no MonitoringService
-        ['label' => 'Baixa', 'color' => '#16a34a', 'style' => 'square'],
-        ['label' => 'Média', 'color' => '#0b5bea', 'style' => 'square'],
-        ['label' => 'Alta', 'color' => '#f59e0b', 'style' => 'square'],
-    ]); ?>
-  </article>
-
-  <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Estações pluviométricas', 'tip' => 'Acumulado de 24 horas registrado para cada estação da bacia.']); ?>
-    <?php echo aq_table_open('Estações pluviométricas'); ?>
-    <table class="aq-table aq-table--tight">
-      <thead>
-        <tr>
-          <th scope="col">Estação</th>
-          <th scope="col">Localidade</th>
-          <th scope="col" class="is-num">Chuva 24h (mm)</th>
-          <th scope="col">Status</th>
-        </tr>
-      </thead>
-      <tbody data-stations></tbody> <?php /* data.stations */ ?>
-    </table>
-    <?php echo aq_table_close(); ?>
-  </article>
-</div>
+<article class="aq-card">
+  <?php echo aq_card_head(['title' => 'Pluviômetros', 'tip' => 'Cada leitura é a chuva desde o envio anterior; o acumulado de 24 h é a soma delas.']); ?>
+  <div class="aq-list" data-sensors></div> <?php /* data.sensors */ ?>
+</article>
 
 <div data-warning hidden></div> <?php /* aviso exibido pelo JS quando o acumulado de 24 h passa do limite de atenção */ ?>
 

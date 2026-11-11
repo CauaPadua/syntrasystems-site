@@ -50,12 +50,8 @@ final class PdoUserRepository implements UserRepositoryInterface
 
     public function companyIds(int $userId): array
     {
-        // Só valem vínculos ativos e ainda não encerrados.
         $stmt = $this->pdo->prepare(
-            "SELECT company_id
-               FROM user_company_access
-              WHERE user_id = :id AND status = 'active' AND ended_at IS NULL
-              ORDER BY company_id"
+            'SELECT company_id FROM user_company_access WHERE user_id = :id ORDER BY company_id'
         );
         $stmt->execute(['id' => $userId]);
 

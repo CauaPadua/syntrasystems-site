@@ -220,7 +220,7 @@ $op = opcoes($argv);
 if ($op['ajuda']) {
     // O próprio comentário do topo do arquivo é o texto de ajuda.
     preg_match('#/\*\*(.*?)\*/#s', (string) file_get_contents(__FILE__), $m);
-    echo preg_replace('/^ \* ?/m', '', trim($m[1])), PHP_EOL;
+    echo preg_replace('/^\s*\* ?/m', '', trim($m[1])), PHP_EOL;
     exit(0);
 }
 

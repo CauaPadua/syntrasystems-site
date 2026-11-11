@@ -202,8 +202,8 @@ final class AlertService
         $ordem = (int) $stmt->fetchColumn();
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO alert_timeline (alert_id, step_order, happened_at, description, done)
-             VALUES (:id, :ordem, :quando, :texto, 1)'
+            'INSERT INTO alert_timeline (alert_id, step_order, happened_at, description)
+             VALUES (:id, :ordem, :quando, :texto)'
         );
         $stmt->execute(['id' => $alertId, 'ordem' => $ordem, 'quando' => Clock::sql($quando), 'texto' => $texto]);
     }

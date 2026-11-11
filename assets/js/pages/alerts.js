@@ -180,7 +180,6 @@
             datasets: [
               G.bar('Abertos — críticos', ch.critical, G.colors.danger, { radius: 0, maxThickness: 22 }),
               G.bar('Abertos — atenção', ch.attention, G.colors.warning, { radius: 0, maxThickness: 22 }),
-              G.bar('Abertos — informação', ch.info, '#3b82f6', { radius: 0, maxThickness: 22 }),
               G.bar('Resolvidos', ch.resolved, G.colors.success, { radius: 4, maxThickness: 22 })
             ]
           },

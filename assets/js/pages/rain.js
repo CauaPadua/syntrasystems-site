@@ -10,9 +10,6 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
-  var NUVEM = '<path d="M6.5 15.5a4 4 0 0 1 .6-8 5.5 5.5 0 0 1 10.5 1.6 3.5 3.5 0 0 1-.6 6.4"/>'
-    + '<path d="M8.5 18v2.5"/><path d="M12 18.5v2.5"/><path d="M15.5 18v2.5"/>';
-
   /** Cor do texto conforme a classificação (normal, attention, critical). */
   function cor(status) {
     return 'var(--aq-' + (status === 'critical' ? 'danger' : (status === 'attention' ? 'warning' : 'success')) + ')';
@@ -74,30 +71,8 @@
       });
       G.describe('grafico-chuva', c.daily, 'mm', 1);
 
-      /* --------------------------------------- distribuição na bacia */
-      document.querySelector('[data-basin]').innerHTML = d.basin.map(function (b) {
-        var key = b.level === 'high' ? 'attention' : (b.level === 'medium' ? 'info' : 'normal');
-        return '<div class="aq-list__item">'
-          + '<span class="aq-list__icon aq-list__icon--' + key + '" aria-hidden="true">'
-          + '<svg class="aq-icon" style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
-          + ' stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + NUVEM + '</svg></span>'
-          + '<div class="aq-list__body"><p class="aq-list__title">' + S.esc(b.name) + '</p></div>'
-          + '<div class="aq-list__side"><strong style="color:var(--aq-text)">' + F.num(b.mm, 1) + ' mm</strong></div></div>';
-      }).join('');
-
-      /* ------------------------------------------------------ estações */
-      document.querySelector('[data-stations]').innerHTML = d.stations.map(function (s) {
-        var on = s.status === 'online';
-        var nivel = (d.basin.filter(function (b) { return b.name === s.name; })[0] || {}).level;
-        var color = nivel === 'high' ? 'warning' : (nivel === 'medium' ? 'primary' : 'success');
-        return '<tr>'
-          + '<td><span class="aq-table__name"><span class="aq-table__icon" style="background:var(--aq-' + color + ');color:#fff">'
-          + '<span style="font-size:.7rem;font-weight:800">' + S.esc(s.id) + '</span></span></span></td>'
-          + '<td>' + S.esc(s.name) + '</td>'
-          + '<td class="is-num">' + F.num(s.rain_24h, 1) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--' + (on ? 'normal' : 'offline') + '"></span>'
-          + (on ? 'Online' : 'Offline') + '</span></td></tr>';
-      }).join('');
+      /* ------------------------------------------- pluviômetros */
+      S.equipmentList('[data-sensors]', d.sensors, 'Esta represa não possui pluviômetro cadastrado.');
 
       /* ------------------------- aviso quando o acumulado passa do limite */
       var warn = document.querySelector('[data-warning]');

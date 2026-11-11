@@ -105,17 +105,8 @@
         }
       });
 
-      /* ------------------------------------------ pontos de coleta */
-      document.querySelector('[data-points]').innerHTML = d.points.map(function (p) {
-        return '<tr>'
-          + '<td><span class="aq-table__name"><span class="aq-table__icon">'
-          + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-          + ' stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/>'
-          + '<circle cx="12" cy="10" r="2.6"/></svg></span>' + S.esc(p.name) + '</span></td>'
-          + '<td class="is-num">' + F.num(p.ph, 1) + '</td>'
-          + '<td>' + situacao(p.status) + '</td>'
-          + '</tr>';
-      }).join('');
+      /* -------------------------------------------- equipamentos de pH */
+      S.equipmentList('[data-sensors]', d.sensors, 'Esta represa não possui sonda de pH cadastrada.');
 
       /* --------------------------------------------- últimas leituras */
       document.querySelector('[data-readings]').innerHTML = d.readings.map(function (r) {

@@ -1,6 +1,3 @@
-# Configurações pessoais do Obsidian (tema, layout, arquivos abertos).
-# As notas Markdown em docs/obsidian/ continuam versionadas.
-.obsidian/
 
 # Configuração local do banco de dados (credenciais). Cada ambiente tem a sua;
 # o modelo versionado é backend/.env.example.

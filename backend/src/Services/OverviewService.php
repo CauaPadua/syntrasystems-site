@@ -146,7 +146,7 @@ final class OverviewService
 
         $alerts = $this->repo->alerts('all');
         $open = array_values(array_filter($alerts, static fn (array $a): bool => $a['status'] !== 'resolved'));
-        $alertCounts = ['critical' => 0, 'attention' => 0, 'info' => 0];
+        $alertCounts = ['critical' => 0, 'attention' => 0];
         foreach ($open as $a) {
             if (isset($alertCounts[$a['severity']])) {
                 $alertCounts[$a['severity']]++;
