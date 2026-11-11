@@ -1039,7 +1039,7 @@ body.aq-app {                                                      /* <body clas
 .aq-toast span { color: var(--aq-text-secondary); }
 
 /* aviso de dados demonstrativos */
-.aq-demo-note {                                                    /* faixa azul informando que os dados são de demonstração */
+.aq-note {                                                         /* faixa de aviso informativo */
   display: flex; align-items: flex-start; gap: 11px;
   padding: 13px 16px;
   border: 1px solid var(--aq-border);
@@ -1048,8 +1048,17 @@ body.aq-app {                                                      /* <body clas
   font-size: 0.85rem;
   color: var(--aq-text-secondary);
 }
-.aq-demo-note .aq-icon { color: var(--aq-info); flex: none; }
-.aq-demo-note strong { color: var(--aq-text); }
+.aq-note .aq-icon { color: var(--aq-info); flex: none; }
+.aq-note strong { color: var(--aq-text); }
+.aq-note--warning { margin-bottom: 18px; border-color: #f6dfae; background: var(--aq-warning-soft); }   /* aviso do modo demonstração */
+.aq-note--warning .aq-icon { color: var(--aq-warning); }
+
+/* formulários de cadastro (equipamentos, chamados, relatórios) */
+.aq-field__error { font-size: 0.8rem; color: var(--aq-danger); }      /* mensagem de validação abaixo do campo */
+.aq-input[aria-invalid="true"], .aq-select[aria-invalid="true"] { border-color: var(--aq-danger); }
+.aq-btn--danger { border-color: var(--aq-danger); background: var(--aq-danger); color: #fff; }
+.aq-btn--danger:hover { filter: brightness(0.93); }
+.aq-table__actions { display: flex; gap: 6px; justify-content: flex-end; }
 
 /* respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {

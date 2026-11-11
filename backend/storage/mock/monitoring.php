@@ -1,254 +1,86 @@
 <?php
 /**
- * Aquapulse — fonte de dados SIMULADOS do sistema de monitoramento.
+ * Aquapulse — dados do MODO DEMONSTRAÇÃO (sistema rodando sem banco).
  *
- * ATENÇÃO — ESTA É A ÚNICA FONTE DE VERDADE DOS DADOS DEMONSTRATIVOS.
+ * Usado apenas quando não há DB_HOST em backend/.env. Não é um banco de dados:
+ * os valores são fixos, somente leitura, e representam um instante de exemplo
+ * (Support\Clock::DEMO_INSTANT). Com banco configurado este arquivo não é lido.
  *
- *  - Não é um banco de dados. Não há escrita, cadastro nem persistência.
- *  - Fica fora da pasta pública (backend/ é bloqueado por .htaccess).
- *  - Todos os valores são FIXOS e DETERMINÍSTICOS: nenhuma chamada a rand(),
- *    time() ou similar. A mesma requisição sempre devolve a mesma resposta.
- *  - As séries temporais são derivadas destes âncoras pelo repositório, sempre
- *    terminando exatamente no valor atual do KPI correspondente.
- *
- * RELAÇÃO COM O BANCO: estes mesmos valores foram carregados no MySQL — são a
- * origem do seed (backend/database/seeds/) e dos âncoras usados para gerar o
- * histórico de leituras. O arquivo NÃO foi descartado: é a fonte usada quando
- * o sistema roda sem banco.
- *
- * COORDENADAS: são DEMONSTRATIVAS (região de Rio Claro/SP) e deverão ser
- * substituídas pelas coordenadas reais vindas do banco.
- *
- * Quem lê: Repositories\Mock\MockMonitoringRepository (método db()).
- * O arquivo apenas RETORNA um array; cada chave de primeiro nível equivale a
- * uma "tabela" (companies, reservoirs, sensors, alerts...).
+ * Quem lê: Repositories\Mock\MockMonitoringRepository. Cada chave de primeiro
+ * nível equivale a uma tabela.
  */
 
 declare(strict_types=1);
 
 return [
 
-    /* ------------------------------------------------------------ empresas */
     'companies' => [
-        [
-            'id'        => 'hidrovale',                          // identificador usado nas URLs (?company_id=hidrovale) e em reservoirs.company_id
-            'code'      => 'HVE-001',                            // código interno exibido na tela de configurações
-            'name'      => 'Hidrovale Energia',
-            'manager'   => 'Mariana Costa',                      // responsável pela empresa
-            'status'    => 'active',                             // chave do status (define a cor do badge)
-            'status_label' => 'Ativa',                           // texto do status
-        ],
-        [
-            'id'        => 'aguas-do-norte',
-            'code'      => 'ADN-002',
-            'name'      => 'Águas do Norte',
-            'manager'   => 'Rafael Andrade',
-            'status'    => 'active',
-            'status_label' => 'Ativa',
-        ],
+        ['id' => 'hidrovale',      'code' => 'HVE-001', 'name' => 'Hidrovale Energia', 'manager' => 'Mariana Costa',  'status' => 'active', 'status_label' => 'Ativa'],
+        ['id' => 'aguas-do-norte', 'code' => 'ADN-002', 'name' => 'Águas do Norte',    'manager' => 'Rafael Andrade', 'status' => 'active', 'status_label' => 'Ativa'],
     ],
 
-    /* ------------------------------------------------------------ represas */
     /*
-     * Valores centrais definidos na especificação da etapa. Todos os cards,
-     * gráficos e tabelas derivam destes números — nada é recalculado de forma
-     * divergente em outro lugar.
-     *
-     * Os campos estão explicados na primeira represa; as outras duas seguem
-     * exatamente a mesma estrutura.
+     * Cadastro + última leitura de cada grandeza. Cota e volume não aparecem:
+     * são calculados a partir do nível, como no sistema com banco.
      */
     'reservoirs' => [
         [
-            'id'                 => 'santa-clara',               // identificador único (usado em ?reservoir_id= e nas listas agrupadas abaixo)
-            'code'               => 'RSC-001',                   // código exibido na barra de contexto
-            'name'               => 'Represa Santa Clara',
-            'company_id'         => 'hidrovale',                 // empresa dona da represa (relaciona com companies.id)
-            'city'               => 'Rio Claro — SP',
-            'basin'              => 'Bacia do Rio Claro',        // bacia hidrográfica
-            'lat'                => -22.3875,                    // latitude do marcador no mapa (Leaflet)
-            'lng'                => -47.6922,                    // longitude do marcador no mapa
-            'coordinates_label'  => '22°23\'15" S, 47°41\'32" W', // coordenadas em graus/minutos/segundos, só para exibição
-
-            'level_pct'          => 82.4,                        // ocupação atual (%): decide o status normal/atenção/crítico
-            'volume_hm3'         => 1234.0,                      // volume armazenado agora (hm³ = milhões de m³)
-            'capacity_hm3'       => 1500.0,                      // volume máximo que a represa comporta
-            'flow_m3s'           => 56.2,                        // vazão atual (m³ por segundo)
-            'inflow_m3s'         => 56.2,                        // afluência: água que entra
-            'outflow_m3s'        => 49.8,                        // defluência: água que sai
-            'ph'                 => 7.2,                         // pH atual da água
-            'ph_min'             => 6.8,                         // menor pH nas últimas 24 h
-            'ph_max'             => 7.6,                         // maior pH nas últimas 24 h
-            'rain_24h_mm'        => 18.6,                        // chuva nas últimas 24 h (mm)
-            'rain_7d_mm'         => 74.2,                        // chuva acumulada em 7 dias
-            'rain_month_mm'      => 186.5,                       // chuva acumulada no mês
-            'duration_days'      => 84,                          // estimativa de dias de água com o consumo atual
-            'status'             => 'attention',                 // status gravado (as telas recalculam pelo level_pct via StatusRules)
-
-            'cota_m'             => 562.4,                       // cota atual: altura da superfície da água, em metros acima do nível do mar
-            'cota_variation_m'   => 0.8,                         // quanto a cota variou nas últimas 24 h
-            'cota_critical_m'    => 570.0,                       // cota que corresponde ao limite crítico (90%)
-            'cota_spill_m'       => 565.0,                       // cota de vertimento: a partir dela a água passa pelo vertedouro
-            'cota_alert_m'       => 558.0,                       // cota de alerta operacional
-            // a cota de atenção não é guardada: é derivada do limite de 80%
-            // em MonitoringService::cota(), para não divergir do percentual
-
-            'useful_volume_hm3'  => 1050.0,                      // parte do volume que pode ser usada
-            'technical_reserve_hm3' => 184.0,                    // reserva mínima de segurança (não é consumida)
-            'daily_consumption_hm3' => 12.5,                     // consumo médio por dia
-            'forecast_reliability_pct' => 92,                    // confiabilidade da previsão de duração (%)
-
-            'sensors_online'     => 18,                          // sensores comunicando agora
-            'sensors_total'      => 18,                          // sensores instalados
-            'gates_online'       => 4,                           // comportas operando
-            'gates_total'        => 4,                           // comportas existentes
-            'availability_pct'   => 98.7,                        // disponibilidade geral do sistema (%)
-            'telemetry_pct'      => 100,                         // disponibilidade da telemetria
-            'communication_pct'  => 99,                          // disponibilidade dos links de comunicação
-            'power_pct'          => 100,                         // disponibilidade de energia
-            'humidity_pct'       => 78,                          // umidade relativa do ar (%)
-            'last_reading_time'  => '09:28',                     // horário da última leitura pluviométrica
-            'water_temp_c'       => 22.6,                        // temperatura da água (°C)
+            'id' => 'santa-clara', 'code' => 'RSC-001', 'name' => 'Represa Santa Clara', 'company_id' => 'hidrovale',
+            'city' => 'Rio Claro — SP', 'basin' => 'Bacia do Rio Claro',
+            'lat' => -22.3875, 'lng' => -47.6922, 'coordinates_label' => '22°23\'15" S, 47°41\'32" W',
+            'capacity_hm3' => 1500.0, 'useful_volume_hm3' => 1050.0, 'technical_reserve_hm3' => 184.0, 'daily_consumption_hm3' => 12.5,
+            'cota_spill_m' => 565.0, 'cota_alert_m' => 558.0, 'cota_min_m' => 480.0, 'cota_max_m' => 580.0,
+            'level_pct' => 82.4, 'inflow_m3s' => 56.2, 'outflow_m3s' => 49.8, 'ph' => 7.2, 'water_temp_c' => 22.6, 'rain_24h_mm' => 18.6,
         ],
         [
-            'id'                 => 'rio-verde',
-            'code'               => 'RRV-002',
-            'name'               => 'Represa Rio Verde',
-            'company_id'         => 'hidrovale',
-            'city'               => 'Itirapina — SP',
-            'basin'              => 'Bacia do Rio Verde',
-            'lat'                => -22.2410,
-            'lng'                => -47.8365,
-            'coordinates_label'  => '22°14\'28" S, 47°50\'11" W',
-
-            'level_pct'          => 76.1,                        // abaixo de 80%: status normal
-            'volume_hm3'         => 980.0,
-            'capacity_hm3'       => 1288.0,
-            'flow_m3s'           => 43.8,
-            'inflow_m3s'         => 43.8,
-            'outflow_m3s'        => 39.6,
-            'ph'                 => 7.4,
-            'ph_min'             => 7.0,
-            'ph_max'             => 7.7,
-            'rain_24h_mm'        => 12.3,
-            'rain_7d_mm'         => 52.8,
-            'rain_month_mm'      => 141.2,
-            'duration_days'      => 96,
-            'status'             => 'normal',
-
-            'cota_m'             => 548.9,
-            'cota_variation_m'   => 0.4,
-            'cota_critical_m'    => 556.0,
-            'cota_spill_m'       => 552.0,
-            'cota_alert_m'       => 545.0,
-
-            'useful_volume_hm3'  => 838.0,
-            'technical_reserve_hm3' => 142.0,
-            'daily_consumption_hm3' => 8.7,
-            'forecast_reliability_pct' => 90,
-
-            'sensors_online'     => 14,
-            'sensors_total'      => 14,
-            'gates_online'       => 3,
-            'gates_total'        => 3,
-            'availability_pct'   => 99.2,
-            'telemetry_pct'      => 100,
-            'communication_pct'  => 100,
-            'power_pct'          => 100,
-            'humidity_pct'       => 71,
-            'last_reading_time'  => '09:26',
-            'water_temp_c'       => 22.1,
+            'id' => 'rio-verde', 'code' => 'RRV-002', 'name' => 'Represa Rio Verde', 'company_id' => 'hidrovale',
+            'city' => 'Itirapina — SP', 'basin' => 'Bacia do Rio Verde',
+            'lat' => -22.2410, 'lng' => -47.8365, 'coordinates_label' => '22°14\'28" S, 47°50\'11" W',
+            'capacity_hm3' => 1288.0, 'useful_volume_hm3' => 838.0, 'technical_reserve_hm3' => 142.0, 'daily_consumption_hm3' => 8.7,
+            'cota_spill_m' => 552.0, 'cota_alert_m' => 545.0, 'cota_min_m' => 510.0, 'cota_max_m' => 561.1,
+            'level_pct' => 76.1, 'inflow_m3s' => 43.8, 'outflow_m3s' => 39.6, 'ph' => 7.4, 'water_temp_c' => 22.1, 'rain_24h_mm' => 12.3,
         ],
         [
-            'id'                 => 'serra-azul',
-            'code'               => 'RSA-003',
-            'name'               => 'Represa Serra Azul',
-            'company_id'         => 'aguas-do-norte',            // única represa da segunda empresa
-            'city'               => 'Corumbataí — SP',
-            'basin'              => 'Bacia do Corumbataí',
-            'lat'                => -22.1958,
-            'lng'                => -47.5487,
-            'coordinates_label'  => '22°11\'45" S, 47°32\'55" W',
-
-            'level_pct'          => 77.3,
-            'volume_hm3'         => 740.0,
-            'capacity_hm3'       => 957.0,
-            'flow_m3s'           => 32.5,
-            'inflow_m3s'         => 32.5,
-            'outflow_m3s'        => 29.1,
-            'ph'                 => 7.3,
-            'ph_min'             => 6.9,
-            'ph_max'             => 7.5,
-            'rain_24h_mm'        => 8.7,
-            'rain_7d_mm'         => 38.4,
-            'rain_month_mm'      => 112.8,
-            'duration_days'      => 91,
-            'status'             => 'normal',
-
-            'cota_m'             => 604.1,
-            'cota_variation_m'   => 0.3,
-            'cota_critical_m'    => 612.0,
-            'cota_spill_m'       => 608.0,
-            'cota_alert_m'       => 601.0,
-
-            'useful_volume_hm3'  => 632.0,
-            'technical_reserve_hm3' => 108.0,
-            'daily_consumption_hm3' => 6.9,
-            'forecast_reliability_pct' => 89,
-
-            'sensors_online'     => 11,                          // 11 de 12: um sensor fora (ver SEN-VAZ-22 abaixo)
-            'sensors_total'      => 12,
-            'gates_online'       => 2,
-            'gates_total'        => 2,
-            'availability_pct'   => 97.4,
-            'telemetry_pct'      => 92,
-            'communication_pct'  => 100,
-            'power_pct'          => 100,
-            'humidity_pct'       => 68,
-            'last_reading_time'  => '09:24',
-            'water_temp_c'       => 21.8,
+            'id' => 'serra-azul', 'code' => 'RSA-003', 'name' => 'Represa Serra Azul', 'company_id' => 'aguas-do-norte',
+            'city' => 'Corumbataí — SP', 'basin' => 'Bacia do Corumbataí',
+            'lat' => -22.1958, 'lng' => -47.5487, 'coordinates_label' => '22°11\'45" S, 47°32\'55" W',
+            'capacity_hm3' => 957.0, 'useful_volume_hm3' => 632.0, 'technical_reserve_hm3' => 108.0, 'daily_consumption_hm3' => 6.9,
+            'cota_spill_m' => 608.0, 'cota_alert_m' => 601.0, 'cota_min_m' => 556.0, 'cota_max_m' => 618.2,
+            'level_pct' => 77.3, 'inflow_m3s' => 32.5, 'outflow_m3s' => 29.1, 'ph' => 7.3, 'water_temp_c' => 21.8, 'rain_24h_mm' => 8.7,
         ],
     ],
 
-    /* -------------------------------------------------- sensores por represa */
-    /* Agrupado pelo ID da represa. Um sensor com status diferente de 'online'
-       faz a telemetria da represa aparecer como "parcial" (MonitoringService::head). */
+    /* Equipamentos por represa. status: active | inactive | maintenance (situação cadastral);
+       online = false simula um equipamento ativo que parou de transmitir. */
     'sensors' => [
         'santa-clara' => [
-            ['id' => 'SEN-VAZ-01', 'name' => 'Afluência principal', 'location' => 'Entrada principal', 'type' => 'flow', 'status' => 'online'],
-            ['id' => 'SEN-VAZ-02', 'name' => 'Defluência principal', 'location' => 'Saída da barragem', 'type' => 'flow', 'status' => 'online'],
-            ['id' => 'SEN-VAZ-03', 'name' => 'Canal de restituição', 'location' => 'Canal de restituição', 'type' => 'flow', 'status' => 'online'],
+            ['id' => 'SEN-NIV-01', 'name' => 'Régua de nível',       'location' => 'Barragem principal',   'type' => 'level',   'status' => 'active',      'online' => true],
+            ['id' => 'SEN-VAZ-01', 'name' => 'Afluência principal',  'location' => 'Entrada principal',    'type' => 'inflow',  'status' => 'active',      'online' => true],
+            ['id' => 'SEN-VAZ-02', 'name' => 'Defluência principal', 'location' => 'Saída da barragem',    'type' => 'outflow', 'status' => 'active',      'online' => true],
+            ['id' => 'SEN-VAZ-03', 'name' => 'Canal de restituição', 'location' => 'Canal de restituição', 'type' => 'outflow', 'status' => 'maintenance', 'online' => false],
+            ['id' => 'SEN-PH-01',  'name' => 'Sonda de pH',          'location' => 'Tomada d\'água',       'type' => 'ph',      'status' => 'active',      'online' => true],
         ],
         'rio-verde' => [
-            ['id' => 'SEN-VAZ-11', 'name' => 'Afluência principal', 'location' => 'Entrada principal', 'type' => 'flow', 'status' => 'online'],
-            ['id' => 'SEN-VAZ-12', 'name' => 'Defluência principal', 'location' => 'Saída da barragem', 'type' => 'flow', 'status' => 'online'],
+            ['id' => 'SEN-NIV-11', 'name' => 'Régua de nível',       'location' => 'Barragem principal', 'type' => 'level',   'status' => 'active', 'online' => true],
+            ['id' => 'SEN-VAZ-11', 'name' => 'Afluência principal',  'location' => 'Entrada principal',  'type' => 'inflow',  'status' => 'active', 'online' => true],
+            ['id' => 'SEN-VAZ-12', 'name' => 'Defluência principal', 'location' => 'Saída da barragem',  'type' => 'outflow', 'status' => 'active', 'online' => true],
+            ['id' => 'SEN-PH-11',  'name' => 'Sonda de pH',          'location' => 'Tomada d\'água',     'type' => 'ph',      'status' => 'active', 'online' => true],
         ],
         'serra-azul' => [
-            ['id' => 'SEN-VAZ-21', 'name' => 'Afluência principal', 'location' => 'Entrada principal', 'type' => 'flow', 'status' => 'online'],
-            ['id' => 'SEN-VAZ-22', 'name' => 'Defluência principal', 'location' => 'Saída da barragem', 'type' => 'flow', 'status' => 'offline'], // sensor offline: telemetria parcial nesta represa
+            ['id' => 'SEN-NIV-21', 'name' => 'Régua de nível',       'location' => 'Barragem principal', 'type' => 'level',   'status' => 'active', 'online' => true],
+            ['id' => 'SEN-VAZ-21', 'name' => 'Afluência principal',  'location' => 'Entrada principal',  'type' => 'inflow',  'status' => 'active', 'online' => true],
+            ['id' => 'SEN-VAZ-22', 'name' => 'Defluência principal', 'location' => 'Saída da barragem',  'type' => 'outflow', 'status' => 'active', 'online' => false],
+            ['id' => 'SEN-PH-21',  'name' => 'Sonda de pH',          'location' => 'Tomada d\'água',     'type' => 'ph',      'status' => 'active', 'online' => true],
         ],
     ],
 
-    /* ------------------------------------------- pontos de coleta de pH */
-    'ph_points' => [                                             // agrupado por represa; exibido na tela de pH
-        'santa-clara' => [
-            ['name' => 'Entrada principal',    'ph' => 7.1, 'status' => 'normal'],
-            ['name' => 'Centro do reservatório', 'ph' => 7.2, 'status' => 'normal'],
-            ['name' => 'Próximo à barragem',   'ph' => 7.3, 'status' => 'normal'],
-        ],
-        'rio-verde' => [
-            ['name' => 'Entrada principal',    'ph' => 7.3, 'status' => 'normal'],
-            ['name' => 'Centro do reservatório', 'ph' => 7.4, 'status' => 'normal'],
-            ['name' => 'Próximo à barragem',   'ph' => 7.5, 'status' => 'normal'],
-        ],
-        'serra-azul' => [
-            ['name' => 'Entrada principal',    'ph' => 7.2, 'status' => 'normal'],
-            ['name' => 'Centro do reservatório', 'ph' => 7.3, 'status' => 'normal'],
-            ['name' => 'Próximo à barragem',   'ph' => 7.4, 'status' => 'normal'],
-        ],
+    'ph_points' => [
+        'santa-clara' => [['name' => 'Entrada principal', 'ph' => 7.1], ['name' => 'Centro do reservatório', 'ph' => 7.2], ['name' => 'Próximo à barragem', 'ph' => 7.3]],
+        'rio-verde'   => [['name' => 'Entrada principal', 'ph' => 7.3], ['name' => 'Centro do reservatório', 'ph' => 7.4], ['name' => 'Próximo à barragem', 'ph' => 7.5]],
+        'serra-azul'  => [['name' => 'Entrada principal', 'ph' => 7.2], ['name' => 'Centro do reservatório', 'ph' => 7.3], ['name' => 'Próximo à barragem', 'ph' => 7.4]],
     ],
 
-    /* --------------------------------------- estações pluviométricas */
-    'rain_stations' => [                                         // pluviômetros por represa; rain_24h em mm
+    'rain_stations' => [
         'santa-clara' => [
             ['id' => 'P01', 'name' => 'Pluviômetro Norte', 'rain_24h' => 12.3, 'status' => 'online'],
             ['id' => 'P02', 'name' => 'Pluviômetro Oeste', 'rain_24h' => 8.7,  'status' => 'online'],
@@ -259,170 +91,53 @@ return [
             ['id' => 'P12', 'name' => 'Pluviômetro Leste',   'rain_24h' => 9.4,  'status' => 'online'],
         ],
         'serra-azul' => [
-            ['id' => 'P21', 'name' => 'Pluviômetro Serra',  'rain_24h' => 8.7, 'status' => 'online'],
-            ['id' => 'P22', 'name' => 'Pluviômetro Vale',   'rain_24h' => 6.2, 'status' => 'offline'],
+            ['id' => 'P21', 'name' => 'Pluviômetro Serra', 'rain_24h' => 8.7, 'status' => 'online'],
+            ['id' => 'P22', 'name' => 'Pluviômetro Vale',  'rain_24h' => 6.2, 'status' => 'offline'],
         ],
     ],
 
-    /* ------------------------------------------------------------- alertas */
-    /*
-     * Campos de um alerta:
-     *  id               identificador exibido na tela (ALT-xxxx)
-     *  reservoir_id     represa onde o alerta ocorreu
-     *  severity         gravidade: critical | attention | info
-     *  title / metric   o que aconteceu e qual indicador disparou
-     *  detected_at      data/hora ISO 8601 com fuso (-03:00)
-     *  owner            responsável pelo tratamento
-     *  status           andamento: new | analysis | resolved
-     *  current_value    valor medido (já formatado para exibição)
-     *  threshold        limite configurado que foi ultrapassado
-     *  timeline         etapas do tratamento; 'done' => false = etapa pendente
-     */
+    /* Alertas de exemplo, coerentes com os valores acima e com os limites padrão. */
     'alerts' => [
         [
-            'id' => 'ALT-1001', 'reservoir_id' => 'santa-clara', 'severity' => 'attention',
-            'title' => 'Nível acima de 80%', 'metric' => 'Nível do reservatório',
-            'detected_at' => '2024-05-22T08:45:00-03:00', 'owner' => 'Ana Silva', 'status' => 'new',
+            'id' => 'ALT-1001', 'reservoir_id' => 'santa-clara', 'sensor_id' => 'SEN-NIV-01', 'severity' => 'attention', 'metric_key' => 'level',
+            'title' => 'Nível do reservatório em atenção', 'metric' => 'Nível do reservatório',
+            'detected_at' => '2024-05-22T08:45:00-03:00', 'resolved_at' => null, 'owner' => 'Não atribuído', 'status' => 'new',
             'current_value' => '82,4%', 'threshold' => '80%',
-            'detail' => 'Em relação à cota 562,4 m', 'threshold_detail' => 'Cota 560,0 m',
+            'detail' => 'Leitura do equipamento SEN-NIV-01', 'threshold_detail' => 'Limite de atenção',
             'timeline' => [
-                ['at' => '2024-05-22T08:45:00-03:00', 'text' => 'Alerta detectado: nível acima de 80% do limite configurado.', 'done' => true],
-                ['at' => '2024-05-22T08:47:00-03:00', 'text' => 'Notificação enviada por e-mail e painel.', 'done' => true],
-                ['at' => null, 'text' => 'Aguardando análise e ação.', 'done' => false], // etapa ainda não realizada: sem data
+                ['at' => '2024-05-22T08:45:00-03:00', 'text' => 'Alerta aberto automaticamente: 80,1% (limite 80%).', 'done' => true],
             ],
         ],
         [
-            'id' => 'ALT-1002', 'reservoir_id' => 'santa-clara', 'severity' => 'critical',
-            'title' => 'Vazão afluente elevada', 'metric' => 'Vazão afluente',
-            'detected_at' => '2024-05-22T08:30:00-03:00', 'owner' => 'Ana Silva', 'status' => 'analysis',
-            'current_value' => '56,2 m³/s', 'threshold' => '55,0 m³/s',
-            'detail' => 'Média nas últimas 24h', 'threshold_detail' => 'Limite operacional',
-            'timeline' => [
-                ['at' => '2024-05-22T08:30:00-03:00', 'text' => 'Alerta detectado: vazão afluente acima do limite.', 'done' => true],
-                ['at' => '2024-05-22T08:35:00-03:00', 'text' => 'Equipe de operação notificada.', 'done' => true],
-                ['at' => null, 'text' => 'Em análise pela equipe técnica.', 'done' => false],
-            ],
-        ],
-        [
-            'id' => 'ALT-1003', 'reservoir_id' => 'santa-clara', 'severity' => 'attention',
-            'title' => 'Precipitação intensa prevista', 'metric' => 'Precipitação (24h)',
-            'detected_at' => '2024-05-22T07:30:00-03:00', 'owner' => 'Ana Silva', 'status' => 'new',
-            'current_value' => '18,6 mm', 'threshold' => '60 mm',
-            'detail' => 'Chuva moderada na bacia', 'threshold_detail' => 'Limite crítico configurado',
-            'timeline' => [
-                ['at' => '2024-05-22T07:30:00-03:00', 'text' => 'Previsão meteorológica indica chuva intensa em 48h.', 'done' => true],
-                ['at' => null, 'text' => 'Aguardando confirmação da estação.', 'done' => false],
-            ],
-        ],
-        [
-            'id' => 'ALT-1004', 'reservoir_id' => 'rio-verde', 'severity' => 'info',
+            'id' => 'ALT-1000', 'reservoir_id' => 'rio-verde', 'sensor_id' => 'SEN-PH-11', 'severity' => 'attention', 'metric_key' => 'ph',
             'title' => 'pH fora da faixa ideal', 'metric' => 'pH da água',
-            'detected_at' => '2024-05-22T06:20:00-03:00', 'owner' => 'Ana Silva', 'status' => 'resolved', // resolvido: não conta como alerta ativo
-            'current_value' => '7,4', 'threshold' => '6,5 – 8,5',
-            'detail' => 'Leitura pontual acima da média', 'threshold_detail' => 'Faixa ideal configurada',
+            'detected_at' => '2024-05-21T06:20:00-03:00', 'resolved_at' => '2024-05-21T07:05:00-03:00', 'owner' => 'Ana Silva', 'status' => 'resolved',
+            'current_value' => '8,62', 'threshold' => '6,5 – 8,5',
+            'detail' => 'Leitura do equipamento SEN-PH-11', 'threshold_detail' => 'Faixa ideal',
             'timeline' => [
-                ['at' => '2024-05-22T06:20:00-03:00', 'text' => 'Leitura registrada fora da média histórica.', 'done' => true],
-                ['at' => null, 'text' => 'Coleta manual agendada.', 'done' => false],
-            ],
-        ],
-        [
-            'id' => 'ALT-1005', 'reservoir_id' => 'serra-azul', 'severity' => 'info',
-            'title' => 'Sensor sem comunicação', 'metric' => 'Vazão defluente',
-            'detected_at' => '2024-05-22T05:10:00-03:00', 'owner' => 'Ana Silva', 'status' => 'resolved',
-            'current_value' => 'SEN-VAZ-22', 'threshold' => 'Telemetria',
-            'detail' => 'Sensor de defluência offline', 'threshold_detail' => 'Reconexão automática',
-            'timeline' => [
-                ['at' => '2024-05-22T05:10:00-03:00', 'text' => 'Sensor deixou de responder.', 'done' => true],
-                ['at' => '2024-05-22T05:40:00-03:00', 'text' => 'Link de backup ativado.', 'done' => true],
-                ['at' => '2024-05-22T06:05:00-03:00', 'text' => 'Ocorrência resolvida.', 'done' => true],
+                ['at' => '2024-05-21T06:20:00-03:00', 'text' => 'Alerta aberto automaticamente: 8,62 (limite 6,5 – 8,5).', 'done' => true],
+                ['at' => '2024-05-21T06:31:00-03:00', 'text' => 'Alerta assumido por Ana Silva.', 'done' => true],
+                ['at' => '2024-05-21T07:05:00-03:00', 'text' => 'Alerta resolvido por Ana Silva.', 'done' => true],
             ],
         ],
     ],
 
-    /* ---------------------------------------------------------- relatórios */
-    /* type: operational | hydrological | quality | planning
-       status: done (concluído) | processing (gerando) | scheduled (agendado)
-       icon: nome do ícone exibido na lista (includes/icons.php) */
     'reports' => [
-        ['id' => 'REP-2001', 'name' => 'Resumo diário', 'type' => 'operational', 'reservoir_id' => 'santa-clara', 'period' => '21/05/2024', 'generated_at' => '2024-05-22T07:00:00-03:00', 'owner' => 'Ana Silva', 'status' => 'done', 'icon' => 'file-text'],
-        ['id' => 'REP-2002', 'name' => 'Boletim hidrológico', 'type' => 'hydrological', 'reservoir_id' => 'santa-clara', 'period' => 'Maio/2024', 'generated_at' => '2024-05-22T06:30:00-03:00', 'owner' => 'Ana Silva', 'status' => 'done', 'icon' => 'droplet'],
-        ['id' => 'REP-2003', 'name' => 'Comparativo de vazão', 'type' => 'hydrological', 'reservoir_id' => 'santa-clara', 'period' => '15/05 – 22/05/2024', 'generated_at' => '2024-05-22T06:15:00-03:00', 'owner' => 'Ana Silva', 'status' => 'done', 'icon' => 'waves'],
-        ['id' => 'REP-2004', 'name' => 'Qualidade da água', 'type' => 'quality', 'reservoir_id' => 'santa-clara', 'period' => '21/05/2024', 'generated_at' => '2024-05-21T14:50:00-03:00', 'owner' => 'Ana Silva', 'status' => 'done', 'icon' => 'droplet'],
-        ['id' => 'REP-2005', 'name' => 'Previsão de disponibilidade hídrica', 'type' => 'planning', 'reservoir_id' => 'santa-clara', 'period' => 'Junho/2024', 'generated_at' => '2024-05-21T10:20:00-03:00', 'owner' => 'Ana Silva', 'status' => 'processing', 'icon' => 'chart-up'],
-        ['id' => 'REP-2006', 'name' => 'Relatório mensal', 'type' => 'operational', 'reservoir_id' => 'santa-clara', 'period' => 'Abril/2024', 'generated_at' => '2024-05-02T09:10:00-03:00', 'owner' => 'Ana Silva', 'status' => 'scheduled', 'icon' => 'calendar'],
-        ['id' => 'REP-2007', 'name' => 'Resumo diário', 'type' => 'operational', 'reservoir_id' => 'rio-verde', 'period' => '21/05/2024', 'generated_at' => '2024-05-22T07:05:00-03:00', 'owner' => 'Ana Silva', 'status' => 'done', 'icon' => 'file-text'],
-        ['id' => 'REP-2008', 'name' => 'Boletim hidrológico', 'type' => 'hydrological', 'reservoir_id' => 'serra-azul', 'period' => 'Maio/2024', 'generated_at' => '2024-05-22T06:40:00-03:00', 'owner' => 'Ana Silva', 'status' => 'done', 'icon' => 'droplet'],
+        ['id' => 'REP-2001', 'name' => 'Leituras diárias — hidrológico', 'type' => 'hydrological', 'reservoir_id' => 'santa-clara',
+         'period' => '16/05/2024 – 22/05/2024', 'period_start' => '2024-05-16', 'period_end' => '2024-05-22',
+         'generated_at' => '2024-05-22T07:00:00-03:00', 'owner' => 'Ana Silva', 'icon' => 'droplet'],
     ],
 
-    'scheduled_reports' => [                                     // relatórios gerados automaticamente; next_run = próxima execução
-        ['name' => 'Resumo diário', 'frequency' => 'Diária', 'next_run' => '2024-05-23T07:00:00-03:00'],
-        ['name' => 'Boletim hidrológico', 'frequency' => 'Diária', 'next_run' => '2024-05-23T06:30:00-03:00'],
-        ['name' => 'Relatório mensal', 'frequency' => 'Mensal', 'next_run' => '2024-06-01T09:00:00-03:00'],
-        ['name' => 'Previsão de disponibilidade hídrica', 'frequency' => 'Mensal', 'next_run' => '2024-06-01T08:00:00-03:00'],
-    ],
-
-    /* --------------------------------- situação operacional (por represa) */
-    'operation_events' => [                                      // histórico de eventos; priority usa os mesmos valores de severidade
+    'maintenances' => [
         'santa-clara' => [
-            ['at' => '2024-05-22T09:27:00-03:00', 'component' => 'Nível', 'event' => 'Nível acima de 80%', 'priority' => 'attention', 'status' => 'new'],
-            ['at' => '2024-05-22T08:47:00-03:00', 'component' => 'Comunicação', 'event' => 'Link de backup ativado', 'priority' => 'info', 'status' => 'resolved'],
-            ['at' => '2024-05-22T08:32:00-03:00', 'component' => 'Comportas', 'event' => 'Teste de abertura', 'priority' => 'info', 'status' => 'resolved'],
-            ['at' => '2024-05-22T08:15:00-03:00', 'component' => 'Pluviômetros', 'event' => 'Chuva moderada', 'priority' => 'info', 'status' => 'resolved'],
-            ['at' => '2024-05-22T07:58:00-03:00', 'component' => 'Energia', 'event' => 'Fonte principal ativa', 'priority' => 'info', 'status' => 'resolved'],
+            ['id' => 1, 'date' => '2024-05-24', 'equipment' => 'SEN-VAZ-03 — Canal de restituição', 'type' => 'Corretiva',  'priority' => 'attention', 'description' => 'Equipamento em manutenção; troca do transdutor.'],
+            ['id' => 2, 'date' => '2024-05-31', 'equipment' => 'SEN-NIV-01 — Régua de nível',       'type' => 'Calibração', 'priority' => 'low',       'description' => 'Calibração semestral.'],
         ],
         'rio-verde' => [
-            ['at' => '2024-05-22T09:10:00-03:00', 'component' => 'Comportas', 'event' => 'Operação normal', 'priority' => 'info', 'status' => 'resolved'],
-            ['at' => '2024-05-22T08:05:00-03:00', 'component' => 'Energia', 'event' => 'Fonte principal ativa', 'priority' => 'info', 'status' => 'resolved'],
+            ['id' => 3, 'date' => '2024-05-27', 'equipment' => 'SEN-VAZ-12 — Defluência principal', 'type' => 'Preventiva', 'priority' => 'low', 'description' => 'Inspeção do medidor.'],
         ],
         'serra-azul' => [
-            ['at' => '2024-05-22T05:10:00-03:00', 'component' => 'Telemetria', 'event' => 'Sensor SEN-VAZ-22 sem comunicação', 'priority' => 'attention', 'status' => 'analysis'],
-            ['at' => '2024-05-22T05:40:00-03:00', 'component' => 'Comunicação', 'event' => 'Link de backup ativado', 'priority' => 'info', 'status' => 'resolved'],
-        ],
-    ],
-
-    'maintenances' => [                                          // manutenções programadas; priority: attention | low
-        'santa-clara' => [
-            ['date' => '2024-05-24', 'equipment' => 'Comporta 02', 'type' => 'Preventiva', 'priority' => 'attention'],
-            ['date' => '2024-05-27', 'equipment' => 'Pluviômetro 01', 'type' => 'Preventiva', 'priority' => 'low'],
-            ['date' => '2024-05-30', 'equipment' => 'Gerador reserva', 'type' => 'Preventiva', 'priority' => 'attention'],
-            ['date' => '2024-06-04', 'equipment' => 'Nível – Sensor 03', 'type' => 'Calibração', 'priority' => 'low'],
-        ],
-        'rio-verde' => [
-            ['date' => '2024-05-26', 'equipment' => 'Comporta 01', 'type' => 'Preventiva', 'priority' => 'low'],
-            ['date' => '2024-06-02', 'equipment' => 'Sensor de vazão', 'type' => 'Calibração', 'priority' => 'low'],
-        ],
-        'serra-azul' => [
-            ['date' => '2024-05-25', 'equipment' => 'SEN-VAZ-22', 'type' => 'Corretiva', 'priority' => 'attention'],
-            ['date' => '2024-06-06', 'equipment' => 'Pluviômetro Vale', 'type' => 'Corretiva', 'priority' => 'attention'],
-        ],
-    ],
-
-    /* --------------------------------------------------------- configurações */
-    'settings' => [                                              // exibido (somente leitura) na tela dashboard/configuracoes.php
-        'units' => [                                             // unidades de medida exibidas no sistema
-            'level'  => 'metros (m)',
-            'volume' => 'hm³',
-            'flow'   => 'm³/s',
-        ],
-        'refresh_interval' => '5min',                            // intervalo de atualização automática
-        'auto_refresh'     => true,
-        'indicators' => [                                        // indicadores que aparecem nos painéis (enabled = ligado)
-            ['id' => 'level',         'label' => 'Nível do reservatório', 'enabled' => true],
-            ['id' => 'flow',          'label' => 'Vazão',                 'enabled' => true],
-            ['id' => 'ph',            'label' => 'pH',                    'enabled' => true],
-            ['id' => 'storage',       'label' => 'Volume armazenado',     'enabled' => true],
-            ['id' => 'precipitation', 'label' => 'Precipitação',          'enabled' => true],
-            ['id' => 'duration',      'label' => 'Duração estimada',      'enabled' => true],
-        ],
-        'thresholds' => [                                        // limites exibidos na tela (as regras efetivas estão em StatusRules)
-            'level_attention_pct' => 80,
-            'ph_min'              => 6.5,
-            'ph_max'              => 8.5,
-            'rain_critical_mm'    => 60,
-        ],
-        'notifications' => [                                     // canais de notificação de alertas
-            ['id' => 'email', 'label' => 'E-mail', 'target' => 'ana.silva@hidrovale.com.br', 'enabled' => true],
-            ['id' => 'panel', 'label' => 'Painel', 'target' => 'Notificações no sistema', 'enabled' => true],
+            ['id' => 4, 'date' => '2024-05-25', 'equipment' => 'SEN-VAZ-22 — Defluência principal', 'type' => 'Corretiva', 'priority' => 'attention', 'description' => 'Sem comunicação.'],
         ],
     ],
 ];

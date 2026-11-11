@@ -27,6 +27,7 @@ require_once __DIR__ . '/components.php';                            // cards, g
 
 use Aquapulse\Support\Clock;
 use Aquapulse\Support\Container;
+use Aquapulse\Support\Database;
 use Aquapulse\Support\Guard;
 
 /* ------------------------------------------------------------------ sessão */
@@ -101,6 +102,9 @@ function aq_dash(): string
 
 $AQ_USER = Guard::requirePageSession(aq_base() . 'login.php');       // PROTEÇÃO: sem sessão, redireciona ao login e o script para aqui
 
+// Repositório já restrito às empresas que o usuário pode ver (mesma regra da API).
+$AQ_REPO = Container::monitoring(Guard::companyScope($AQ_USER));
+
 /* ------------------------------------------------------- menu do sistema */
 /**
  * Estrutura única do menu. Usada pela sidebar de todas as páginas.
@@ -108,30 +112,33 @@ $AQ_USER = Guard::requirePageSession(aq_base() . 'login.php');       // PROTEÇ�
  *
  * Cada item: route (identificador), label (texto), icon (nome do ícone),
  * href (caminho relativo a dashboard/). Um item com "children" vira submenu.
+ * O contador de "Alertas" é a quantidade de alertas ainda não resolvidos.
  */
 function aq_nav(): array
 {
+    global $AQ_REPO;
+
     return [
         ['route' => 'overview',   'label' => 'Visão geral', 'icon' => 'home', 'href' => 'index.php'],
         [
             'route'    => 'monitoring',
             'label'    => 'Monitoramento',
             'icon'     => 'activity',
-            'children' => [                                          // as oito telas detalhadas ficam agrupadas no submenu
+            'children' => [                                          // as telas detalhadas ficam agrupadas no submenu
                 ['route' => 'monitoring.flow',       'label' => 'Volume de vazão',      'href' => 'monitoramento/vazao.php'],
                 ['route' => 'monitoring.level',      'label' => 'Nível do reservatório','href' => 'monitoramento/nivel.php'],
                 ['route' => 'monitoring.ph',         'label' => 'pH',                   'href' => 'monitoramento/ph.php'],
                 ['route' => 'monitoring.storage',    'label' => 'Volume armazenado',    'href' => 'monitoramento/volume.php'],
                 ['route' => 'monitoring.rain',       'label' => 'Precipitação',         'href' => 'monitoramento/precipitacao.php'],
-                ['route' => 'monitoring.duration',   'label' => 'Duração da água',      'href' => 'monitoramento/duracao.php'],
                 ['route' => 'monitoring.operation',  'label' => 'Situação operacional', 'href' => 'monitoramento/operacional.php'],
                 ['route' => 'monitoring.comparison', 'label' => 'Comparativo de vazão', 'href' => 'monitoramento/comparativo.php'],
             ],
         ],
+        ['route' => 'equipment', 'label' => 'Equipamentos', 'icon' => 'signal',       'href' => 'equipamentos.php'],
         ['route' => 'reports',  'label' => 'Relatórios',    'icon' => 'file-text',    'href' => 'relatorios.php'],
         ['route' => 'levels',   'label' => 'Níveis',        'icon' => 'layers-list',  'href' => 'niveis.php'],
         ['route' => 'maps',     'label' => 'Mapas',         'icon' => 'map',          'href' => 'mapas.php'],
-        ['route' => 'alerts',   'label' => 'Alertas',       'icon' => 'bell',         'href' => 'alertas.php', 'badge' => 3], // contador fixo de alertas exibido no menu
+        ['route' => 'alerts',   'label' => 'Alertas',       'icon' => 'bell',         'href' => 'alertas.php', 'badge' => $AQ_REPO->openAlertCount()],
         ['route' => 'settings', 'label' => 'Configurações', 'icon' => 'gear',         'href' => 'configuracoes.php'],
     ];
 }
@@ -177,9 +184,10 @@ function aq_page_start(array $o): void
 <link rel="stylesheet" href="<?php echo $base; ?>assets/css/dashboard.css?v=<?php echo $version; // ?v muda quando o CSS muda, forçando o navegador a baixar de novo ?>">
 <link rel="stylesheet" href="<?php echo $base; ?>assets/css/dashboard-responsive.css?v=<?php echo $version; ?>">
 </head>
-<?php /* data-route: tela atual (lido pelo JavaScript); data-api-base: caminho da API usado por api-client.js */ ?>
+<?php /* data-route: tela atual; data-role: perfil do usuário (o JS esconde ações que ele não pode fazer — a API confere de novo); data-api-base: caminho da API */ ?>
 <body class="aq-app<?php echo !empty($o['body_class']) ? ' ' . aq_h($o['body_class']) : ''; ?>"
       data-route="<?php aq_e($route); ?>"
+      data-role="<?php aq_e($AQ_USER['role']); ?>"
       data-api-base="<?php echo $base; ?>api/v1">
 
 <a class="aq-skip" href="#aq-conteudo">Ir para o conteúdo</a> <?php /* link de acessibilidade: aparece com Tab e pula direto ao conteúdo */ ?>
@@ -226,7 +234,7 @@ function aq_page_start(array $o): void
 
               <ul class="aq-nav__submenu<?php echo $isMonitoring ? ' is-open' : ''; ?>"
                   id="aq-submenu-monitoramento">
-                <?php foreach ($item['children'] as $child): // links das oito telas de monitoramento ?>
+                <?php foreach ($item['children'] as $child): // links das telas de monitoramento ?>
                   <li>
                     <a class="aq-nav__sublink<?php echo $route === $child['route'] ? ' is-active' : ''; ?>"
                        href="<?php echo $dash . aq_h($child['href']); ?>"
@@ -246,8 +254,8 @@ function aq_page_start(array $o): void
       <div class="aq-secure">
         <span class="aq-secure__icon" aria-hidden="true"><?php aq_the_icon('shield-lock'); ?></span>
         <div>
-          <strong>Sistema seguro</strong>
-          <span>Seus dados estão protegidos com criptografia de ponta a ponta.</span>
+          <strong>Acesso restrito</strong>
+          <span>Somente usuários autenticados acessam o painel.</span>
         </div>
       </div>
     </div>
@@ -273,12 +281,12 @@ function aq_page_start(array $o): void
       <div class="aq-topbar__meta">
         <span class="aq-meta-item aq-meta-item--date">
           <?php aq_the_icon('calendar'); ?>
-          <span><?php aq_e(Clock::longDateTime()); // data/hora da aplicação (fixa no modo demonstrativo) ?></span>
+          <span><?php aq_e(Clock::longDateTime()); // data e hora em que a página foi aberta ?></span>
         </span>
 
         <button class="aq-refresh" type="button" data-refresh aria-label="Atualizar dados agora"> <?php /* recarrega os dados da tela via JS */ ?>
           <?php aq_the_icon('refresh'); ?>
-          <span data-updated-label>Atualizado há 2 min</span> <?php /* o JS substitui pelo meta.updated_label da API */ ?>
+          <span data-updated-label>Carregando…</span> <?php /* o JS escreve o horário da última atualização dos dados */ ?>
         </button>
 
         <?php /* botão do usuário: abre o menu com Configurações e Sair */ ?>
@@ -287,7 +295,7 @@ function aq_page_start(array $o): void
           <span class="aq-user__avatar" aria-hidden="true"><?php aq_e(Guard::initials($AQ_USER['name'])); // iniciais, ex.: "AS" ?></span>
           <span class="aq-user__info">
             <span class="aq-user__name"><?php aq_e($AQ_USER['name']); ?></span>
-            <span class="aq-user__role"><?php aq_e($AQ_USER['role'] === 'admin' ? 'Operador' : $AQ_USER['role']); // o perfil "admin" é exibido como "Operador" ?></span>
+            <span class="aq-user__role"><?php aq_e(Guard::roleLabel($AQ_USER['role'])); // "Administrador" ou "Operador" ?></span>
           </span>
           <?php aq_the_icon('chevron-down'); ?>
         </button>
@@ -300,6 +308,13 @@ function aq_page_start(array $o): void
     </header>
 
     <main class="aq-content" id="aq-conteudo"> <?php /* alvo do link "Ir para o conteúdo"; a página escreve seu conteúdo aqui dentro */ ?>
+<?php if (!Database::configurado()): // sem banco, o sistema mostra dados de exemplo e não grava nada ?>
+      <p class="aq-note aq-note--warning" role="status">
+        <?php aq_the_icon('info'); ?>
+        <span><strong>Modo demonstração.</strong> Este ambiente está sem banco de dados: os valores são de exemplo
+        (instante fixo em <?php aq_e(Clock::dateTime()); ?>) e as ações de gravação estão desativadas.</span>
+      </p>
+<?php endif; ?>
 <?php
 }
 

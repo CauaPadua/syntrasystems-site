@@ -10,30 +10,37 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
+  /** Variável de cor do CSS para cada status. */
+  var COLOR = { critical: 'danger', attention: 'warning', normal: 'success' };
+
   window.AqMonitorPage({
-    scopes: ['history', 'capacity', 'forecast'],
+    scopes: ['history', 'capacity'],
     fetch: function (p) { return window.AqApi.level(p); },
 
-    render: function (d) {                                            // d = MonitoringService::level()
+    render: function (d) {
       var k = d.kpis;
 
       S.fill({
         'level.value': F.num(k.level.value, 1), 'level.foot': k.level.note,
-        'level.badge': { html: S.badge(k.level.status.label, k.level.status.key) }, // Normal / Atenção / Crítico
+        'level.badge': { html: S.badge(k.level.status.label, k.level.status.key) },
         'cota.value': F.num(k.cota.value, 1), 'cota.foot': k.cota.note,
         'variation.value': F.signed(k.variation.value, 1), 'variation.foot': k.variation.note,
         'available.value': F.num(k.available.value, 1), 'available.foot': k.available.note,
-        'capacity.level': F.pct(d.capacity.level),                    // texto dentro da coluna de capacidade
-        'capacity.total': 'Capacidade total: 100%'
+        'capacity.level': F.pct(d.capacity.level),
+        'capacity.total': 'Situação: ' + d.capacity.status.label
       });
 
       document.querySelectorAll('[data-kpi="variation"] .aq-kpi__value').forEach(function (el) {
-        el.classList.toggle('aq-kpi__value--success', k.variation.positive); // variação positiva (cota subindo) em verde
+        el.classList.toggle('aq-kpi__value--success', k.variation.positive);
       });
 
-      /* --------------- histórico com linhas de limite (plugin annotation) */
+      /* ----------------- histórico com as linhas dos limites em vigor */
       var h = d.history;
-      var ctx = document.getElementById('grafico-historico-nivel').getContext('2d'); // contexto usado para o gradiente da área
+      var ctx = document.getElementById('grafico-historico-nivel').getContext('2d');
+
+      // O eixo começa um pouco abaixo do menor valor, para a variação ficar visível.
+      var menor = Math.min.apply(null, h.values.concat([h.attention]));
+      var piso = Math.max(0, Math.floor((menor - 10) / 10) * 10);
 
       G.create('grafico-historico-nivel', {
         type: 'line',
@@ -44,12 +51,12 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ beginAtZero: false, min: 50, max: 100, step: 10, decimals: 0 }), // eixo de 50% a 100% (valores abaixo de 50% ficariam fora do gráfico)
+          scales: G.scales({ beginAtZero: false, min: piso, max: 100, step: 10, decimals: 0 }),
           plugins: G.plugins('%', 1, {
-            annotation: {                                             // linhas horizontais de limite
+            annotation: {
               annotations: {
-                atencao: G.limitLine(h.attention, G.colors.warning, h.attention_label, 'end', true), // 80%, rótulo abaixo da linha
-                critico: G.limitLine(h.critical, G.colors.danger, h.critical_label, 'end')           // 90%
+                atencao: G.limitLine(h.attention, G.colors.warning, h.attention_label, 'end', true),
+                critico: G.limitLine(h.critical, G.colors.danger, h.critical_label, 'end')
               }
             }
           })
@@ -57,34 +64,17 @@
       });
       G.describe('grafico-historico-nivel', h.values, '%', 1);
 
-      /* ------------------------------------ capacidade e faixas */
+      /* ------------------------------------ coluna de capacidade e faixas */
       var fill = document.querySelector('[data-capacity-fill]');
-      if (fill) fill.style.height = d.capacity.level + '%';           // altura da "água" = nível em %; o CSS anima a mudança
+      if (fill) fill.style.height = d.capacity.level + '%';
 
-      document.querySelector('[data-capacity-bands]').innerHTML = d.capacity.bands.map(function (b) { // uma linha por faixa
-        var color = b.status === 'critical' ? 'danger' : (b.status === 'attention' ? 'warning' : 'success'); // status -> variável de cor do CSS
+      document.querySelector('[data-capacity-bands]').innerHTML = d.capacity.bands.map(function (b) {
+        var color = COLOR[b.status] || 'success';
         return '<li style="display:flex;gap:12px;align-items:flex-start">'
           + '<span style="width:4px;align-self:stretch;border-radius:3px;background:var(--aq-' + color + ')"></span>'
-          + '<div><strong style="display:block;font-size:.88rem">' + S.esc(b.label) + '</strong>'
-          + '<span style="font-size:.83rem;color:var(--aq-' + color + ');font-weight:700">' + S.esc(b.text) + '</span></div></li>';
+          + '<div><strong style="display:block;font-size:.88rem">' + S.esc(b.range) + '</strong>'
+          + '<span style="font-size:.83rem;color:var(--aq-' + color + ');font-weight:700">' + S.esc(b.label) + '</span></div></li>';
       }).join('');
-
-      /* ------------------------------------------------- tendência 7 dias */
-      var f = d.forecast;
-      var ctxF = document.getElementById('grafico-tendencia-nivel').getContext('2d');
-      G.create('grafico-tendencia-nivel', {
-        type: 'line',
-        data: {
-          labels: f.labels,
-          datasets: [G.line('Previsão', f.values, G.colors.primary, { fillCtx: ctxF, alpha: 0.12, dashed: true })] // tracejado: é projeção, não medida
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: G.scales({ beginAtZero: false, min: 60, max: 100, step: 10, decimals: 0 }),
-          plugins: G.plugins('%', 1)
-        }
-      });
 
       /* ------------------------------------------- faixas operacionais */
       document.querySelector('[data-bands]').innerHTML = d.bands.map(function (b) {
@@ -96,7 +86,7 @@
           + '<path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/></svg></span>'
           + '<div class="aq-list__body"><p class="aq-list__title">' + S.esc(b.label) + '</p>'
           + '<p class="aq-list__meta">' + S.esc(b.range) + '</p></div>'
-          + '<div class="aq-list__side" style="max-width:130px;text-align:right">' + S.esc(b.text) + '</div></div>';
+          + '<div class="aq-list__side" style="max-width:150px;text-align:right">' + S.esc(b.text) + '</div></div>';
       }).join('');
 
       /* ------------------------------------------------ últimas leituras */
@@ -106,9 +96,9 @@
           + '<td class="is-num">' + F.num(r.cota, 1) + '</td>'
           + '<td class="is-num">' + F.num(r.level, 1) + '</td>'
           + '<td class="is-num">' + F.signed(r.variation, 1) + ' m</td>'
-          + '<td>' + S.badge(r.status.label, r.status.key) + '</td>'  // status calculado no servidor para cada leitura
+          + '<td>' + S.badge(r.status.label, r.status.key) + '</td>'
           + '</tr>';
-      }).join('');
+      }).join('') || '<tr><td colspan="5">Nenhuma leitura de nível nos últimos 7 dias.</td></tr>';
     }
   });
 })();

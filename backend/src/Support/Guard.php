@@ -1,17 +1,18 @@
 <?php
 /**
- * Aquapulse — proteção de sessão para páginas e endpoints do sistema.
+ * Aquapulse — controle de acesso das páginas e endpoints do sistema.
  *
- * Reutiliza a autenticação e a sessão JÁ EXISTENTES (etapa do login).
- * Não existe um segundo sistema de autenticação.
+ * Três verificações, sempre feitas no servidor:
+ *   1. sessão      há um usuário logado e a conta está ativa?
+ *   2. perfil      a ação exige administrador?
+ *   3. empresa     quais empresas o usuário pode consultar?
  *
- *  - Páginas do dashboard sem sessão  -> redirecionam para login.php
- *  - Endpoints da API sem sessão      -> 401 em JSON (nunca HTML)
+ * Perfis (coluna users.role):
+ *   admin     vê todas as empresas e pode cadastrar equipamentos e alterar limites;
+ *   operator  vê só as empresas vinculadas a ele (user_company_access), trata
+ *             alertas e abre chamados, mas não altera cadastros.
  *
- * A diferença de resposta existe porque quem chama é diferente: uma página é
- * aberta pelo navegador (faz sentido redirecionar), enquanto a API é chamada
- * pelo JavaScript via fetch (que precisa de um status HTTP para reagir —
- * ver assets/js/api-client.js, que trata o 401 levando o usuário ao login).
+ * Páginas sem sessão redirecionam para o login; a API responde 401 em JSON.
  */
 
 declare(strict_types=1);
@@ -23,72 +24,92 @@ use Aquapulse\Auth\AuthService;
 final class Guard
 {
     /**
-     * Exige sessão válida em um endpoint da API.
-     * Sem sessão, responde 401 JSON e encerra.
+     * Exige sessão válida em um endpoint da API (401 em JSON se não houver).
      *
-     * Chamado por aq_api_boot() em api/v1/_boot.php, ou seja, por todo endpoint de dados.
-     *
-     * @return array{id:int,name:string,email:string,role:string}
+     * @return array{id:int,name:string,email:string,role:string,status:string}
      */
     public static function requireApiSession(): array
     {
-        aq_start_session();                                   // abre a sessão e aplica as regras de expiração (backend/bootstrap.php)
+        aq_start_session();
 
-        $auth = new AuthService(Container::users());          // o serviço de autenticação recebe o repositório de usuários ativo (mock ou banco)
-        $user = $auth->currentUser();                         // lê o user_id gravado na sessão no login e busca o usuário correspondente
+        $user = (new AuthService(Container::users()))->currentUser();
 
-        if ($user === null) {                                 // sem login, sessão expirada ou usuário removido
-            ApiResponse::unauthorized();                      // responde 401 em JSON e encerra o script (exit dentro do método)
+        if ($user === null) {
+            ApiResponse::unauthorized();
         }
 
-        return $user;                                         // dados públicos do usuário (sem hash de senha) para o endpoint usar se precisar
+        return $user;
     }
 
     /**
-     * Exige sessão válida em uma página do dashboard.
-     * Sem sessão, redireciona para o login e encerra.
+     * Exige sessão válida em uma página do dashboard (redireciona ao login se não houver).
      *
-     * Chamado por dashboard/includes/page.php, incluído no topo de toda página do sistema.
-     *
-     * @param string $loginUrl caminho relativo até login.php (muda conforme a profundidade da página)
-     * @return array{id:int,name:string,email:string,role:string}
+     * @return array{id:int,name:string,email:string,role:string,status:string}
      */
     public static function requirePageSession(string $loginUrl = '../login.php'): array
     {
         aq_start_session();
 
-        $auth = new AuthService(Container::users());
-        $user = $auth->currentUser();
+        $user = (new AuthService(Container::users()))->currentUser();
 
-        if ($user === null) {                                 // visitante não autenticado tentando abrir uma página interna
-            if (!headers_sent()) {                            // o redirecionamento é um cabeçalho HTTP: só funciona se nada foi impresso antes
-                header('Location: ' . $loginUrl . '?redirect=dashboard', true, 302); // 302 = redirecionamento temporário para a tela de login
+        if ($user === null) {
+            if (!headers_sent()) {
+                header('Location: ' . $loginUrl . '?redirect=dashboard', true, 302);
             }
-            // Corpo de reserva: aparece só se o redirecionamento não puder ser
-            // enviado. O link é escapado com htmlspecialchars para não permitir
-            // injeção de HTML pela URL.
             echo '<!DOCTYPE html><meta charset="utf-8">'
                . '<p>Sessão expirada. <a href="' . htmlspecialchars($loginUrl, ENT_QUOTES) . '">Entrar novamente</a>.</p>';
-            exit;                                             // interrompe: o conteúdo da página protegida nunca é gerado
+            exit;
         }
 
-        return $user;                                         // page.php guarda em $AQ_USER para mostrar nome, iniciais e e-mail na topbar
+        return $user;
     }
 
-    /** Iniciais do usuário para o avatar da topbar (ex.: "Ana Silva" -> "AS"). */
+    public static function isAdmin(array $user): bool
+    {
+        return ($user['role'] ?? '') === 'admin';
+    }
+
+    /** Exige perfil de administrador em um endpoint (403 em JSON se não for). */
+    public static function requireAdmin(array $user): void
+    {
+        if (!self::isAdmin($user)) {
+            ApiResponse::error('FORBIDDEN', 'Seu perfil não tem permissão para esta ação.', 403);
+        }
+    }
+
+    /**
+     * Empresas que o usuário pode consultar.
+     *
+     * @return array<int,string>|null null = todas (administrador)
+     */
+    public static function companyScope(array $user): ?array
+    {
+        if (self::isAdmin($user)) {
+            return null;
+        }
+
+        return Container::users()->companyIds((int) $user['id']);
+    }
+
+    /** Nome do perfil para exibição. */
+    public static function roleLabel(string $role): string
+    {
+        return $role === 'admin' ? 'Administrador' : 'Operador';
+    }
+
+    /** Iniciais para o avatar da topbar (ex.: "Ana Silva" -> "AS"). */
     public static function initials(string $name): string
     {
-        $parts = preg_split('/\s+/', trim($name)) ?: [];      // separa o nome por qualquer quantidade de espaços; "?: []" cobre falha do preg_split
-        $parts = array_values(array_filter($parts));          // remove pedaços vazios e reindexa a partir de 0
+        $parts = array_values(array_filter(preg_split('/\s+/', trim($name)) ?: []));
 
-        if ($parts === []) {                                  // nome vazio: mostra "?" no avatar
+        if ($parts === []) {
             return '?';
         }
-        if (count($parts) === 1) {                            // nome de uma palavra só ("Ana"): usa as duas primeiras letras ("AN")
-            return mb_strtoupper(mb_substr($parts[0], 0, 2, 'UTF-8'), 'UTF-8'); // funções mb_* respeitam acentos (ex.: "Élida" -> "ÉL")
+        if (count($parts) === 1) {
+            return mb_strtoupper(mb_substr($parts[0], 0, 2, 'UTF-8'), 'UTF-8');
         }
 
-        return mb_strtoupper(                                 // duas ou mais palavras: primeira letra do primeiro nome + primeira do último sobrenome
+        return mb_strtoupper(
             mb_substr($parts[0], 0, 1, 'UTF-8') . mb_substr($parts[count($parts) - 1], 0, 1, 'UTF-8'),
             'UTF-8'
         );

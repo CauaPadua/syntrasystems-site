@@ -1,14 +1,12 @@
 <?php
-/*
+/**
  * Aquapulse — conexão com o banco de dados MySQL via PDO.
  *
- * Só é usada quando existe a variável DB_HOST (ver Support\Container). A
- * conexão é aberta uma única vez por requisição e reaproveitada por todos os
- * repositórios PDO (usuários e monitoramento).
- *
- * As credenciais vêm das variáveis de ambiente (backend/.env ou configuração do
- * servidor) — nunca ficam escritas no código.
+ * A conexão é aberta uma única vez por requisição e reaproveitada por todos os
+ * repositórios. As credenciais vêm das variáveis de ambiente (backend/.env ou
+ * configuração do servidor) — nunca ficam escritas no código.
  */
+
 declare(strict_types=1);
 
 namespace Aquapulse\Support;
@@ -18,35 +16,45 @@ use PDOException;
 
 final class Database
 {
-    private static ?PDO $instancia = null;                                // conexão compartilhada; null até a primeira chamada
+    private static ?PDO $instancia = null;
+
+    /** Existe banco configurado? Sem DB_HOST o sistema usa os dados de demonstração. */
+    public static function configurado(): bool
+    {
+        return (bool) getenv('DB_HOST');
+    }
 
     /**
      * Devolve a conexão PDO, criando-a na primeira chamada.
      *
-     * @return PDO conexão configurada para lançar exceções e devolver arrays associativos
      * @throws PDOException com mensagem genérica quando não consegue conectar
      */
     public static function conexao(): PDO
     {
-        if (self::$instancia !== null) {                                  // já conectou nesta requisição: reutiliza (evita abrir várias conexões)
+        if (self::$instancia !== null) {
             return self::$instancia;
         }
 
-        $host = getenv('DB_HOST') ?: '127.0.0.1';                         // endereço do servidor MySQL; "?:" usa o padrão quando a variável está vazia
-        $porta = getenv('DB_PORT') ?: '3306';                             // porta padrão do MySQL
-        $banco = getenv('DB_NAME') ?: 'aquapulse';                        // nome do schema criado pelos scripts em storage/mock/sql
-        $usuario = getenv('DB_USER') ?: '';                               // usuário e senha do banco: só vêm do ambiente
+        $host = getenv('DB_HOST') ?: '127.0.0.1';
+        $porta = getenv('DB_PORT') ?: '3306';
+        $banco = getenv('DB_NAME') ?: 'aquapulse';
+        $usuario = getenv('DB_USER') ?: '';
         $senha = getenv('DB_PASS') ?: '';
 
-        $dsn = "mysql:host={$host};port={$porta};dbname={$banco};charset=utf8mb4"; // DSN = "endereço" da conexão; utf8mb4 suporta acentos e todos os caracteres Unicode
+        $dsn = "mysql:host={$host};port={$porta};dbname={$banco};charset=utf8mb4";
 
         try {
             self::$instancia = new PDO($dsn, $usuario, $senha, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,              // qualquer erro de SQL vira exceção (não passa despercebido como "false")
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,         // fetch() devolve ['coluna' => valor], sem índices numéricos duplicados
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
-        } catch (PDOException $e) {                                       // a mensagem original do PDO pode conter host e usuário do banco...
-            throw new PDOException('Falha ao conectar ao banco de dados.'); // ...então é trocada por uma genérica; o handler global responde 500
+
+            // As datas são gravadas no horário de Brasília (mesmo fuso do Clock).
+            // Sem isto, NOW() e CURRENT_TIMESTAMP seguiriam o fuso do servidor.
+            self::$instancia->exec("SET time_zone = '-03:00'");
+        } catch (PDOException $e) {
+            // A mensagem original pode conter host e usuário do banco.
+            throw new PDOException('Falha ao conectar ao banco de dados.');
         }
 
         return self::$instancia;

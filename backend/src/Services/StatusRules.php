@@ -1,20 +1,19 @@
 <?php
 /**
- * Aquapulse — regras de classificação de status.
+ * Aquapulse — regras de classificação (Normal / Atenção / Crítico).
  *
- * Centraliza a faixa visual usada em todo o sistema para que cards, gráficos,
- * tabelas e mapa nunca classifiquem o mesmo valor de formas diferentes.
+ * É o ÚNICO lugar que decide a faixa de um valor. Cards, gráficos, tabelas,
+ * mapa e a geração de alertas chamam classify(), então o mesmo nível nunca é
+ * classificado de formas diferentes em telas diferentes.
  *
- * Faixa de nível (conforme especificação da etapa):
- *   normal   : até 80%
- *   atenção  : de 80% a 90%
- *   crítico  : acima de 90%
+ * Os limites vêm da tabela operational_limits (carregados uma vez por
+ * requisição em Support\Container). Os valores abaixo são o padrão usado no
+ * modo demonstração, sem banco.
  *
- * IMPORTANTE: o status nunca é comunicado só por cor — todo consumidor recebe
- * também `label` e `icon` para exibir texto e ícone.
- *
- * Todos os métodos são estáticos: a classe não guarda estado, só aplica regras.
- * Usada por OverviewService, MonitoringService, pelo mapa e pelos alertas.
+ * Regra de leitura de um limite:
+ *   - "critical" e "attention" valem a partir do seu mínimo (>=);
+ *   - "normal" com mínimo e máximo define uma faixa ideal; fora dela é atenção.
+ * Exemplo com os valores padrão: nível 79,9% normal, 80% atenção, 90% crítico.
  */
 
 declare(strict_types=1);
@@ -23,40 +22,132 @@ namespace Aquapulse\Services;
 
 final class StatusRules
 {
-    public const LEVEL_ATTENTION = 80.0;                                  // a partir de 80% de ocupação a represa entra em "atenção"
-    public const LEVEL_CRITICAL  = 90.0;                                  // acima de 90% passa a "crítico" (risco de vertimento)
-
-    public const PH_MIN = 6.5;                                            // faixa de pH considerada adequada para a água: de 6,5...
-    public const PH_MAX = 8.5;                                            // ...até 8,5 (fora disso, "atenção")
+    /** @var array<string,array<string,array{min:?float,max:?float}>> */
+    private static array $limits = [
+        'level' => [
+            'attention' => ['min' => 80.0, 'max' => 90.0],
+            'critical'  => ['min' => 90.0, 'max' => null],
+        ],
+        'ph' => [
+            'normal' => ['min' => 6.5, 'max' => 8.5],
+        ],
+        'precipitation' => [
+            'attention' => ['min' => 20.0, 'max' => 60.0],
+            'critical'  => ['min' => 60.0, 'max' => null],
+        ],
+    ];
 
     /**
-     * Classifica um nível percentual.
+     * Substitui os limites padrão pelos cadastrados no banco.
      *
-     * @param float $levelPct ocupação da represa, de 0 a 100
+     * @param array<string,array<string,array{min:?float,max:?float}>> $limits
+     */
+    public static function configure(array $limits): void
+    {
+        foreach ($limits as $metric => $faixas) {
+            self::$limits[$metric] = $faixas;
+        }
+    }
+
+    /** @return array<string,array<string,array{min:?float,max:?float}>> */
+    public static function limits(): array
+    {
+        return self::$limits;
+    }
+
+    /**
+     * Classifica um valor de qualquer grandeza.
+     *
      * @return string 'normal' | 'attention' | 'critical'
      */
-    public static function fromLevel(float $levelPct): string
+    public static function classify(string $metric, float $value): string
     {
-        if ($levelPct > self::LEVEL_CRITICAL) {                           // estritamente acima de 90%: exatamente 90% ainda é "atenção"
+        $faixas = self::$limits[$metric] ?? [];
+
+        $critico = $faixas['critical']['min'] ?? null;
+        if ($critico !== null && $value >= $critico) {
             return 'critical';
         }
-        if ($levelPct >= self::LEVEL_ATTENTION) {                         // de 80% (inclusive) até 90%
+
+        $atencao = $faixas['attention']['min'] ?? null;
+        if ($atencao !== null && $value >= $atencao) {
             return 'attention';
         }
-        return 'normal';                                                  // abaixo de 80%
+
+        $ideal = $faixas['normal'] ?? null;
+        if ($ideal !== null && $ideal['min'] !== null && $ideal['max'] !== null
+            && ($value < $ideal['min'] || $value > $ideal['max'])) {
+            return 'attention';
+        }
+
+        return 'normal';
     }
 
-    /** Classifica um valor de pH. */
+    public static function fromLevel(float $levelPct): string
+    {
+        return self::classify('level', $levelPct);
+    }
+
     public static function fromPh(float $ph): string
     {
-        return ($ph >= self::PH_MIN && $ph <= self::PH_MAX) ? 'normal' : 'attention'; // dentro da faixa 6,5–8,5 (inclusive) é normal; o pH nunca gera "crítico"
+        return self::classify('ph', $ph);
+    }
+
+    /* ------------------------------------------------ limites em vigor */
+
+    public static function levelAttention(): float
+    {
+        return (float) (self::$limits['level']['attention']['min'] ?? 80.0);
+    }
+
+    public static function levelCritical(): float
+    {
+        return (float) (self::$limits['level']['critical']['min'] ?? 90.0);
+    }
+
+    public static function phMin(): float
+    {
+        return (float) (self::$limits['ph']['normal']['min'] ?? 6.5);
+    }
+
+    public static function phMax(): float
+    {
+        return (float) (self::$limits['ph']['normal']['max'] ?? 8.5);
+    }
+
+    public static function rainAttention(): float
+    {
+        return (float) (self::$limits['precipitation']['attention']['min'] ?? 20.0);
+    }
+
+    public static function rainCritical(): float
+    {
+        return (float) (self::$limits['precipitation']['critical']['min'] ?? 60.0);
     }
 
     /**
-     * Descreve um status para a interface: rótulo em português + ícone.
-     *
-     * O front-end usa `key` para escolher a classe CSS (cor), `label` para o texto
-     * e `icon` para o nome do ícone — assim a informação não depende só da cor.
+     * Texto do limite que um valor ultrapassou, para exibir no alerta.
+     * Ex.: "80%" para um nível em atenção, "6,5 – 8,5" para pH fora da faixa.
+     */
+    public static function thresholdText(string $metric, string $classification): string
+    {
+        $faixas = self::$limits[$metric] ?? [];
+
+        if (isset($faixas[$classification]['min'])) {
+            return self::number((float) $faixas[$classification]['min']) . self::unit($metric);
+        }
+        if (isset($faixas['normal']['min'], $faixas['normal']['max'])) {
+            return self::number((float) $faixas['normal']['min']) . ' – ' . self::number((float) $faixas['normal']['max']);
+        }
+
+        return '—';
+    }
+
+    /* -------------------------------------------------------- rótulos */
+
+    /**
+     * Descreve um status para a interface. O status nunca é comunicado só por
+     * cor: quem consome recebe também o texto e o nome do ícone.
      *
      * @return array{key:string,label:string,icon:string}
      */
@@ -69,40 +160,26 @@ final class StatusRules
                 return ['key' => 'attention', 'label' => 'Atenção', 'icon' => 'alert-triangle'];
             case 'info':
                 return ['key' => 'info', 'label' => 'Informação', 'icon' => 'info'];
-            case 'offline':                                               // sensor/estação sem comunicação
-                return ['key' => 'offline', 'label' => 'Offline', 'icon' => 'wifi-off'];
-            case 'normal':
-            default:                                                      // qualquer valor desconhecido é tratado como normal
+            case 'offline':
+                return ['key' => 'offline', 'label' => 'Sem comunicação', 'icon' => 'wifi-off'];
+            default:
                 return ['key' => 'normal', 'label' => 'Normal', 'icon' => 'check-circle'];
         }
     }
 
-    /**
-     * Frase que explica a situação operacional de uma represa.
-     *
-     * Fica aqui, junto das faixas, para que a mensagem nunca contradiga o
-     * status exibido no mesmo cartão — era o caso de um texto fixo dizendo
-     * "todas as condições dentro dos limites" mesmo com o nível em atenção.
-     */
+    /** Frase que acompanha o status do nível; usa os mesmos limites da classificação. */
     public static function levelNote(string $status): string
     {
         switch ($status) {
             case 'critical':
-                return 'Nível acima de ' . self::pct(self::LEVEL_CRITICAL) . '; ação imediata recomendada';   // "Nível acima de 90%; ..."
+                return 'Nível a partir de ' . self::pct(self::levelCritical()) . '; ação imediata recomendada';
             case 'attention':
-                return 'Nível acima de ' . self::pct(self::LEVEL_ATTENTION) . '; acompanhamento recomendado'; // "Nível acima de 80%; ..."
+                return 'Nível a partir de ' . self::pct(self::levelAttention()) . '; acompanhamento recomendado';
             default:
-                return 'Todas as condições dentro dos limites';
+                return 'Nível abaixo de ' . self::pct(self::levelAttention());
         }
     }
 
-    /** Formata um limite percentual sem casas decimais desnecessárias. */
-    private static function pct(float $value): string
-    {
-        return rtrim(rtrim(number_format($value, 1, ',', '.'), '0'), ',') . '%'; // 80.0 -> "80,0" -> tira o "0" -> tira a "," -> "80%"; 82.5 -> "82,5%"
-    }
-
-    /** Rótulo em português para severidade de alerta. */
     public static function severityLabel(string $severity): string
     {
         switch ($severity) {
@@ -113,37 +190,45 @@ final class StatusRules
         }
     }
 
-    /** Rótulo em português para status de alerta. */
     public static function alertStatusLabel(string $status): string
     {
         switch ($status) {
-            case 'new':      return 'Novo';                               // alerta ainda não visto por ninguém
-            case 'analysis': return 'Em análise';                         // alguém da equipe está tratando
+            case 'new':      return 'Novo';
+            case 'analysis': return 'Em análise';
             case 'resolved': return 'Resolvido';
-            default:         return $status;                              // valor desconhecido é exibido como veio
+            default:         return $status;
         }
     }
 
-    /** Rótulo em português para status de relatório. */
-    public static function reportStatusLabel(string $status): string
-    {
-        switch ($status) {
-            case 'done':       return 'Concluído';
-            case 'processing': return 'Processando';
-            case 'scheduled':  return 'Agendado';
-            default:           return $status;
-        }
-    }
-
-    /** Rótulo em português para tipo de relatório. */
     public static function reportTypeLabel(string $type): string
     {
         switch ($type) {
             case 'operational':  return 'Operacional';
             case 'hydrological': return 'Hidrológico';
             case 'quality':      return 'Qualidade';
-            case 'planning':     return 'Planejamento';
             default:             return $type;
+        }
+    }
+
+    /** 80.0 -> "80%"; 82.5 -> "82,5%" */
+    public static function pct(float $value): string
+    {
+        return self::number($value) . '%';
+    }
+
+    /** Número no formato brasileiro, sem casas decimais desnecessárias. */
+    public static function number(float $value): string
+    {
+        $texto = number_format($value, 2, ',', '.');
+        return str_contains($texto, ',') ? rtrim(rtrim($texto, '0'), ',') : $texto;
+    }
+
+    private static function unit(string $metric): string
+    {
+        switch ($metric) {
+            case 'level':         return '%';
+            case 'precipitation': return ' mm';
+            default:              return '';
         }
     }
 }

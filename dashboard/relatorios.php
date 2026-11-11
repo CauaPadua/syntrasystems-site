@@ -1,9 +1,11 @@
 <?php
 /** Aquapulse — Relatórios. */
 /*
- * Lista de relatórios com filtros, resumo, agendamentos e um modal
- * demonstrativo de "gerar relatório". Lógica em assets/js/pages/reports.js,
- * que chama GET api/v1/reports.php e gera o CSV no próprio navegador.
+ * Exportação das leituras em CSV. A lista mostra os relatórios já gerados
+ * (tabela reports); "Gerar relatório" registra um novo e o arquivo é montado
+ * no servidor, a partir das leituras gravadas, a cada download.
+ *
+ * Lógica em assets/js/pages/reports.js, que usa api/v1/reports.php.
  */
 
 declare(strict_types=1);
@@ -14,172 +16,119 @@ require __DIR__ . '/includes/page.php';
 aq_page_start([
     'route'    => 'reports',
     'title'    => 'Relatórios',
-    'subtitle' => 'Consulte, filtre e gere relatórios da operação',
+    'subtitle' => 'Exporte as leituras registradas de cada represa',
 ]);
 ?>
 
 <section class="aq-context" aria-label="Contexto de análise">
+  <div class="aq-context__label">
+    <?php aq_the_icon('filter'); ?>
+    <div><strong>Contexto de análise</strong><span>Relatórios do contexto selecionado</span></div>
+  </div>
   <?php echo aq_select(['id' => 'filtro-empresa', 'label' => 'Empresa', 'options' => ['all' => 'Todas as empresas']]); ?>
   <?php echo aq_select(['id' => 'filtro-represa', 'label' => 'Represa', 'options' => ['all' => 'Todas as represas']]); ?>
-  <span class="aq-context__spacer"></span>
 </section>
 
-<div class="aq-grid aq-grid--4"> <?php /* cards de resumo, preenchidos com data.summary */ ?>
+<div class="aq-grid aq-grid--4">
   <?php
-  echo aq_kpi(['id' => 'total', 'label' => 'Relatórios gerados', 'icon' => 'file-text', 'tip' => 'Total de relatórios no período.']);
-  echo aq_kpi(['id' => 'done', 'label' => 'Concluídos', 'icon' => 'check-circle', 'tone' => 'success', 'tip' => 'Relatórios prontos para download.']);
-  echo aq_kpi(['id' => 'processing', 'label' => 'Em processamento', 'icon' => 'refresh', 'tone' => 'warning', 'tip' => 'Relatórios sendo gerados no momento.']);
-  echo aq_kpi(['id' => 'scheduled', 'label' => 'Agendados', 'icon' => 'calendar', 'tip' => 'Relatórios com geração programada.']);
+  echo aq_kpi(['id' => 'total', 'label' => 'Relatórios gerados', 'icon' => 'file-text', 'tip' => 'Total de relatórios do contexto selecionado.']);
+  echo aq_kpi(['id' => 'operational', 'label' => 'Operacionais', 'icon' => 'table', 'tip' => 'Todas as grandezas medidas.']);
+  echo aq_kpi(['id' => 'hydrological', 'label' => 'Hidrológicos', 'icon' => 'waves', 'tip' => 'Nível, volume, vazão e chuva.']);
+  echo aq_kpi(['id' => 'quality', 'label' => 'Qualidade', 'icon' => 'droplet', 'tip' => 'pH e temperatura da água.']);
   ?>
 </div>
 
-<!-- ------------------------------------------------------------- filtros -->
 <section class="aq-context" aria-label="Filtros de relatórios">
   <div class="aq-field" style="flex:1 1 200px">
     <label class="aq-field__label" for="busca-relatorio">Buscar relatório</label>
-    <input class="aq-input" type="search" id="busca-relatorio" placeholder="Buscar relatório" style="width:100%"> <?php /* busca por nome feita no navegador */ ?>
+    <input class="aq-input" type="search" id="busca-relatorio" placeholder="Nome, represa ou tipo" style="width:100%">
   </div>
-
   <?php
-  echo aq_select(['id' => 'filtro-tipo', 'label' => 'Tipo', 'options' => [                       // valores iguais a Validator::REPORT_TYPES
-      'all' => 'Todos os tipos', 'operational' => 'Operacional', 'hydrological' => 'Hidrológico',
-      'quality' => 'Qualidade', 'planning' => 'Planejamento',
-  ]]);
-  echo aq_select(['id' => 'filtro-status', 'label' => 'Status', 'options' => [                   // valores iguais a Validator::REPORT_STATUS
-      'all' => 'Todos', 'done' => 'Concluído', 'processing' => 'Processando', 'scheduled' => 'Agendado',
+  echo aq_select(['id' => 'filtro-tipo', 'label' => 'Tipo', 'options' => [
+      'all' => 'Todos', 'operational' => 'Operacional', 'hydrological' => 'Hidrológico', 'quality' => 'Qualidade',
   ]]);
   ?>
-
-  <div class="aq-field">
-    <span class="aq-field__label">Período de geração</span>
-    <span class="aq-status-text" style="line-height:42px"><?php aq_the_icon('calendar'); // texto fixo, apenas informativo ?> 16/05/2024 → 22/05/2024</span>
-  </div>
-
   <span class="aq-context__spacer"></span>
-
-  <button class="aq-btn aq-btn--primary" type="button" data-modal-open="modal-relatorio" style="align-self:flex-end"> <?php /* abre o modal pelo id (dashboard-shell.js) */ ?>
-    <?php aq_the_icon('plus'); ?><span>Gerar novo relatório</span>
+  <button class="aq-btn aq-btn--primary" type="button" style="align-self:flex-end" data-modal-open="modal-relatorio">
+    <?php aq_the_icon('plus'); ?><span>Gerar relatório</span>
   </button>
 </section>
 
-<div class="aq-grid aq-grid--7-3"> <?php /* histórico (70%) + coluna lateral (30%) */ ?>
-  <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Histórico de relatórios', 'tip' => 'Relatórios já gerados para o contexto selecionado.']); ?>
-    <div data-content="reports" hidden>
-      <?php echo aq_table_open('Histórico de relatórios'); ?>
-      <table class="aq-table aq-table--tight">
-        <thead>
-          <tr>
-            <th scope="col">Relatório</th>
-            <th scope="col">Tipo</th>
-            <th scope="col">Represa</th>
-            <th scope="col">Período</th>
-            <th scope="col">Gerado em</th>
-            <th scope="col">Responsável</th>
-            <th scope="col">Status</th>
-            <th scope="col">Ações</th> <?php /* botões de download CSV / PDF de cada linha */ ?>
-          </tr>
-        </thead>
-        <tbody data-rows></tbody> <?php /* linhas de data.reports */ ?>
-      </table>
-      <?php echo aq_table_close(); ?>
-
-      <div class="aq-pagination"> <?php /* paginação visual de página única */ ?>
-        <span>Exibindo <strong data-field="pagination.count">—</strong> relatórios</span>
-        <div class="aq-pagination__pages">
-          <button class="aq-page-btn" type="button" disabled aria-label="Página anterior"><?php aq_the_icon('chevron-left'); ?></button>
-          <button class="aq-page-btn is-active" type="button" aria-current="page">1</button>
-          <button class="aq-page-btn" type="button" disabled aria-label="Próxima página"><?php aq_the_icon('chevron-right'); ?></button>
-        </div>
-        <span data-field="pagination.range">—</span>
-      </div>
-    </div>
-    <?php echo aq_states('reports'); ?>
-  </article>
-
-  <div style="display:flex;flex-direction:column;gap:var(--aq-content-gap);min-width:0">
-    <article class="aq-card">
-      <?php echo aq_card_head(['title' => 'Relatórios agendados', 'icon' => 'calendar']); ?>
-      <?php echo aq_table_open('Relatórios agendados'); ?>
-      <table class="aq-table aq-table--tight">
-        <thead>
-          <tr><th scope="col">Relatório</th><th scope="col">Periodicidade</th><th scope="col">Próxima geração</th></tr>
-        </thead>
-        <tbody data-scheduled></tbody> <?php /* data.scheduled_reports */ ?>
-      </table>
-      <?php echo aq_table_close(); ?>
-      <p style="margin-top:12px"><a class="aq-card__link" href="#">Ver todos os agendamentos <?php aq_the_icon('arrow-right'); // link sem destino ainda (href="#") ?></a></p>
-    </article>
-
-    <article class="aq-card">
-      <?php echo aq_card_head(['title' => 'Formatos disponíveis', 'icon' => 'download']); ?>
-      <p class="aq-card__sub" style="margin-bottom:14px">Escolha o formato padrão para exportação dos relatórios.</p>
-      <div class="aq-grid aq-grid--2"> <?php /* dois blocos informativos, sem ação */ ?>
-        <div style="border:1px solid var(--aq-border);border-radius:11px;padding:14px">
-          <p style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--aq-danger)">
-            <?php aq_the_icon('file-text'); ?> PDF
-          </p>
-          <p class="aq-card__sub" style="margin-top:6px">Documento portátil ideal para impressão e compartilhamento.</p>
-        </div>
-        <div style="border:1px solid var(--aq-border);border-radius:11px;padding:14px">
-          <p style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--aq-success)">
-            <?php aq_the_icon('table'); ?> CSV
-          </p>
-          <p class="aq-card__sub" style="margin-top:6px">Arquivo de dados para análises e planilhas.</p>
-        </div>
-      </div>
-    </article>
+<article class="aq-card">
+  <?php echo aq_card_head(['title' => 'Relatórios gerados', 'tip' => 'O arquivo é montado a partir das leituras do banco a cada download.']); ?>
+  <div data-content="reports" hidden>
+    <?php echo aq_table_open('Relatórios gerados'); ?>
+    <table class="aq-table">
+      <thead>
+        <tr>
+          <th scope="col">Relatório</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Represa</th>
+          <th scope="col">Período</th>
+          <th scope="col">Gerado em</th>
+          <th scope="col">Gerado por</th>
+          <th scope="col"><span class="aq-visually-hidden">Baixar</span></th>
+        </tr>
+      </thead>
+      <tbody data-rows></tbody>
+    </table>
+    <?php echo aq_table_close(); ?>
+    <p class="aq-card__sub" style="margin-top:12px">Exibindo <strong data-field="list.count">—</strong> relatório(s).</p>
   </div>
-</div>
+  <?php echo aq_states('reports'); ?>
+</article>
 
-<div class="aq-demo-note">
+<div class="aq-note">
   <?php aq_the_icon('info'); ?>
-  <span><strong>Dica.</strong> O download em <strong>CSV</strong> é gerado no próprio navegador a partir dos dados carregados.
-  A exportação em <strong>PDF</strong> usa a impressão do navegador — a geração no servidor será implementada com o banco de dados.</span>
+  <span><strong>O que o arquivo contém.</strong> Uma linha por dia do período, com a média das leituras de cada
+  grandeza (para a chuva, o total do dia). Formato CSV com ponto e vírgula, pronto para abrir no Excel.</span>
 </div>
 
-<!-- ------------------------------------- modal de geração (demonstrativo) -->
-<?php /* role="dialog" + aria-modal: janela sobreposta acessível; aria-labelledby aponta para o título */ ?>
+<!-- ----------------------------------------------- modal de geração -->
 <div class="aq-modal" id="modal-relatorio" role="dialog" aria-modal="true" aria-labelledby="modal-relatorio-titulo" hidden>
   <div class="aq-modal__box">
     <div class="aq-modal__head">
       <span class="aq-kpi__icon" aria-hidden="true"><?php aq_the_icon('file-text'); ?></span>
-      <h2 id="modal-relatorio-titulo">Gerar novo relatório</h2>
-      <button class="aq-btn aq-btn--ghost aq-btn--icon" type="button" data-modal-close="modal-relatorio" aria-label="Fechar"> <?php /* data-modal-close fecha o modal indicado */ ?>
+      <h2 id="modal-relatorio-titulo">Gerar relatório</h2>
+      <button class="aq-btn aq-btn--ghost aq-btn--icon" type="button" data-modal-close="modal-relatorio" aria-label="Fechar">
         <?php aq_the_icon('close'); ?>
       </button>
     </div>
 
-    <form id="form-relatorio"> <?php /* o envio é interceptado pelo reports.js (não recarrega a página nem vai ao servidor) */ ?>
+    <form id="form-relatorio" novalidate> <?php /* enviado por reports.js; a validação é feita no servidor */ ?>
       <div class="aq-field" style="margin-bottom:14px">
-        <label class="aq-field__label" for="novo-tipo">Tipo de relatório</label>
-        <select class="aq-select" id="novo-tipo" style="width:100%">
-          <option value="operational">Operacional</option>
-          <option value="hydrological">Hidrológico</option>
-          <option value="quality">Qualidade</option>
-          <option value="planning">Planejamento</option>
-        </select>
+        <label class="aq-field__label" for="relatorio-represa">Represa</label>
+        <select class="aq-select" id="relatorio-represa" name="reservoir_id" style="width:100%"></select>
+        <span class="aq-field__error" data-error-for="reservoir_id" hidden></span>
       </div>
-      <div class="aq-field">
-        <label class="aq-field__label" for="novo-formato">Formato</label>
-        <select class="aq-select" id="novo-formato" style="width:100%">
-          <option value="pdf">PDF</option>
-          <option value="csv">CSV</option>
+      <div class="aq-field" style="margin-bottom:14px">
+        <label class="aq-field__label" for="relatorio-tipo">Tipo</label>
+        <select class="aq-select" id="relatorio-tipo" name="type" style="width:100%">
+          <option value="operational">Operacional — todas as grandezas</option>
+          <option value="hydrological">Hidrológico — nível, volume, vazão e chuva</option>
+          <option value="quality">Qualidade — pH e temperatura</option>
         </select>
+        <span class="aq-field__error" data-error-for="type" hidden></span>
       </div>
-
-      <div class="aq-demo-note" style="margin-top:16px">
-        <?php aq_the_icon('info'); ?>
-        <span><strong>Modo demonstrativo.</strong> O relatório não é gravado no servidor.
-        A geração real dependerá do banco de dados.</span>
+      <div class="aq-grid aq-grid--2">
+        <div class="aq-field">
+          <label class="aq-field__label" for="relatorio-inicio">Data inicial</label>
+          <input class="aq-input" type="date" id="relatorio-inicio" name="from" style="width:100%">
+          <span class="aq-field__error" data-error-for="from" hidden></span>
+        </div>
+        <div class="aq-field">
+          <label class="aq-field__label" for="relatorio-fim">Data final</label>
+          <input class="aq-input" type="date" id="relatorio-fim" name="to" style="width:100%">
+          <span class="aq-field__error" data-error-for="to" hidden></span>
+        </div>
       </div>
 
       <div class="aq-modal__foot">
         <button class="aq-btn aq-btn--ghost" type="button" data-modal-close="modal-relatorio">Cancelar</button>
-        <button class="aq-btn aq-btn--primary" type="submit"><?php aq_the_icon('plus'); ?><span>Gerar relatório</span></button> <?php /* type="submit" dispara o evento submit do formulário */ ?>
+        <button class="aq-btn aq-btn--primary" type="submit"><?php aq_the_icon('download'); ?><span>Gerar e baixar</span></button>
       </div>
     </form>
   </div>
 </div>
 
-<?php aq_page_end(['scripts' => ['pages/reports.js']]); // lógica desta tela
+<?php aq_page_end(['scripts' => ['pages/reports.js']]);

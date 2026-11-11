@@ -1,8 +1,9 @@
 /** Aquapulse — Relatórios. */
 /*
- * Página: dashboard/relatorios.php | API: GET api/v1/reports.php.
- * Além de listar, gera arquivos CSV no próprio navegador (sem ir ao servidor)
- * e trata o modal demonstrativo "Gerar novo relatório".
+ * Página: dashboard/relatorios.php
+ * API: GET api/v1/reports.php            lista os relatórios gerados
+ *      POST api/v1/reports.php           registra um novo relatório
+ *      GET api/v1/reports.php?download=  baixa o CSV montado no servidor
  */
 (function () {
   'use strict';
@@ -15,17 +16,15 @@
   var selCompany = document.getElementById('filtro-empresa');
   var selReservoir = document.getElementById('filtro-represa');
   var selType = document.getElementById('filtro-tipo');
-  var selStatus = document.getElementById('filtro-status');
   var search = document.getElementById('busca-relatorio');
+  var form = document.getElementById('form-relatorio');
 
-  var currentRows = [];                                               // relatórios recebidos (base para busca e CSV)
+  var currentRows = [];     // relatórios recebidos (base para a busca por texto)
 
-  var ICONS = {                                                       // ícone de cada relatório (o nome vem do campo icon da API)
+  var ICONS = {
     'file-text': '<path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5L14 3.5Z"/><path d="M14 3.5V9h5"/>',
     droplet: '<path d="M12 3.5c3.2 3.3 5.5 6 5.5 8.9A5.5 5.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.6c0-2.9 2.3-5.6 5.5-8.9Z"/>',
-    waves: '<path d="M2 7.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/><path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/>',
-    'chart-up': '<path d="M3 21h18"/><path d="M11 21V9"/><path d="M16 21v-9"/><path d="M14 4h6v6"/><path d="M20 4l-7.5 7.5"/>',
-    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M3.5 10h17"/>'
+    waves: '<path d="M2 7.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/><path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/>'
   };
 
   function icon(name) {
@@ -34,50 +33,30 @@
       + (ICONS[name] || ICONS['file-text']) + '</svg>';
   }
 
-  function fillSelect(select, items, allLabel) {
-    select.innerHTML = '<option value="all">' + allLabel + '</option>'
+  function options(items, allLabel) {
+    return (allLabel ? '<option value="all">' + allLabel + '</option>' : '')
       + items.map(function (i) {
         return '<option value="' + S.esc(i.id) + '">' + S.esc(i.name) + '</option>';
       }).join('');
   }
 
-  /* ------------------------------------------------------- download CSV */
-
-  /** Gera o CSV no próprio navegador a partir dos dados já carregados. */
-  function downloadCsv(rows) {
-    var head = ['Relatório', 'Tipo', 'Represa', 'Período', 'Gerado em', 'Responsável', 'Status'];
-    var lines = [head.join(';')];                                     // ";" como separador: padrão do Excel em português
-
-    rows.forEach(function (r) {                                       // uma linha de CSV por relatório
-      lines.push([r.name, r.type_label, r.reservoir, r.period, r.generated_at, r.owner, r.status_label]
-        .map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }) // cada valor entre aspas; aspas internas viram "" (regra do formato CSV)
-        .join(';'));
-    });
-
-    // BOM para o Excel abrir os acentos corretamente
-    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' }); // Blob = arquivo em memória; \r\n = quebra de linha do Windows
-    var url = URL.createObjectURL(blob);                              // endereço temporário que aponta para o arquivo em memória
-    var a = document.createElement('a');                              // link invisível usado só para disparar o download
-    a.href = url;
-    a.download = 'aquapulse-relatorios.csv';                          // nome do arquivo baixado
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);                                         // libera a memória do endereço temporário
+  /** Data no formato dos campos type="date" (AAAA-MM-DD), deslocada em dias. */
+  function isoDate(base, deltaDias) {
+    var d = new Date(base + 'T12:00:00');
+    d.setDate(d.getDate() + deltaDias);
+    return d.toISOString().slice(0, 10);
   }
 
   /* ---------------------------------------------------------- carregar */
 
-  /** Filtra pelo texto digitado (nome, represa ou tipo). */
   function applySearch(rows) {
     var term = (search.value || '').trim().toLowerCase();
     if (!term) return rows;
     return rows.filter(function (r) {
-      return (r.name + ' ' + r.reservoir + ' ' + r.type_label).toLowerCase().indexOf(term) >= 0;
+      return (r.id + ' ' + r.name + ' ' + r.reservoir + ' ' + r.type_label).toLowerCase().indexOf(term) >= 0;
     });
   }
 
-  /** Redesenha a tabela com a busca aplicada. */
   function renderRows() {
     var rows = applySearch(currentRows);
 
@@ -88,62 +67,71 @@
     S.setState('reports', 'ready');
 
     document.querySelector('[data-rows]').innerHTML = rows.map(function (r) {
-      var key = r.status === 'done' ? 'normal' : (r.status === 'processing' ? 'attention' : 'info'); // concluído verde, processando âmbar, agendado azul
       return '<tr>'
         + '<td><span class="aq-table__name"><span class="aq-table__icon">' + icon(r.icon) + '</span>'
-        + S.esc(r.name) + '</span></td>'
+        + S.esc(r.id) + ' · ' + S.esc(r.name) + '</span></td>'
         + '<td>' + S.esc(r.type_label) + '</td>'
         + '<td>' + S.esc(r.reservoir) + '</td>'
-        + '<td>' + S.esc(r.period) + '</td>'
+        + '<td class="is-nowrap">' + S.esc(r.period) + '</td>'
         + '<td class="is-nowrap">' + S.esc(r.generated_at) + '</td>'
         + '<td>' + S.esc(r.owner) + '</td>'
-        + '<td>' + S.badge(r.status_label, key) + '</td>'
-        + '<td><button class="aq-btn aq-btn--ghost aq-btn--icon" type="button" data-csv="' + S.esc(r.id) + '"' // data-csv guarda o ID do relatório da linha
-        + ' aria-label="Baixar ' + S.esc(r.name) + ' em CSV">'
+        + '<td><a class="aq-btn aq-btn--ghost aq-btn--icon" href="' + S.esc(Api.reportUrl(r.id)) + '"'
+        + ' aria-label="Baixar ' + S.esc(r.id) + ' em CSV">'
         + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
         + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/></svg></button></td>'
+        + '<path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/></svg></a></td>'
         + '</tr>';
     }).join('');
 
-    S.fill({
-      'pagination.count': rows.length,
-      'pagination.range': '1–' + rows.length + ' de ' + rows.length + ' registros'
-    });
+    S.fill({ 'list.count': rows.length });
   }
 
-  /** Busca os relatórios com os filtros atuais. */
-  function load() {
-    S.setState('reports', 'loading');
+  /** @param {boolean} silent true nas recargas automáticas */
+  function load(silent) {
+    if (silent !== true) S.setState('reports', 'loading');
     var ctx = Ctx.get();
 
-    return Api.reports({                                              // GET reports.php
+    return Api.reports({
       company_id: ctx.company_id,
       reservoir_id: ctx.reservoir_id,
-      type: selType.value,
-      status: selStatus.value
+      type: selType.value
     }).then(function (r) {
       var d = r.data;
 
-      S.fill({                                                        // cards de resumo (data.summary, valores fixos na API)
-        'total.value': F.int(d.summary.total), 'total.foot': 'Total no período',
-        'done.value': F.int(d.summary.done), 'done.foot': F.pct(d.summary.done_pct) + ' do total',
-        'processing.value': F.int(d.summary.processing), 'processing.foot': F.pct(d.summary.processing_pct) + ' do total',
-        'scheduled.value': F.int(d.summary.scheduled), 'scheduled.foot': F.pct(d.summary.scheduled_pct) + ' do total'
+      S.fill({
+        'total.value': F.int(d.summary.total), 'total.foot': 'No contexto selecionado',
+        'operational.value': F.int(d.summary.operational), 'operational.foot': 'Todas as grandezas',
+        'hydrological.value': F.int(d.summary.hydrological), 'hydrological.foot': 'Nível, volume, vazão e chuva',
+        'quality.value': F.int(d.summary.quality), 'quality.foot': 'pH e temperatura'
       });
 
       currentRows = d.reports;
       renderRows();
 
-      document.querySelector('[data-scheduled]').innerHTML = d.scheduled_reports.map(function (s) { // tabela de agendamentos
-        return '<tr><td>' + S.esc(s.name) + '</td><td>' + S.esc(s.frequency) + '</td>'
-          + '<td>' + S.esc(s.next_run) + '</td></tr>';
-      }).join('');
+      // período padrão do formulário: os últimos 7 dias, até hoje (data do servidor)
+      if (!form.elements.to.value) {
+        form.elements.to.value = d.today;
+        form.elements.from.value = isoDate(d.today, -6);
+      }
+      form.elements.to.max = d.today;
+      form.elements.from.max = d.today;
 
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);
+      S.setUpdated(r.meta);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;
       S.setState('reports', 'error', err.message);
+    });
+  }
+
+  /** Preenche os seletores de represa (filtro e formulário) da empresa escolhida. */
+  function loadReservoirs() {
+    return Api.reservoirs(Ctx.get().company_id).then(function (r) {
+      selReservoir.innerHTML = options(r.data.reservoirs, 'Todas as represas');
+      selReservoir.value = Ctx.reconcile(r.data.reservoirs).reservoir_id;
+      form.elements.reservoir_id.innerHTML = options(r.data.reservoirs);
+
+      var atual = Ctx.get().reservoir_id;
+      if (atual !== 'all') form.elements.reservoir_id.value = atual;
     });
   }
 
@@ -151,64 +139,53 @@
 
   selCompany.addEventListener('change', function () {
     Ctx.set({ company_id: selCompany.value });
-    Api.reservoirs(selCompany.value).then(function (r) {
-      fillSelect(selReservoir, r.data.reservoirs, 'Todas as represas');
-      selReservoir.value = Ctx.reconcile(r.data.reservoirs).reservoir_id;
-      load();
-    });
+    loadReservoirs().then(function () { load(); });
   });
 
   selReservoir.addEventListener('change', function () {
     Ctx.set({ reservoir_id: selReservoir.value });
+    if (selReservoir.value !== 'all') form.elements.reservoir_id.value = selReservoir.value;
     load();
   });
 
-  selType.addEventListener('change', load);                           // tipo e status filtram no servidor
-  selStatus.addEventListener('change', load);
-  search.addEventListener('input', renderRows);                       // busca filtra no navegador
+  selType.addEventListener('change', function () { load(); });
+  search.addEventListener('input', renderRows);
 
-  // download CSV por linha
-  document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-csv]');
-    if (!btn) return;
-    var id = btn.getAttribute('data-csv');
-    var row = currentRows.filter(function (r) { return r.id === id; });
-    downloadCsv(row.length ? row : currentRows);                      // exporta só a linha clicada (ou tudo, se não encontrar)
-    S.notify('Download iniciado', 'Arquivo CSV gerado no navegador.', 'info');
-  });
+  // gerar: registra o relatório no banco e inicia o download do CSV
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    S.showErrors(form, {});
 
-  // geração demonstrativa
-  var form = document.getElementById('form-relatorio');
-  if (form) {
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();                                             // não envia o formulário: tudo acontece no navegador
-      var formato = document.getElementById('novo-formato').value;
+    Api.createReport({
+      reservoir_id: form.elements.reservoir_id.value,
+      type: form.elements.type.value,
+      from: form.elements.from.value,
+      to: form.elements.to.value
+    }).then(function (r) {
       S.closeModal('modal-relatorio');
-
-      if (formato === 'csv') {                                        // CSV: baixa todas as linhas carregadas
-        downloadCsv(currentRows);
-        S.notify('Relatório gerado', 'CSV baixado a partir dos dados carregados.', 'info');
-      } else {                                                        // PDF: ainda não existe geração; só orienta o usuário
-        S.notify('Modo demonstrativo', 'A geração de PDF no servidor será implementada com o banco de dados. Use Ctrl+P para imprimir esta página.', 'info');
+      S.notify('Relatório gerado', r.data.id + ' foi registrado e o download foi iniciado.', 'info');
+      window.location.href = Api.reportUrl(r.data.id);   // resposta com "attachment": o navegador baixa sem sair da página
+      return load(true);
+    }).catch(function (err) {
+      if (err.code === 'VALIDATION_ERROR') {
+        S.showErrors(form, err.details);
+      } else {
+        S.notify('Não foi possível gerar', err.message, 'error');
       }
     });
-  }
+  });
 
-  S.onRetry('reports', load);
-  S.onReload(load);
+  S.onRetry('reports', function () { load(); });
+  S.onReload(function () { return load(true); });
 
   /* ------------------------------------------------------------- início */
-  Api.companies()                                                     // 1. empresas
+  Api.companies()
     .then(function (r) {
-      fillSelect(selCompany, r.data.companies, 'Todas as empresas');
+      selCompany.innerHTML = options(r.data.companies, 'Todas as empresas');
       selCompany.value = Ctx.get().company_id;
-      return Api.reservoirs(Ctx.get().company_id);                    // 2. represas
+      return loadReservoirs();
     })
-    .then(function (r) {
-      fillSelect(selReservoir, r.data.reservoirs, 'Todas as represas');
-      selReservoir.value = Ctx.reconcile(r.data.reservoirs).reservoir_id;
-      return load();                                                  // 3. relatórios
-    })
+    .then(function () { return load(); })
     .catch(function (err) {
       if (Api.isAbort(err)) return;
       S.setState('reports', 'error', err.message);

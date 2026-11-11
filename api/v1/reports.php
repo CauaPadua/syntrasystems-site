@@ -1,84 +1,116 @@
 <?php
-/** GET /api/v1/reports.php?reservoir_id={id|all}&type={t}&status={st} — relatórios. */
-/*
- * Chamado por: assets/js/pages/reports.js (dashboard/relatorios.php) e pela visão geral.
- * Entrada: company_id, reservoir_id, type (all|operational|hydrological|quality|planning)
- *          e status (all|done|processing|scheduled), todos opcionais.
- * Saída: lista filtrada, resumo geral, contagem do escopo e relatórios agendados.
+/**
+ * Relatórios (exportação das leituras em CSV).
+ *
+ * GET  /api/v1/reports.php?company_id=&reservoir_id=&type=
+ *      Lista os relatórios já gerados.
+ *
+ * GET  /api/v1/reports.php?download=REP-2001
+ *      Baixa o CSV do relatório, montado na hora a partir das leituras do banco.
+ *
+ * POST /api/v1/reports.php   { "reservoir_id", "type", "from", "to" }
+ *      Registra um novo relatório (tabela reports).
+ *
+ * Chamado por assets/js/pages/reports.js (dashboard/relatorios.php).
  */
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/_boot.php';
 
-use Aquapulse\Services\StatusRules;
+use Aquapulse\Http\Request;
+use Aquapulse\Services\ReportService;
 use Aquapulse\Support\ApiResponse;
 use Aquapulse\Support\Clock;
+use Aquapulse\Support\Container;
 use Aquapulse\Support\Validator;
 
-[$repo] = aq_api_boot();
+[$repo, $user] = aq_api_boot(['GET', 'POST']);
+
+/* --------------------------------------------------- POST: gerar relatório */
+
+if (Request::isMethod('POST')) {
+    $pdo = Container::requireDatabase();
+    $body = aq_json_body();
+
+    $texto = static fn (string $campo): string => is_string($body[$campo] ?? null) ? trim($body[$campo]) : '';
+
+    $represa = $repo->reservoir($texto('reservoir_id'));     // null se não existir ou estiver fora do escopo do usuário
+    if ($represa === null) {
+        ApiResponse::error('VALIDATION_ERROR', 'Verifique os campos informados.', 422, ['reservoir_id' => 'Selecione uma represa.']);
+    }
+
+    $id = (new ReportService($pdo))->generate($represa['id'], $texto('type'), $texto('from'), $texto('to'), $user);
+
+    ApiResponse::success(['id' => $id], [], 201);
+}
+
+/* ------------------------------------------------------ GET: baixar o CSV */
+
+$download = Validator::query('download');
+
+if ($download !== '') {
+    $pdo = Container::requireDatabase();
+
+    $relatorio = null;
+    foreach ($repo->reports() as $r) {                       // só os relatórios das represas que o usuário pode ver
+        if ($r['id'] === $download) {
+            $relatorio = $r;
+            break;
+        }
+    }
+
+    if ($relatorio === null || $relatorio['period_start'] === null) {
+        ApiResponse::error('REPORT_NOT_FOUND', 'Relatório não encontrado.', 404);
+    }
+
+    $represa = $repo->reservoir($relatorio['reservoir_id']);
+    $csv = (new ReportService($pdo))->csv($relatorio, $represa['name'] ?? '');
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="aquapulse-' . $relatorio['id'] . '.csv"');
+    header('Cache-Control: no-store');
+    echo $csv;
+    exit;
+}
+
+/* ------------------------------------------------------------ GET: listar */
 
 $companyId   = Validator::companyId($repo->companies());
-$reservoirId = Validator::reservoirId($repo->reservoirs($companyId), true);
+$reservoirs  = $repo->reservoirs($companyId);
+$reservoirId = Validator::reservoirId($reservoirs, true);
 $type        = Validator::option('type', Validator::REPORT_TYPES, 'all', 'INVALID_TYPE', 'O tipo de relatório informado não é válido.');
-$status      = Validator::option('status', Validator::REPORT_STATUS, 'all', 'INVALID_STATUS', 'O status informado não é válido.');
 
-$rows = $repo->reports($reservoirId, $type, $status);                        // relatórios que passam pelos filtros
+$nomes = array_column($reservoirs, 'name', 'id');
+$naEmpresa = static fn (array $r): bool => isset($nomes[$r['reservoir_id']]);
 
-$reports = array_map(static function (array $rep) use ($repo): array {       // formata cada relatório para a tabela
-    $r = $repo->reservoir($rep['reservoir_id']);
-    $when = new DateTimeImmutable($rep['generated_at'], Clock::timezone());
+$escopo = array_values(array_filter($repo->reports($reservoirId), $naEmpresa));
 
-    return [
-        'id'           => $rep['id'],
-        'name'         => $rep['name'],
-        'type'         => $rep['type'],
-        'type_label'   => StatusRules::reportTypeLabel($rep['type']),        // "Operacional", "Hidrológico"...
-        'reservoir'    => str_replace('Represa ', '', $r['name'] ?? '-'),
-        'period'       => $rep['period'],
-        'generated_at' => Clock::dateTime($when),
-        'owner'        => $rep['owner'],
-        'status'       => $rep['status'],
-        'status_label' => StatusRules::reportStatusLabel($rep['status']),    // "Concluído", "Processando", "Agendado"
-        'icon'         => $rep['icon'],
-    ];
-}, $rows);
-
-// Resumo do escopo da represa (independente dos filtros aplicados na lista).
-$scope      = $repo->reports($reservoirId);                                  // todos os relatórios da represa, sem filtro de tipo/status
-$total      = count($scope);
-$done       = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'done'));        // concluídos
-$processing = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'processing'));  // em geração
-$scheduled  = count(array_filter($scope, static fn (array $r): bool => $r['status'] === 'scheduled'));   // agendados
+$porTipo = array_fill_keys(array_keys(ReportService::TYPES), 0);
+foreach ($escopo as $r) {
+    if (isset($porTipo[$r['type']])) {
+        $porTipo[$r['type']]++;
+    }
+}
 
 ApiResponse::success([
-    'reports' => $reports,
-    'summary' => [                                                           // cards de resumo: valores FIXOS demonstrativos (não usam as contagens acima)
-        'total'          => 48,
-        'done'           => 42,
-        'processing'     => 2,
-        'scheduled'      => 4,
-        'done_pct'       => 87.5,
-        'processing_pct' => 4.2,
-        'scheduled_pct'  => 8.3,
-    ],
-    'listed' => [                                                            // contagens reais do escopo
-        'total'      => $total,
-        'done'       => $done,
-        'processing' => $processing,
-        'scheduled'  => $scheduled,
-    ],
-    'scheduled_reports' => array_map(static function (array $s): array {     // próximos relatórios automáticos
-        $when = new DateTimeImmutable($s['next_run'], Clock::timezone());
+    'reports' => array_map(static function (array $r) use ($nomes): array {
         return [
-            'name'      => $s['name'],
-            'frequency' => $s['frequency'],
-            'next_run'  => Clock::dateTime($when),
+            'id'           => $r['id'],
+            'name'         => $r['name'],
+            'type'         => $r['type'],
+            'type_label'   => ReportService::TYPES[$r['type']]['label'] ?? $r['type'],
+            'reservoir'    => str_replace('Represa ', '', $nomes[$r['reservoir_id']]),
+            'period'       => $r['period'],
+            'generated_at' => Clock::dateTime(Clock::parse($r['generated_at'])),
+            'owner'        => $r['owner'],
+            'icon'         => $r['icon'],
         ];
-    }, $repo->scheduledReports()),
+    }, array_values(array_filter($repo->reports($reservoirId, $type), $naEmpresa))),
+    'summary' => ['total' => count($escopo)] + $porTipo,     // contagens reais do contexto selecionado
+    'today'   => Clock::now()->format('Y-m-d'),              // limite do seletor de datas
 ], [
     'company_id'   => $companyId,
     'reservoir_id' => $reservoirId,
     'type'         => $type,
-    'status'       => $status,
 ]);

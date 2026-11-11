@@ -1,12 +1,12 @@
 <?php
 /**
- * GET /api/v1/monitoring/flow-comparison.php?reservoir_id={id}&current={range}&previous={range}
+ * GET /api/v1/monitoring/flow-comparison.php?reservoir_id={id}&current={n}&previous={n}
  *
- * Compara a vazão entre dois períodos. Intervalos inválidos ou iguais são
- * recusados com mensagem clara ao usuário.
+ * Compara a afluência média diária de duas semanas. "current" e "previous" são
+ * o número da semana contado para trás: 0 = últimos 7 dias, 1 = os 7 dias
+ * anteriores, e assim por diante (MonitoringService::weeks()).
  *
- * Chamado por: assets/js/pages/comparison.js (monitoramento/comparativo.php).
- * Erros: 400 RESERVOIR_REQUIRED / INVALID_RANGE, 404 INVALID_RESERVOIR / NO_DATA.
+ * Chamado por assets/js/pages/comparison.js (monitoramento/comparativo.php).
  */
 
 declare(strict_types=1);
@@ -21,21 +21,16 @@ use Aquapulse\Support\Validator;
 
 $reservoirId = Validator::reservoirId($repo->reservoirs(), false, '');    // represa obrigatória
 
-$ranges = ['16 – 22 mai', '09 – 15 mai', '02 – 08 mai', '25 abr – 01 mai']; // semanas selecionáveis na tela (a allowlist são os próprios textos)
+$semanas = array_map('strval', array_keys(MonitoringService::weeks()));   // ['0', '1', '2', '3']
 
-$current  = Validator::option('current', $ranges, $ranges[0], 'INVALID_RANGE', 'O período atual informado não é válido.');          // padrão: semana mais recente
-$previous = Validator::option('previous', $ranges, $ranges[1], 'INVALID_RANGE', 'O período de comparação informado não é válido.'); // padrão: semana anterior
+$current  = Validator::option('current', $semanas, '0', 'INVALID_RANGE', 'A semana analisada não é válida.');
+$previous = Validator::option('previous', $semanas, '1', 'INVALID_RANGE', 'A semana de comparação não é válida.');
 
-if ($current === $previous) {                                              // regra de negócio: comparar um período com ele mesmo não faz sentido
-    ApiResponse::error(
-        'INVALID_RANGE',
-        'Selecione períodos diferentes para comparar. O período atual e o anterior não podem ser iguais.',
-        400
-    );
+if ($current === $previous) {
+    ApiResponse::error('INVALID_RANGE', 'Selecione semanas diferentes para comparar.', 400);
 }
 
-$service = new MonitoringService($repo);
-$data    = $service->flowComparison($reservoirId, $current, $previous);
+$data = (new MonitoringService($repo))->flowComparison($reservoirId, (int) $current, (int) $previous);
 
 if ($data === []) {
     ApiResponse::error('NO_DATA', 'Não há dados de vazão para esta represa.', 404);
@@ -43,6 +38,6 @@ if ($data === []) {
 
 ApiResponse::success($data, [
     'reservoir_id' => $reservoirId,
-    'current'      => $current,
-    'previous'     => $previous,
+    'current'      => (int) $current,
+    'previous'     => (int) $previous,
 ]);

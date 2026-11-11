@@ -1,8 +1,8 @@
 /** Aquapulse — Configurações. */
 /*
  * Página: dashboard/configuracoes.php | API: GET api/v1/settings.php.
- * Controla a troca de abas, desenha empresas/represas/limites/notificações e
- * guarda as preferências alteradas apenas no sessionStorage (modo demonstrativo).
+ * Tela de consulta: troca de abas e desenho de empresas, represas, limites e
+ * contas de acesso. Nada é gravado aqui.
  */
 (function () {
   'use strict';
@@ -11,34 +11,20 @@
   var F = window.AqFormat;
   var Api = window.AqApi;
 
-  var companies = [];                                                 // empresas com a lista de represas de cada uma
-  var settings = null;                                                // objeto de configurações (unidades, indicadores, limites...)
-  var selectedCompany = null;                                         // empresa aberta nos cards de detalhe
-
-  /*
-   * Preferências alteradas nesta tela vivem apenas na sessão do navegador.
-   * A gravação real dependerá do banco de dados.
-   */
-  var DEMO_KEY = 'aq.demo.settings';
-
-  function readLocal() {
-    try { return JSON.parse(sessionStorage.getItem(DEMO_KEY) || '{}'); } catch (e) { return {}; }
-  }
-  function writeLocal(v) {
-    try { sessionStorage.setItem(DEMO_KEY, JSON.stringify(v)); } catch (e) { /* segue sem persistir */ }
-  }
+  var companies = [];           // empresas com a lista de represas de cada uma
+  var selectedCompany = null;   // empresa aberta nos cards de detalhe
 
   /* ------------------------------------------------------------ abas */
 
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]')); // converte a NodeList em array comum (para usar indexOf/forEach com índice)
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
 
-  /** Ativa uma aba: marca aria-selected, ajusta o tabindex e mostra só o painel dela. */
+  /** Ativa uma aba: marca aria-selected e mostra só o painel dela. */
   function activate(tab) {
     tabs.forEach(function (t) {
       var on = t === tab;
       t.setAttribute('aria-selected', on ? 'true' : 'false');
-      t.setAttribute('tabindex', on ? '0' : '-1');                    // só a aba ativa entra na sequência do Tab
-      var panel = document.getElementById(t.getAttribute('aria-controls')); // painel ligado à aba
+      t.setAttribute('tabindex', on ? '0' : '-1');
+      var panel = document.getElementById(t.getAttribute('aria-controls'));
       if (panel) panel.hidden = !on;
     });
   }
@@ -49,40 +35,36 @@
     // navegação por teclado entre abas (padrão WAI-ARIA)
     tab.addEventListener('keydown', function (e) {
       var next = null;
-      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];               // próxima (volta ao início depois da última)
-      if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];  // anterior (vai para a última antes da primeira)
+      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+      if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
       if (e.key === 'Home') next = tabs[0];
       if (e.key === 'End') next = tabs[tabs.length - 1];
       if (next) {
-        e.preventDefault();                                           // impede a rolagem da página pelas setas
+        e.preventDefault();
         activate(next);
         next.focus();
       }
     });
   });
 
+  // um link como configuracoes.php#limites abre direto na aba correspondente
+  var pedida = document.getElementById('tab-' + window.location.hash.replace('#', ''));
+  if (pedida) activate(pedida);
+
   /* ------------------------------------------------------- renderização */
 
-  /** Lista de empresas à esquerda; a selecionada fica destacada. */
+  /** Lista de empresas; a selecionada fica destacada. */
   function renderCompanies() {
     document.querySelector('[data-companies]').innerHTML = companies.map(function (c) {
       var on = selectedCompany && c.id === selectedCompany.id;
       return '<button class="aq-card" type="button" data-company="' + S.esc(c.id) + '"'
-        + ' style="text-align:left;cursor:pointer;margin-bottom:10px;flex-direction:row;align-items:center;gap:12px;'
+        + ' style="text-align:left;cursor:pointer;margin-bottom:10px;width:100%;'
         + (on ? 'border-color:var(--aq-primary);background:var(--aq-primary-lighter)' : '') + '">'
-        + '<span class="aq-list__icon aq-list__icon--info" aria-hidden="true">'
-        + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-        + ' stroke-linecap="round" stroke-linejoin="round">'
-        + '<path d="M4.5 20.5V5a1.5 1.5 0 0 1 1.5-1.5h7A1.5 1.5 0 0 1 14.5 5v15.5"/>'
-        + '<path d="M14.5 9.5h4a1 1 0 0 1 1 1v10"/><path d="M3 20.5h18"/></svg></span>'
-        + '<div style="flex:1 1 auto"><strong style="display:block;font-size:.92rem">' + S.esc(c.name) + '</strong>'
-        + S.badge(c.status_label, 'normal')
+        + '<strong style="display:block;font-size:.92rem">' + S.esc(c.name) + '</strong>'
         + '<span style="display:block;font-size:.8rem;color:var(--aq-text-secondary);margin-top:4px">'
-        + c.reservoirs.length + (c.reservoirs.length === 1 ? ' represa' : ' represas') + '</span></div>' // singular/plural
-        + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
-        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>'
+        + S.esc(c.code) + ' · ' + c.reservoirs.length + (c.reservoirs.length === 1 ? ' represa' : ' represas') + '</span>'
         + '</button>';
-    }).join('');
+    }).join('') || '<p class="aq-card__sub">Sua conta não está vinculada a nenhuma empresa.</p>';
   }
 
   /** Dados e represas da empresa selecionada. */
@@ -93,193 +75,87 @@
       'company.name': selectedCompany.name,
       'company.code': selectedCompany.code,
       'company.manager': selectedCompany.manager,
-      'company.status': { html: S.badge(selectedCompany.status_label, 'normal') }
+      'company.status': { html: S.badge(S.esc(selectedCompany.status_label), selectedCompany.status === 'active' ? 'normal' : 'neutral') }
     });
 
-    document.querySelector('[data-company-reservoirs]').innerHTML = selectedCompany.reservoirs.map(function (r) { // um bloco por represa
+    document.querySelector('[data-company-reservoirs]').innerHTML = selectedCompany.reservoirs.map(function (r) {
+      var todos = r.sensors_total > 0 && r.sensors_online === r.sensors_total;
       return '<div style="border:1px solid var(--aq-border);border-radius:11px;padding:14px;margin-bottom:12px">'
         + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
-        + '<span class="aq-list__icon aq-list__icon--info" aria-hidden="true">'
-        + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-        + ' stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5V7l8.5-3.5L20.5 7v13.5"/>'
-        + '<path d="M3.5 11h17"/><path d="M3.5 15.5h17"/></svg></span>'
         + '<strong style="flex:1 1 auto">' + S.esc(r.name) + '</strong>'
-        + S.badge(r.status, 'normal') + '</div>'
+        + S.badge('Nível: ' + S.esc(r.status.label), r.status.key) + '</div>'
         + '<div class="aq-grid aq-grid--3" style="gap:10px;font-size:.83rem">'
         + '<div><p class="aq-card__sub">Localidade</p><strong>' + S.esc(r.city) + '</strong></div>'
         + '<div><p class="aq-card__sub">Capacidade</p><strong>' + F.int(r.capacity) + ' hm³</strong></div>'
-        + '<div><p class="aq-card__sub">Telemetria</p><strong style="color:var(--aq-success)">' + S.esc(r.telemetry) + '</strong></div>'
+        + '<div><p class="aq-card__sub">Equipamentos online</p><strong style="color:var(--aq-' + (todos ? 'success' : 'warning') + ')">'
+        + r.sensors_online + ' de ' + r.sensors_total + '</strong></div>'
         + '</div></div>';
     }).join('') || '<p class="aq-card__sub">Nenhuma represa vinculada a esta empresa.</p>';
   }
 
-  /** Lista de indicadores com caixas de marcação; o estado salvo na sessão tem prioridade. */
-  function renderIndicators() {
-    var local = readLocal();
-    document.querySelector('[data-indicators]').innerHTML = settings.indicators.map(function (i) {
-      var on = local['ind.' + i.id] !== undefined ? local['ind.' + i.id] : i.enabled; // valor alterado nesta sessão, ou o da API
-      return '<div class="aq-form-row">'
-        + '<span id="ind-label-' + S.esc(i.id) + '">' + S.esc(i.label) + '</span>'
-        + '<button class="aq-check" type="button" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '"' // checkbox acessível feito com <button>
-        + ' aria-labelledby="ind-label-' + S.esc(i.id) + '" data-indicator="' + S.esc(i.id) + '">'
-        + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"'
-        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-9"/></svg>'
-        + '</button></div>';
+  /** Limites em vigor (aba "Limites operacionais"). */
+  function renderLimits(limits) {
+    document.querySelector('[data-limits]').innerHTML = limits.map(function (l) {
+      return '<div class="aq-form-row"><span>' + S.esc(l.label) + '</span><strong>' + S.esc(l.value) + '</strong></div>';
     }).join('');
   }
 
-  /** Cards de limites (aba principal) e lista de limites (aba "Limites e alertas"). */
-  function renderThresholds() {
-    var t = settings.thresholds;
-    document.querySelector('[data-thresholds]').innerHTML = [
-      { icon: 'waves', label: 'Nível de atenção', value: t.level_attention_pct + '%' },
-      { icon: 'droplet', label: 'pH mínimo', value: F.num(t.ph_min, 1) },
-      { icon: 'droplet', label: 'pH máximo', value: F.num(t.ph_max, 1) },
-      { icon: 'cloud-rain', label: 'Precipitação crítica', value: t.rain_critical_mm + ' mm' }
-    ].map(function (i) {                                              // obs.: o campo icon é definido mas todos os cards usam o mesmo ícone de ondas
-      return '<div style="border:1px solid var(--aq-border);border-radius:11px;padding:14px;'
-        + 'display:flex;align-items:center;gap:12px">'
-        + '<span class="aq-kpi__icon" aria-hidden="true" style="width:38px;height:38px">'
-        + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-        + ' stroke-linecap="round" stroke-linejoin="round">'
-        + '<path d="M2 7.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/>'
-        + '<path d="M2 13c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0"/></svg></span>'
-        + '<div><p class="aq-card__sub">' + S.esc(i.label) + '</p>'
-        + '<strong style="font-size:1.3rem">' + S.esc(i.value) + '</strong></div></div>';
+  /** Contas de acesso (a aba só existe para administradores). */
+  function renderUsers(users) {
+    var alvo = document.querySelector('[data-users]');
+    if (!alvo) return;
+
+    alvo.innerHTML = users.map(function (u) {
+      return '<tr><td>' + S.esc(u.name) + '</td>'
+        + '<td>' + S.esc(u.email) + '</td>'
+        + '<td>' + S.esc(u.role_label) + '</td>'
+        + '<td>' + S.badge(S.esc(u.status_label), u.status === 'active' ? 'normal' : 'attention') + '</td>'
+        + '<td class="is-nowrap">' + S.esc(u.last_login) + '</td></tr>';
     }).join('');
-
-    // aba "Limites e alertas" reaproveita os mesmos valores
-    document.querySelector('[data-limits-form]').innerHTML = [
-      { label: 'Nível de atenção do reservatório', value: t.level_attention_pct + '%' },
-      { label: 'pH mínimo aceitável', value: F.num(t.ph_min, 1) },
-      { label: 'pH máximo aceitável', value: F.num(t.ph_max, 1) },
-      { label: 'Precipitação crítica em 24h', value: t.rain_critical_mm + ' mm' }
-    ].map(function (i) {
-      return '<div class="aq-form-row"><span>' + S.esc(i.label) + '</span><strong>' + S.esc(i.value) + '</strong></div>';
-    }).join('');
-  }
-
-  /** Canais de notificação com interruptores. */
-  function renderNotifications() {
-    document.querySelector('[data-notifications]').innerHTML = settings.notifications.map(function (n) {
-      return '<div class="aq-form-row">'
-        + '<div><strong style="display:block">' + S.esc(n.label) + '</strong>'
-        + '<span style="font-size:.83rem;color:var(--aq-text-secondary)">' + S.esc(n.target) + '</span></div>'
-        + '<button class="aq-switch" type="button" role="switch" aria-checked="' + (n.enabled ? 'true' : 'false') + '"' // estado vem da API (a escolha salva na sessão não é reaplicada aqui)
-        + ' aria-label="Notificações por ' + S.esc(n.label) + '" data-switch="notif-' + S.esc(n.id) + '"></button></div>';
-    }).join('');
-  }
-
-  /** Aba de usuários: mostra só o usuário logado, lido da topbar. */
-  function renderUsers() {
-    // o nome vem do cabeçalho, que já recebeu o usuário da sessão pelo PHP —
-    // repetir o nome aqui faria a tela discordar do topo da página
-    var nome = document.querySelector('.aq-user__name');
-    var topo = document.querySelector('[data-user-email]');
-
-    document.querySelector('[data-users]').innerHTML =
-      '<tr><td>' + S.esc(nome ? nome.textContent.trim() : 'Usuário da sessão') + '</td>'
-      + '<td>' + S.esc(topo ? topo.getAttribute('data-user-email') : '—') + '</td>'
-      + '<td>Administrador</td><td>' + S.badge('Ativo', 'normal') + '</td></tr>'; // perfil fixo "Administrador" (a topbar exibe "Operador")
   }
 
   /* ---------------------------------------------------------- carregar */
 
-  /** Busca as configurações e desenha todas as abas. */
   function load() {
     return Api.settings().then(function (r) {
       companies = r.data.companies;
-      settings = r.data.settings;
-      selectedCompany = companies[0] || null;                         // abre a primeira empresa por padrão
+
+      // mantém a empresa que estava aberta quando a tela se atualiza
+      var anterior = selectedCompany ? selectedCompany.id : null;
+      selectedCompany = companies.filter(function (c) { return c.id === anterior; })[0] || companies[0] || null;
 
       renderCompanies();
       renderCompanyDetail();
-      renderIndicators();
-      renderThresholds();
-      renderNotifications();
-      renderUsers();
+      renderLimits(r.data.limits);
+      renderUsers(r.data.users);
 
-      // aplica preferências salvas na sessão
-      var local = readLocal();
-      ['pref-nivel', 'pref-volume', 'pref-vazao', 'pref-refresh'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el && local[id]) el.value = local[id];                    // restaura o valor escolhido antes (se houver)
-      });
-
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);
+      S.setUpdated(r.meta);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;
-      S.notify('Não foi possível carregar', err.message, 'error');    // esta tela não tem blocos de estado: avisa pelo toast
+      S.notify('Não foi possível carregar', err.message, 'error');
     });
   }
 
   /* ----------------------------------------------------------- eventos */
 
-  document.addEventListener('click', function (e) {                   // delegação: um ouvinte trata todos os cliques da tela
+  document.querySelector('[data-companies]').addEventListener('click', function (e) {
     var company = e.target.closest('[data-company]');
-    if (company) {                                                    // clicou em uma empresa da lista
-      var id = company.getAttribute('data-company');
-      selectedCompany = companies.filter(function (c) { return c.id === id; })[0] || selectedCompany;
-      renderCompanies();
-      renderCompanyDetail();
-      return;
-    }
+    if (!company) return;
 
-    var sw = e.target.closest('[data-switch]');
-    if (sw) {                                                         // interruptor (atualização automática ou notificação)
-      var on = sw.getAttribute('aria-checked') === 'true';
-      sw.setAttribute('aria-checked', on ? 'false' : 'true');         // inverte o estado visual/acessível
-      var l = readLocal(); l[sw.getAttribute('data-switch')] = !on; writeLocal(l); // guarda na sessão
-      return;
-    }
-
-    var check = e.target.closest('[data-indicator]');
-    if (check) {                                                      // caixa de marcação de indicador
-      var checked = check.getAttribute('aria-checked') === 'true';
-      check.setAttribute('aria-checked', checked ? 'false' : 'true');
-      var li = readLocal(); li['ind.' + check.getAttribute('data-indicator')] = !checked; writeLocal(li);
-      return;
-    }
-
-    if (e.target.closest('[data-demo-action]')) {                     // botões de cadastro/edição ainda não implementados
-      S.notify('Modo demonstrativo',
-        'Cadastro e edição dependem do banco de dados, que será implementado na próxima etapa.', 'info');
-      return;
-    }
-
-    if (e.target.closest('[data-save]')) {                           // "Salvar alterações": grava os selects de preferência na sessão
-      var s = readLocal();
-      ['pref-nivel', 'pref-volume', 'pref-vazao', 'pref-refresh'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) s[id] = el.value;
-      });
-      writeLocal(s);
-      S.notify('Alterações salvas',
-        'Preferências mantidas apenas nesta sessão — a gravação definitiva depende do banco de dados.', 'info');
-      return;
-    }
-
-    if (e.target.closest('[data-cancel]')) {                          // "Cancelar": apaga tudo o que foi salvo na sessão e recarrega da API
-      writeLocal({});
-      load();
-      S.notify('Alterações descartadas', 'As preferências voltaram aos valores originais.', 'info');
-    }
+    var id = company.getAttribute('data-company');
+    selectedCompany = companies.filter(function (c) { return c.id === id; })[0] || selectedCompany;
+    renderCompanies();
+    renderCompanyDetail();
   });
 
-  // filtro de empresas
-  var busca = document.getElementById('busca-empresa');
-  if (busca) {
-    busca.addEventListener('input', function () {
-      var term = busca.value.trim().toLowerCase();
-      document.querySelectorAll('[data-company]').forEach(function (c) {
-        var name = c.textContent.toLowerCase();                       // compara com todo o texto do card (nome, status, nº de represas)
-        c.style.display = (!term || name.indexOf(term) >= 0) ? '' : 'none'; // esconde os que não contêm o termo
-      });
+  document.getElementById('busca-empresa').addEventListener('input', function (e) {
+    var term = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('[data-company]').forEach(function (c) {
+      c.style.display = (!term || c.textContent.toLowerCase().indexOf(term) >= 0) ? '' : 'none';
     });
-  }
+  });
 
   S.onReload(load);
 
-  /* ------------------------------------------------------------- início */
   load();
 })();

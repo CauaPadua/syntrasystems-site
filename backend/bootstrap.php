@@ -98,6 +98,12 @@ error_reporting(E_ALL);                                     // registra todos os
  * pelo set_error_handler logo abaixo.
  */
 set_exception_handler(static function (Throwable $e): void {
+    // Erro de regra de negócio lançado por um serviço (validação, registro não
+    // encontrado...): vira a resposta de erro correspondente, com a mensagem ao usuário.
+    if ($e instanceof \Aquapulse\Support\ApiException) {
+        \Aquapulse\Support\ApiResponse::error($e->errorCode(), $e->getMessage(), $e->status(), $e->details());
+    }
+
     error_log('[aquapulse] ' . get_class($e) . ': ' . $e->getMessage() . ' em ' . $e->getFile() . ':' . $e->getLine()); // detalhes completos vão só para o log interno
 
     if (class_exists(\Aquapulse\Http\JsonResponse::class)) {                     // se a classe de resposta estiver disponível (autoload funcionando)...

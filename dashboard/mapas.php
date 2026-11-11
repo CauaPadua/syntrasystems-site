@@ -81,10 +81,10 @@ aq_page_start([
         <?php
         // Indicadores do marcador selecionado (mesmos campos devolvidos em markers[] pela API).
         echo aq_kpi(['id' => 'sel.level', 'label' => 'Nível atual', 'icon' => 'waves', 'unit' => '%']);
-        echo aq_kpi(['id' => 'sel.flow', 'label' => 'Vazão atual', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s']);
+        echo aq_kpi(['id' => 'sel.flow', 'label' => 'Afluência atual', 'icon' => 'arrow-down-circle', 'unit' => 'm³/s']);
         echo aq_kpi(['id' => 'sel.ph', 'label' => 'pH da água', 'icon' => 'droplet', 'badge' => true]);
         echo aq_kpi(['id' => 'sel.rain', 'label' => 'Precipitação (24h)', 'icon' => 'cloud-rain', 'unit' => 'mm']);
-        echo aq_kpi(['id' => 'sel.duration', 'label' => 'Previsão de duração', 'icon' => 'clock', 'unit' => 'dias']);
+        echo aq_kpi(['id' => 'sel.duration', 'label' => 'Autonomia estimada', 'icon' => 'clock', 'unit' => 'dias', 'tip' => 'Volume acima da reserva técnica dividido pelo consumo médio diário cadastrado.']);
         echo aq_kpi(['id' => 'sel.operation', 'label' => 'Situação operacional', 'icon' => 'shield-check', 'tone' => 'success']);
         ?>
       </div>
@@ -101,16 +101,14 @@ aq_page_start([
   <?php echo aq_card_head([
       'title'   => 'Represas cadastradas',
       'tip'     => 'Clique em uma represa para centralizar o mapa e ver os detalhes.',
-      'actions' => '<span class="aq-card__sub">Coordenadas demonstrativas</span>',
   ]); ?>
   <div class="aq-grid aq-grid--3" data-reservoir-cards></div> <?php /* um card por represa; funciona mesmo se o mapa falhar */ ?>
 </article>
 
-<div class="aq-demo-note">
+<div class="aq-note">
   <?php aq_the_icon('info'); ?>
-  <span><strong>Coordenadas demonstrativas.</strong> Os pontos vêm da fonte simulada da API e deverão ser
-  substituídos pelas coordenadas reais quando o banco de dados for conectado. O mapa usa Leaflet com
-  blocos do OpenStreetMap — sem chave paga e sem Google Maps.</span>
+  <span>As posições vêm das coordenadas do cadastro de cada represa. O mapa usa Leaflet com blocos do
+  OpenStreetMap, que precisam de acesso à internet para aparecer.</span>
 </div>
 
 <?php aq_page_end(['scripts' => ['pages/maps-page.js'], 'needs_map' => true]); // needs_map carrega Leaflet e maps.js antes de maps-page.js

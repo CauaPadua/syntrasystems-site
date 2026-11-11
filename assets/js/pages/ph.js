@@ -10,26 +10,36 @@
   var F = window.AqFormat;
   var G = window.AqCharts;
 
+  /** Cor do texto conforme o status devolvido pela API. */
+  function cor(status) {
+    return 'var(--aq-' + (status === 'normal' ? 'success' : (status === 'critical' ? 'danger' : 'warning')) + ')';
+  }
+
+  /** Ponto colorido + rótulo do status ({key, label}). */
+  function situacao(status) {
+    return '<span class="aq-status-text"><span class="aq-dot aq-dot--' + S.esc(status.key) + '"></span>' + S.esc(status.label) + '</span>';
+  }
+
   window.AqMonitorPage({
     scopes: ['variation', 'scale', 'daily'],
     fetch: function (p) { return window.AqApi.ph(p); },
 
-    render: function (d) {                                            // d = MonitoringService::ph()
+    render: function (d) {
       var k = d.kpis;
+      var corAtual = cor(k.condition.status.key);
 
-      // o pH não tem unidade: apenas o número, com vírgula na apresentação
       S.fill({
-        'ph.value': F.num(k.ph.value, 1), 'ph.foot': k.ph.note,
-        'min.value': F.num(k.min.value, 1), 'min.foot': k.min.note,
-        'max.value': F.num(k.max.value, 1), 'max.foot': k.max.note,
-        'condition.value': { html: '<span style="color:var(--aq-success)">' + k.condition.label + '</span>' }, // sempre em verde, mesmo se o rótulo for "Atenção"
+        'ph.value': F.num(k.ph.value, 2), 'ph.foot': k.ph.note,
+        'min.value': F.num(k.min.value, 2), 'min.foot': k.min.note,
+        'max.value': F.num(k.max.value, 2), 'max.foot': k.max.note,
+        'condition.value': { html: '<span style="color:' + corAtual + '">' + S.esc(k.condition.label) + '</span>' },
         'condition.foot': k.condition.note,
-        'scale.value': F.num(d.scale.value, 1),
-        'scale.label': d.scale.label,
-        'scale.range': { html: S.badge(d.scale.range, 'normal') }
+        'scale.value': F.num(d.scale.value, 2),
+        'scale.label': { html: '<span style="color:' + corAtual + '">' + S.esc(d.scale.label) + '</span>' },
+        'scale.range': d.scale.range
       });
 
-      /* ------------------ variação com faixa ideal translúcida */
+      /* ------------------------- variação com a faixa ideal destacada */
       var v = d.variation;
       G.create('grafico-ph', {
         type: 'line',
@@ -40,17 +50,15 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ min: 0, max: 10, decimals: 0 }),         // eixo de pH 0 a 10
-          plugins: G.plugins('', 1, {                                 // sem unidade no tooltip
+          scales: G.scales({ min: 0, max: 14, decimals: 0 }),
+          plugins: G.plugins('', 2, {
             annotation: {
-              annotations: {
-                ideal: G.band(v.ideal_min, v.ideal_max, G.colors.success, 'Faixa ideal\n6,5 – 8,5') // faixa verde translúcida de 6,5 a 8,5
-              }
+              annotations: { ideal: G.band(v.ideal_min, v.ideal_max, G.colors.success, v.ideal_label) }
             }
           })
         }
       });
-      G.describe('grafico-ph', v.values, '', 1);
+      G.describe('grafico-ph', v.values, '', 2);
 
       /* -------------------- escala de pH de 0 a 14 (medidor segmentado) */
       var sc = d.scale;
@@ -59,7 +67,7 @@
         min: sc.min,
         max: sc.max,
         cutout: '68%',
-        segments: [                                                   // 7 faixas de cor (~14,3% cada): do vermelho (ácido) ao azul-escuro (alcalino)
+        segments: [
           { size: 14.3, color: '#ef4444' },
           { size: 14.3, color: '#f59e0b' },
           { size: 14.3, color: '#fbbf24' },
@@ -70,11 +78,11 @@
         ]
       });
 
-      // ponteiro: 0 -> -90°, 14 -> +90°
+      // ponteiro: converte o pH em ângulo (0 = esquerda, 7 = em pé, 14 = direita)
       var needle = document.querySelector('[data-ph-needle]');
       if (needle) {
-        var angle = ((sc.value - sc.min) / (sc.max - sc.min)) * 180 - 90; // converte o pH em ângulo: 0 = esquerda, 7 = em pé, 14 = direita
-        needle.style.transform = 'translateX(-50%) rotate(' + angle + 'deg)'; // translateX(-50%) centraliza a agulha sobre o ponto de giro
+        var angle = ((sc.value - sc.min) / (sc.max - sc.min)) * 180 - 90;
+        needle.style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
       }
 
       /* ----------------------------------------- média diária 7 dias */
@@ -88,10 +96,10 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ min: 0, max: 10, decimals: 0 }),
-          plugins: G.plugins('', 1, {
+          scales: G.scales({ min: 0, max: 14, decimals: 0 }),
+          plugins: G.plugins('', 2, {
             annotation: {
-              annotations: { ideal: G.band(dl.ideal_min, dl.ideal_max, G.colors.success) } // mesma faixa ideal, sem rótulo
+              annotations: { ideal: G.band(dl.ideal_min, dl.ideal_max, G.colors.success) }
             }
           })
         }
@@ -105,7 +113,7 @@
           + ' stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/>'
           + '<circle cx="12" cy="10" r="2.6"/></svg></span>' + S.esc(p.name) + '</span></td>'
           + '<td class="is-num">' + F.num(p.ph, 1) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>' // status fixo "Normal" (não usa p.status)
+          + '<td>' + situacao(p.status) + '</td>'
           + '</tr>';
       }).join('');
 
@@ -113,12 +121,12 @@
       document.querySelector('[data-readings]').innerHTML = d.readings.map(function (r) {
         return '<tr>'
           + '<td class="is-nowrap">' + S.esc(r.time) + '</td>'
-          + '<td class="is-num">' + F.num(r.ph, 1) + '</td>'
+          + '<td class="is-num">' + F.num(r.ph, 2) + '</td>'
           + '<td class="is-num">' + F.num(r.temp, 1) + '</td>'
           + '<td>' + S.esc(r.point) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>'
+          + '<td>' + situacao(r.status) + '</td>'
           + '</tr>';
-      }).join('');
+      }).join('') || '<tr><td colspan="5">Nenhuma leitura de pH registrada.</td></tr>';
     }
   });
 })();

@@ -1,8 +1,9 @@
 /** Aquapulse — Monitoramento / Comparativo de vazão. */
 /*
  * Página: dashboard/monitoramento/comparativo.php | API: GET api/v1/monitoring/flow-comparison.php.
- * Esta tela não tem seletor de período comum: envia os dois períodos
- * escolhidos (current e previous) através de extraParams.
+ * Esta tela não tem seletor de período comum: envia as duas semanas
+ * escolhidas (current e previous) através de extraParams. As opções vêm do
+ * servidor: semana 0 = últimos 7 dias, semana 1 = os 7 dias anteriores...
  */
 (function () {
   'use strict';
@@ -62,8 +63,8 @@
         data: {
           labels: c.labels,
           datasets: [
-            G.line('Período atual (' + d.periods.current + ')', c.current, G.colors.primary, { width: 2.6 }),
-            G.line('Período anterior (' + d.periods.previous + ')', c.previous, '#9ec5fe', { dashed: true, width: 2 })
+            G.line('Semana de ' + d.periods.current, c.current, G.colors.primary, { width: 2.6 }),
+            G.line('Semana de ' + d.periods.previous, c.previous, '#9ec5fe', { dashed: true, width: 2 })
           ]
         },
         options: {
@@ -71,7 +72,7 @@
           maintainAspectRatio: false,
           layout: { padding: { top: 24, bottom: 14 } },
           interaction: { mode: 'index', intersect: false },           // tooltip mostra os dois períodos do mesmo dia
-          scales: G.scales({ max: 80, decimals: 0 }),
+          scales: G.scales({ decimals: 0, beginAtZero: false }),
           plugins: G.plugins('m³/s', 1)
         },
         plugins: [G.valueLabels({ datasets: [0], decimals: 1, color: '#0b5bea', offset: 10 })] // rótulos só na série atual
@@ -81,9 +82,9 @@
       document.querySelector('[data-legend-periods]').innerHTML =     // legenda com os nomes reais dos períodos escolhidos
         '<div class="aq-legend">'
         + '<span class="aq-legend__item"><span class="aq-legend__key" style="background:#0b5bea"></span>'
-        + 'Período atual (' + S.esc(d.periods.current) + ')</span>'
+        + 'Semana de ' + S.esc(d.periods.current) + '</span>'
         + '<span class="aq-legend__item"><span class="aq-legend__key aq-legend__key--dashed" style="color:#9ec5fe"></span>'
-        + 'Período anterior (' + S.esc(d.periods.previous) + ')</span></div>';
+        + 'Semana de ' + S.esc(d.periods.previous) + '</span></div>';
 
       /* ------------------------------- diferença por dia (barras horizontais) */
       var df = d.diff_chart;
@@ -105,7 +106,7 @@
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { min: -4, max: 12, grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } }, // escala fixa de -4 a +12 m³/s
+            x: { grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } },
             y: { grid: { display: false }, border: { display: false }, ticks: { color: G.colors.axis } }
           },
           plugins: G.plugins('m³/s', 1)
@@ -130,7 +131,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ max: 80, decimals: 0 }),
+          scales: G.scales({ decimals: 0 }),
           plugins: G.plugins('m³/s', 1)
         }
       });
@@ -141,7 +142,7 @@
         { ic: 'best', tone: 'success', label: sm.best.label, right: '<strong>' + S.esc(sm.best.day) + '</strong><br>' + F.unit(sm.best.value, sm.best.unit) },
         { ic: 'worst', tone: 'warning', label: sm.worst.label, right: '<strong>' + S.esc(sm.worst.day) + '</strong><br>' + F.unit(sm.worst.value, sm.worst.unit) },
         { ic: 'avg', tone: 'info', label: sm.average.label, right: '<strong>' + F.unit(sm.average.current, sm.average.unit) + '</strong>  ' + F.unit(sm.average.previous, sm.average.unit) + '<br><span style="font-size:.76rem">(atual)  (anterior)</span>' },
-        { ic: 'trend', tone: 'info', label: sm.trend.label, right: '<strong style="color:var(--aq-success)">' + S.esc(sm.trend.value) + '</strong><br><span style="font-size:.76rem">' + S.esc(sm.trend.note) + '</span>' }
+        { ic: 'trend', tone: 'info', label: sm.trend.label, right: '<strong>' + S.esc(sm.trend.value) + '</strong><br><span style="font-size:.76rem">' + S.esc(sm.trend.note) + '</span>' }
       ].map(function (i) {
         return '<div class="aq-list__item">'
           + '<span class="aq-list__icon aq-list__icon--' + i.tone + '" aria-hidden="true">' + icon(i.ic) + '</span>'
@@ -165,7 +166,7 @@
           + '<td class="is-num">' + F.num(r.current, 1) + '</td>'
           + '<td class="is-num">' + F.num(r.previous, 1) + '</td>'
           + '<td class="is-num">' + F.signed(r.diff, 1) + '</td>'
-          + '<td class="is-num">' + F.signed(r.pct, 1) + '%</td>'
+          + '<td class="is-num">' + (r.pct === null ? '—' : F.signed(r.pct, 1) + '%') + '</td>'
           + '<td><span class="aq-arrow aq-arrow--' + chave + '" aria-hidden="true">'
           + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"'
           + ' stroke-linecap="round" stroke-linejoin="round">' + SETA[chave] + '</svg></span>'
@@ -179,12 +180,12 @@
   function onPeriodChange() {
     if (selCurrent.value === selPrevious.value) {                     // validação no navegador, antes de gastar uma requisição (a API também valida)
       S.notify(
-        'Períodos iguais',
-        'Selecione períodos diferentes para comparar. Ajuste um dos seletores.',
+        'Semanas iguais',
+        'Selecione semanas diferentes para comparar.',
         'error'
       );
       ['chart', 'diff'].forEach(function (s) {
-        S.setState(s, 'error', 'O período atual e o de comparação não podem ser iguais.');
+        S.setState(s, 'error', 'A semana analisada e a de comparação não podem ser iguais.');
       });
       return;
     }

@@ -37,6 +37,19 @@
     });
   }
 
+  /** Selo de variação percentual: "▲ 4,2% vs 24 h atrás". Sem base de comparação, fica vazio. */
+  function tendencia(valor, rotulo) {
+    if (valor === null || valor === undefined) return '';
+    var sobe = valor >= 0;
+    return '<span class="aq-trend aq-trend--' + (sobe ? 'up' : 'down') + '">' + (sobe ? '▲ ' : '▼ ') + F.num(Math.abs(valor), 1)
+      + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + S.esc(rotulo) + '</span></span>';
+  }
+
+  /** Variável de cor do CSS para um status. */
+  function tom(statusKey) {
+    return { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'success';
+  }
+
   /* ------------------------------------------------------------ filtros */
 
   /** Preenche um <select> com a opção "todas" + um item por registro. */
@@ -87,10 +100,13 @@
       'all.level.value': F.num(k.level.value, 1),
       'all.flow.value': F.num(k.flow.value, 1),
       'all.ph.value': F.num(k.ph.value, 1),
-      'all.ph.badge': { html: S.badge(k.ph.note, 'normal') },
-      'all.operation.value': { html: '<span class="aq-kpi__inline">'   // "2 normais · 1 atenção" em verde e âmbar
+      'all.ph.badge': { html: S.badge(k.ph.status.label, k.ph.status.key) },
+      'all.ph.foot': k.ph.note,
+      'all.operation.value': { html: '<span class="aq-kpi__inline">'
         + '<span style="color:var(--aq-success);font-weight:800">' + k.operation.normal + ' normais</span> · '
-        + '<span style="color:var(--aq-warning);font-weight:800">' + k.operation.attention + ' atenção</span></span>' },
+        + '<span style="color:var(--aq-warning);font-weight:800">' + k.operation.attention + ' atenção</span>'
+        + (k.operation.critical ? ' · <span style="color:var(--aq-danger);font-weight:800">' + k.operation.critical + ' crítico</span>' : '')
+        + '</span>' },
       'all.alerts.total': d.alert_counts.total
     });
 
@@ -116,14 +132,14 @@
         labels: fc.labels,
         datasets: [(function () {                                     // função executada na hora só para obter o contexto do canvas (usado no gradiente)
           var ctx = document.getElementById('grafico-vazao-consolidada').getContext('2d');
-          return G.line('Vazão total', fc.values, G.colors.primary, { fillCtx: ctx, alpha: 0.16 });
+          return G.line('Afluência total', fc.values, G.colors.primary, { fillCtx: ctx, alpha: 0.16 });
         })()]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         layout: { padding: { top: 22 } },                             // espaço no topo para os rótulos de valor não serem cortados
-        scales: G.scales({ decimals: 0, max: 200 }),                  // eixo Y fixo até 200 m³/s
+        scales: G.scales({ decimals: 0, beginAtZero: false }),                  // eixo Y fixo até 200 m³/s
         plugins: G.plugins('m³/s', 1)
       },
       plugins: [G.valueLabels({ decimals: 1, color: '#09245a' })]     // escreve o valor acima de cada ponto
@@ -174,7 +190,7 @@
           + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
           + '<path d="M3.5 20.5V7l8.5-3.5L20.5 7v13.5"/><path d="M3.5 11h17"/><path d="M3.5 15.5h17"/></svg>'
           + '</span><span class="is-nowrap">' + S.esc(r.name) + '</span></span></td>'
-        + '<td class="is-num" style="font-weight:700;color:var(--aq-' + (r.status.key === 'attention' ? 'warning' : 'success') + ')">' + F.pct(r.level) + '</td>' // só atenção fica âmbar; crítico também sairia verde
+        + '<td class="is-num" style="font-weight:700;color:var(--aq-' + tom(r.status.key) + ')">' + F.pct(r.level) + '</td>'
         + '<td class="is-num is-nowrap">' + F.int(r.volume) + ' hm³</td>'
         + '<td class="is-num is-nowrap">' + F.num(r.flow, 1) + ' m³/s</td>'
         + '<td class="is-num">' + F.num(r.ph, 1) + '</td>'
@@ -221,14 +237,14 @@
       'one.storage.value': F.int(k.storage.value),
       'one.storage.foot': 'de ' + F.int(k.storage.capacity) + ' hm³',
       'one.flow.value': F.num(k.flow.value, 1),
-      'one.flow.foot': 'Média 24h',
-      'one.flow.badge': { html: '<span class="aq-trend aq-trend--down">▼ ' + Math.abs(k.flow.trend) + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + k.flow.trend_label + '</span></span>' }, // seta para baixo fixa (a API manda tendência negativa)
+      'one.flow.foot': 'Leitura mais recente',
+      'one.flow.badge': { html: tendencia(k.flow.trend, k.flow.trend_label) },
       'one.ph.value': F.num(k.ph.value, 1),
       'one.ph.foot': k.ph.note,
       'one.ph.badge': { html: S.badge(k.ph.status.label, k.ph.status.key) },
       'one.rain.value': F.num(k.rain.value, 1),
       'one.rain.foot': k.rain.note,
-      'one.rain.badge': { html: '<span class="aq-trend aq-trend--up">▲ ' + k.rain.trend + '% <span style="font-weight:400;color:var(--aq-text-secondary)">' + k.rain.trend_label + '</span></span>' },   // seta para cima fixa
+      'one.rain.badge': { html: tendencia(k.rain.trend, k.rain.trend_label) },
       'one.duration.value': F.int(k.duration.value),
       'one.duration.foot': k.duration.note,
       // a cor acompanha a situação apurada — verde fixo diria "normal" mesmo
@@ -281,20 +297,20 @@
       data: {
         labels: fc.labels,
         datasets: [
-          G.line('Período atual', fc.current, G.colors.primary, { points: false }),
+          G.line('Afluência (entrada)', fc.inflow, G.colors.primary, { points: false }),
           // azul-claro tracejado: distingue a série anterior sem competir com
           // o azul royal sólido do período atual
-          G.line('Período anterior (média)', fc.previous, '#9ec5fe', { dashed: true, points: false, width: 1.8 })
+          G.line('Defluência (saída)', fc.outflow, '#9ec5fe', { dashed: true, points: false, width: 1.8 })
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: G.scales({ decimals: 0 }),
+        scales: G.scales({ decimals: 0, beginAtZero: false }),
         plugins: G.plugins('m³/s', 1)
       }
     });
-    G.describe('grafico-vazao-comparativo', fc.current, 'm³/s', 1);
+    G.describe('grafico-vazao-comparativo', fc.inflow, 'm³/s', 1);
     S.setState('flow-chart', 'ready');
 
     // mapa da represa
@@ -320,19 +336,17 @@
 
     // relatórios recentes
     document.querySelector('[data-reports-rows]').innerHTML = d.reports.map(function (r) {
-      var statusKey = r.status === 'done' ? 'normal' : (r.status === 'processing' ? 'info' : 'neutral'); // cor do badge: concluído verde, processando azul, agendado neutro
       return '<tr>'
         + '<td>' + S.esc(r.name) + '</td>'
         + '<td>' + S.esc(r.reservoir) + '</td>'
         + '<td>' + S.esc(r.period) + '</td>'
         + '<td class="is-nowrap">' + S.esc(r.generated_at) + '</td>'
-        + '<td>' + S.badge(r.status_label, statusKey) + '</td>'
-        + '<td><a class="aq-card__link" href="relatorios.php" aria-label="Ver relatório ' + S.esc(r.name) + '">'
+        + '<td><a class="aq-card__link" href="' + S.esc(Api.reportUrl(r.id)) + '" aria-label="Baixar ' + S.esc(r.name) + ' em CSV">'
         + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
         + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/></svg></a></td>'
         + '</tr>';
-    }).join('');
+    }).join('') || '<tr><td colspan="5">Nenhum relatório gerado para esta represa.</td></tr>';
   }
 
   /* ------------------------------------------------------------- carregar */
@@ -341,7 +355,7 @@
    * Busca os dados conforme o contexto e desenha o modo correspondente.
    * @returns {Promise} usada pelo botão de atualizar para parar a animação ao terminar
    */
-  function load() {
+  function load(silent) {
     var ctx = Ctx.get();
     var isAll = ctx.reservoir_id === 'all';                           // decide o modo pela represa do contexto
 
@@ -353,7 +367,9 @@
       : 'Dados da represa selecionada';
 
     var scopes = isAll ? SCOPES_ALL : SCOPES_ONE;
-    scopes.forEach(function (s) { S.setState(s, 'loading'); });
+    if (silent !== true) {                                            // a recarga automática mantém a tela visível
+      scopes.forEach(function (s) { S.setState(s, 'loading'); });
+    }
 
     return Api.overview({                                             // GET overview.php?company_id=&reservoir_id=&period=
       company_id: ctx.company_id,
@@ -373,9 +389,13 @@
         });
       }
 
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);        // rótulo da topbar
-      var el = document.querySelector('[data-context-updated]');      // rótulo da barra de contexto
-      if (el) el.textContent = r.meta.updated_label || F.relative(r.meta.generated_at);
+      S.setUpdated(r.meta);
+      var el = document.querySelector('[data-context-updated]');
+      if (el) {
+        el.textContent = isAll
+          ? r.data.reservoirs.length + (r.data.reservoirs.length === 1 ? ' represa no contexto' : ' represas no contexto')
+          : r.data.reservoir.last_reading;
+      }
     }).catch(function (err) {
       if (Api.isAbort(err)) return;                                   // cancelada por uma requisição mais nova
       scopes.forEach(function (s) { S.setState(s, 'error', err.message); });
@@ -410,7 +430,7 @@
     S.onRetry(s, load);
   });
 
-  S.onReload(load);                                                   // botão de atualizar e atualização automática
+  S.onReload(function () { return load(true); });
 
   /* ---------------------------------------------------------------- início */
   loadCompanies()                                                     // 1. empresas

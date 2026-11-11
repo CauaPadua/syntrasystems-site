@@ -1,13 +1,10 @@
 <?php
 /**
- * Aquapulse — repositório de usuários com persistência real (PDO).
+ * Aquapulse — usuários no banco de dados (PDO).
  *
- * Implementação de produção da UserRepositoryInterface. Substitui o
- * MockUserRepository quando o banco de dados entra em uso. Nenhuma outra
- * parte do sistema precisa mudar: o AuthService continua dependendo apenas
- * da interface.
- *
- * Tabela usada: users (criada em backend/storage/mock/sql/create_users_table.sql).
+ * Tabelas: users (contas) e user_company_access (empresas que cada conta pode ver).
+ * Todas as consultas são preparadas: o valor vai em um parâmetro separado do
+ * texto SQL, então nunca é interpretado como comando (proteção contra SQL Injection).
  */
 
 declare(strict_types=1);
@@ -18,72 +15,86 @@ use PDO;
 
 final class PdoUserRepository implements UserRepositoryInterface
 {
-    /** Conexão compartilhada, aberta por Support\Database e entregue pelo Container. */
     private PDO $pdo;
 
-    /**
-     * Recebe a conexão já aberta (Support\Database::conexao(), via Container).
-     *
-     * A propriedade é declarada acima e atribuída aqui, em vez de usar a
-     * promoção com "private readonly" no parâmetro: readonly só existe a
-     * partir do PHP 8.1, e o projeto precisa rodar também em PHP 8.0.
-     */
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
     }
 
-    /**
-     * Procura a conta pelo e-mail digitado no login.
-     *
-     * @return array{id:int,name:string,email:string,role:string,password_hash:string}|null
-     */
     public function findByEmail(string $email): ?array
     {
-        $emailNormalizado = mb_strtolower(trim($email), 'UTF-8');        // mesma normalização do cadastro: sem espaços e em minúsculas
-
-        // Consulta preparada: o e-mail vai em um parâmetro (:email) separado do
-        // texto SQL, então um valor malicioso nunca é interpretado como comando
-        // (proteção contra SQL Injection). LIMIT 1 porque o e-mail é único.
         $stmt = $this->pdo->prepare(
-            'SELECT id, name, email, role, password_hash
-             FROM users
-             WHERE email = :email
-             LIMIT 1'
+            'SELECT id, name, email, role, status, password_hash
+               FROM users
+              WHERE email = :email
+              LIMIT 1'
         );
-        $stmt->execute(['email' => $emailNormalizado]);                  // envia o valor real do parâmetro :email
+        $stmt->execute(['email' => mb_strtolower(trim($email), 'UTF-8')]);
 
-        return $this->mapear($stmt->fetch());                            // fetch() devolve a linha encontrada ou false
+        return $this->mapear($stmt->fetch());
     }
 
-    /**
-     * Procura a conta pelo ID guardado na sessão.
-     *
-     * @return array{id:int,name:string,email:string,role:string,password_hash:string}|null
-     */
     public function findById(int $id): ?array
     {
-        // Busca pela chave primária da tabela users; no máximo uma linha.
         $stmt = $this->pdo->prepare(
-            'SELECT id, name, email, role, password_hash
-             FROM users
-             WHERE id = :id
-             LIMIT 1'
+            'SELECT id, name, email, role, status, password_hash
+               FROM users
+              WHERE id = :id
+              LIMIT 1'
         );
         $stmt->execute(['id' => $id]);
 
         return $this->mapear($stmt->fetch());
     }
 
-    /**
-     * Converte a linha do banco para o formato exigido pela interface.
-     * O MySQL devolve números como string ("7"); aqui os tipos são garantidos.
-     *
-     * @return array{id:int,name:string,email:string,role:string,password_hash:string}|null
-     */
-    private function mapear(array|false $registro): ?array
+    public function companyIds(int $userId): array
     {
-        if ($registro === false) {                                       // nenhuma linha encontrada: usuário inexistente
+        // Só valem vínculos ativos e ainda não encerrados.
+        $stmt = $this->pdo->prepare(
+            "SELECT company_id
+               FROM user_company_access
+              WHERE user_id = :id AND status = 'active' AND ended_at IS NULL
+              ORDER BY company_id"
+        );
+        $stmt->execute(['id' => $userId]);
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function registerLogin(int $userId): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET last_login_at = NOW() WHERE id = :id');
+        $stmt->execute(['id' => $userId]);
+    }
+
+    public function all(): array
+    {
+        $linhas = $this->pdo->query(
+            'SELECT id, name, email, role, status, last_login_at
+               FROM users
+              ORDER BY name'
+        )->fetchAll();
+
+        return array_map(static fn (array $l): array => [
+            'id'            => (int) $l['id'],
+            'name'          => (string) $l['name'],
+            'email'         => (string) $l['email'],
+            'role'          => (string) $l['role'],
+            'status'        => (string) $l['status'],
+            'last_login_at' => $l['last_login_at'] === null ? null : (string) $l['last_login_at'],
+        ], $linhas);
+    }
+
+    /**
+     * Converte a linha do banco para o formato da interface (o MySQL devolve
+     * números como texto).
+     *
+     * @param array<string,mixed>|false $registro
+     */
+    private function mapear($registro): ?array
+    {
+        if ($registro === false) {
             return null;
         }
 
@@ -91,8 +102,9 @@ final class PdoUserRepository implements UserRepositoryInterface
             'id'            => (int) $registro['id'],
             'name'          => (string) $registro['name'],
             'email'         => (string) $registro['email'],
-            'role'          => (string) $registro['role'],               // perfil de acesso (ex.: admin)
-            'password_hash' => (string) $registro['password_hash'],      // hash bcrypt; nunca sai do servidor (AuthService remove antes de responder)
+            'role'          => (string) $registro['role'],
+            'status'        => (string) $registro['status'],
+            'password_hash' => (string) $registro['password_hash'],
         ];
     }
 }

@@ -1,10 +1,11 @@
 <?php
 /** Aquapulse — Monitoramento / Situação operacional. */
 /*
- * Estado dos equipamentos de UMA represa: sensores, comportas, disponibilidade,
- * eventos e manutenções. Dados de GET api/v1/monitoring/operation.php,
+ * Estado dos equipamentos de UMA represa: quem está transmitindo, alertas em
+ * aberto e manutenções. Dados de GET api/v1/monitoring/operation.php,
  * carregados por assets/js/pages/operation.js (com monitor-page.js).
- * Inclui um modal demonstrativo para "abrir chamado" de manutenção.
+ *
+ * "Abrir chamado" grava no banco: POST api/v1/monitoring/operation.php.
  */
 
 declare(strict_types=1);
@@ -15,87 +16,73 @@ require dirname(__DIR__) . '/includes/page.php';
 aq_page_start([
     'route'    => 'monitoring.operation',
     'title'    => 'Situação operacional',
-    'subtitle' => 'Acompanhe a disponibilidade dos sistemas e equipamentos da represa',
+    'subtitle' => 'Acompanhe a comunicação dos equipamentos e as manutenções da represa',
 ]);
 
-echo aq_monitor_bar([                                                     // esta tela não tem período: o seletor vira um filtro de sistemas
-    'period_id'    => 'filtro-sistemas',
-    'period_label' => 'Sistemas',
-    'periods'      => ['all' => 'Todos os sistemas'],                    // hoje há só a opção "todos"
-]);
+echo aq_monitor_bar(['periods' => []]);                                   // esta tela mostra o estado atual: não tem seletor de período
 ?>
 
 <div class="aq-grid aq-grid--4">
   <?php
-  echo aq_kpi(['id' => 'general', 'label' => 'Situação geral', 'icon' => 'check-circle', 'tone' => 'success', 'tip' => 'Consolidação da situação de todos os sistemas.']); // atenção se algum sensor estiver offline
-  echo aq_kpi(['id' => 'sensors', 'label' => 'Sensores online', 'icon' => 'radio', 'tone' => 'success', 'tip' => 'Sensores respondendo à telemetria.']);            // "18/18"
-  echo aq_kpi(['id' => 'gates', 'label' => 'Comportas operacionais', 'icon' => 'gate', 'tone' => 'success', 'tip' => 'Comportas em condição de operação.']);
-  echo aq_kpi(['id' => 'alerts', 'label' => 'Alertas ativos', 'icon' => 'bell', 'tone' => 'warning', 'tip' => 'Ocorrências abertas que exigem atenção.']);
+  echo aq_kpi(['id' => 'general', 'label' => 'Situação geral', 'icon' => 'check-circle', 'tip' => 'Atenção quando há equipamento sem comunicação ou alerta em aberto; crítico quando há alerta crítico.']);
+  echo aq_kpi(['id' => 'sensors', 'label' => 'Equipamentos online', 'icon' => 'radio', 'tip' => 'Equipamentos ativos que enviaram leitura nos últimos minutos.']);
+  echo aq_kpi(['id' => 'last', 'label' => 'Última leitura', 'icon' => 'clock', 'tip' => 'Momento da leitura mais recente recebida desta represa.']);
+  echo aq_kpi(['id' => 'alerts', 'label' => 'Alertas em aberto', 'icon' => 'bell', 'tip' => 'Alertas desta represa ainda não resolvidos.']);
   ?>
 </div>
 
 <div class="aq-grid aq-grid--3-2">
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Visão geral dos sistemas', 'tip' => 'Situação de cada subsistema conectado à represa.']); ?>
-    <div data-systems style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:6px"></div> <?php /* grade 3 colunas com data.systems */ ?>
+    <?php echo aq_card_head(['title' => 'Equipamentos por grandeza', 'tip' => 'Quantos equipamentos de cada tipo estão transmitindo.']); ?>
+    <div data-systems style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:6px"></div>
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Disponibilidade', 'tip' => 'Percentual de disponibilidade dos serviços críticos.']); ?>
+    <?php echo aq_card_head(['title' => 'Comunicação', 'tip' => 'Percentual dos equipamentos ativos que estão online agora.']); ?>
     <div data-content="availability" hidden style="display:flex;gap:20px;align-items:center">
       <div style="flex:none;width:190px;position:relative">
-        <?php echo aq_chart(['id' => 'grafico-disponibilidade', 'size' => 'md', 'desc' => 'Disponibilidade geral dos sistemas.']); // rosca com availability.general ?>
+        <?php echo aq_chart(['id' => 'grafico-disponibilidade', 'size' => 'md', 'desc' => 'Percentual de equipamentos online.']); ?>
       </div>
-      <ul style="flex:1 1 auto;display:flex;flex-direction:column;gap:16px" data-availability></ul> <?php /* telemetria, comunicação e energia */ ?>
+      <ul style="flex:1 1 auto;display:flex;flex-direction:column;gap:16px" data-availability></ul>
     </div>
     <?php echo aq_states('availability'); ?>
   </article>
 </div>
 
-<div class="aq-grid aq-grid--4-6-5">
+<div class="aq-grid aq-grid--3-2">
   <article class="aq-card aq-card--dense">
-    <?php echo aq_card_head(['title' => 'Status dos componentes', 'tip' => 'Última verificação de cada componente monitorado.']); ?>
-    <?php echo aq_table_open('Status dos componentes'); ?>
+    <?php echo aq_card_head([
+        'title'   => 'Equipamentos da represa',
+        'tip'     => 'Situação de comunicação e horário da última leitura de cada equipamento.',
+        'actions' => '<a class="aq-card__link" href="../equipamentos.php">Gerenciar equipamentos ' . aq_icon('arrow-right') . '</a>',
+    ]); ?>
+    <?php echo aq_table_open('Equipamentos da represa'); ?>
     <table class="aq-table aq-table--tight">
       <thead>
-        <tr><th scope="col">Componente</th><th scope="col">Status</th><th scope="col">Última atualização</th></tr>
+        <tr><th scope="col">Equipamento</th><th scope="col">Grandeza</th><th scope="col">Situação</th><th scope="col">Última leitura</th></tr>
       </thead>
-      <tbody data-components></tbody> <?php /* data.components */ ?>
+      <tbody data-components></tbody>
     </table>
     <?php echo aq_table_close(); ?>
-    <p style="margin-top:12px"><a class="aq-card__link" href="#">Ver detalhes dos componentes <?php aq_the_icon('arrow-right'); ?></a></p>
   </article>
 
   <article class="aq-card aq-card--dense">
-    <?php echo aq_card_head(['title' => 'Eventos recentes', 'tip' => 'Ocorrências registradas pelo sistema.']); ?>
-    <?php echo aq_table_open('Eventos recentes'); ?>
-    <table class="aq-table aq-table--tight">
-      <thead>
-        <tr><th scope="col">Horário</th><th scope="col">Componente</th><th scope="col">Evento</th><th scope="col">Prioridade</th><th scope="col">Status</th></tr>
-      </thead>
-      <tbody data-events></tbody> <?php /* data.events */ ?>
-    </table>
-    <?php echo aq_table_close(); ?>
-    <p style="margin-top:12px"><a class="aq-card__link" href="../alertas.php">Ver todos os eventos <?php aq_the_icon('arrow-right'); ?></a></p>
-  </article>
-
-  <article class="aq-card aq-card--dense">
-    <?php echo aq_card_head(['title' => 'Próximas manutenções', 'tip' => 'Agenda de manutenções preventivas e corretivas.']); ?>
-    <?php echo aq_table_open('Próximas manutenções'); ?>
+    <?php echo aq_card_head(['title' => 'Manutenções e chamados', 'tip' => 'Manutenções programadas e chamados abertos, da data mais próxima para a mais distante.']); ?>
+    <?php echo aq_table_open('Manutenções e chamados'); ?>
     <table class="aq-table aq-table--tight">
       <thead>
         <tr><th scope="col">Data</th><th scope="col">Equipamento</th><th scope="col">Tipo</th><th scope="col">Prioridade</th></tr>
       </thead>
-      <tbody data-maintenances></tbody> <?php /* data.maintenances + chamados abertos nesta sessão */ ?>
+      <tbody data-maintenances></tbody>
     </table>
     <?php echo aq_table_close(); ?>
-    <button class="aq-btn aq-btn--outline" type="button" style="width:100%;margin-top:14px" data-modal-open="modal-chamado"> <?php /* abre o modal abaixo */ ?>
-      <?php aq_the_icon('external-link'); ?><span>Abrir chamado</span>
+    <button class="aq-btn aq-btn--outline" type="button" style="width:100%;margin-top:14px" data-modal-open="modal-chamado">
+      <?php aq_the_icon('plus'); ?><span>Abrir chamado</span>
     </button>
   </article>
 </div>
 
-<!-- ------------------------------- modal de abertura de chamado (demo) ---- -->
+<!-- --------------------------------------- modal de abertura de chamado -->
 <div class="aq-modal" id="modal-chamado" role="dialog" aria-modal="true" aria-labelledby="modal-chamado-titulo" hidden>
   <div class="aq-modal__box">
     <div class="aq-modal__head">
@@ -106,29 +93,26 @@ echo aq_monitor_bar([                                                     // est
       </button>
     </div>
 
-    <form id="form-chamado"> <?php /* envio tratado pelo operation.js: grava no sessionStorage, sem ir ao servidor */ ?>
+    <form id="form-chamado" novalidate> <?php /* enviado pelo operation.js; a validação é feita no servidor */ ?>
       <div class="aq-field" style="margin-bottom:14px">
         <label class="aq-field__label" for="chamado-equipamento">Equipamento</label>
-        <select class="aq-select" id="chamado-equipamento" style="width:100%" data-chamado-equipamentos></select> <?php /* opções = componentes da represa (preenchidas pelo JS) */ ?>
+        <select class="aq-select" id="chamado-equipamento" name="equipment_id" style="width:100%"></select> <?php /* equipamentos da represa, preenchidos pelo JS */ ?>
+        <span class="aq-field__error" data-error-for="equipment_id" hidden></span>
       </div>
       <div class="aq-field" style="margin-bottom:14px">
         <label class="aq-field__label" for="chamado-prioridade">Prioridade</label>
-        <select class="aq-select" id="chamado-prioridade" style="width:100%">
+        <select class="aq-select" id="chamado-prioridade" name="priority" style="width:100%">
           <option value="low">Baixa</option>
-          <option value="attention" selected>Atenção</option> <?php /* "selected": opção marcada ao abrir */ ?>
+          <option value="attention" selected>Atenção</option>
           <option value="critical">Crítica</option>
         </select>
+        <span class="aq-field__error" data-error-for="priority" hidden></span>
       </div>
       <div class="aq-field">
         <label class="aq-field__label" for="chamado-descricao">Descrição</label>
-        <textarea class="aq-input" id="chamado-descricao" rows="3" style="height:auto;padding:10px 14px;width:100%"
-                  placeholder="Descreva a ocorrência"></textarea>
-      </div>
-
-      <div class="aq-demo-note" style="margin-top:16px">
-        <?php aq_the_icon('info'); ?>
-        <span><strong>Modo demonstrativo.</strong> O chamado fica registrado apenas nesta sessão do navegador.
-        A persistência definitiva será implementada com o banco de dados.</span>
+        <textarea class="aq-input" id="chamado-descricao" name="description" rows="3" maxlength="255"
+                  style="height:auto;padding:10px 14px;width:100%" placeholder="Descreva a ocorrência"></textarea>
+        <span class="aq-field__error" data-error-for="description" hidden></span>
       </div>
 
       <div class="aq-modal__foot">
@@ -139,4 +123,4 @@ echo aq_monitor_bar([                                                     // est
   </div>
 </div>
 
-<?php aq_page_end(['scripts' => ['pages/operation.js'], 'monitor' => true]); // lógica desta tela
+<?php aq_page_end(['scripts' => ['pages/operation.js'], 'monitor' => true]);

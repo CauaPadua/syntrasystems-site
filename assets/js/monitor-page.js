@@ -1,7 +1,7 @@
 /**
  * Aquapulse — base compartilhada das telas detalhadas de Monitoramento.
  *
- * As oito telas repetem o mesmo ciclo: carregar as represas, exigir uma
+ * Essas telas repetem o mesmo ciclo: carregar as represas, exigir uma
  * represa específica, aplicar o período e recarregar ao trocar os filtros.
  * Essa lógica vive aqui uma única vez.
  *
@@ -63,11 +63,13 @@ window.AqMonitorPage = function (config) {
 
   /**
    * Busca e desenha os dados.
-   * Fluxo: blocos em "carregando" -> chamada à API -> cabeçalho comum ->
-   * blocos visíveis -> render() da tela -> rótulo "Atualizado há...".
+   * @param {boolean} silent true na recarga automática: mantém a tela visível
+   *                         enquanto os novos dados chegam, em vez de mostrar "carregando"
    */
-  function load() {
-    scopes.forEach(function (s) { S.setState(s, 'loading'); });
+  function load(silent) {
+    if (silent !== true) {
+      scopes.forEach(function (s) { S.setState(s, 'loading'); });
+    }
 
     return config.fetch(currentParams()).then(function (r) {
       var d = r.data;
@@ -76,10 +78,11 @@ window.AqMonitorPage = function (config) {
       if (d.reservoir) {
         S.fill({                                                      // preenche os elementos data-field da barra de contexto
           'reservoir.code': d.reservoir.code,
-          'reservoir.telemetry': d.reservoir.telemetry_label
+          'reservoir.telemetry': d.reservoir.telemetry_label,
+          'reservoir.last_reading': d.reservoir.last_reading
         });
         document.querySelectorAll('[data-field-class="reservoir.telemetry"]').forEach(function (el) {
-          el.className = 'aq-dot aq-dot--' + (d.reservoir.telemetry === 'online' ? 'normal' : 'attention'); // bolinha verde (online) ou amarela (parcial)
+          el.className = 'aq-dot aq-dot--' + ({ online: 'normal', partial: 'attention', offline: 'offline' }[d.reservoir.telemetry] || 'attention');
         });
       }
 
@@ -101,7 +104,7 @@ window.AqMonitorPage = function (config) {
         });
       }
 
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);        // atualiza "Atualizado há 2 min" na topbar
+      S.setUpdated(r.meta);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;                                   // requisição cancelada por outra mais nova: não é erro
 
@@ -134,7 +137,7 @@ window.AqMonitorPage = function (config) {
   }
 
   scopes.forEach(function (s) { S.onRetry(s, load); });               // botões "Tentar novamente" de cada bloco recarregam os dados
-  S.onReload(load);                                                   // botão de atualizar da topbar também
+  S.onReload(function () { return load(true); });
 
   /* ---------------------------------------------------------------- início */
   loadReservoirs()                                                    // 1. carrega as represas

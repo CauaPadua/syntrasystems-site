@@ -55,7 +55,7 @@
       'sel.ph.value': F.num(m.ph, 1), 'sel.ph.foot': '',
       'sel.ph.badge': { html: S.badge('Neutro', 'normal') },          // badge fixo "Neutro"
       'sel.rain.value': F.num(m.rain, 1), 'sel.rain.foot': 'Na bacia',
-      'sel.duration.value': F.int(m.duration), 'sel.duration.foot': 'Com o volume atual',
+      'sel.duration.value': F.int(m.duration), 'sel.duration.foot': 'Volume ÷ consumo médio',
       'sel.operation.value': { html: '<span style="color:var(--aq-success)">' + m.status.label + '</span>' }, // sempre em verde
       'sel.operation.foot': 'Todas as condições dentro dos limites'   // texto fixo, mesmo para represa em atenção
     });
@@ -90,7 +90,7 @@
         + '<strong style="flex:1 1 auto;font-size:.95rem">' + S.esc(m.name) + '</strong>'
         + S.badge(m.status.label, m.status.key) + '</div>'
         + '<div class="aq-form-row" style="padding:6px 0"><span>Município</span><strong>' + S.esc(m.city) + '</strong></div>'
-        + '<div class="aq-form-row" style="padding:6px 0"><span>Última atualização</span><strong>' + S.esc(m.updated_at) + '</strong></div>'
+        + '<div class="aq-form-row" style="padding:6px 0"><span>Última leitura</span><strong>' + S.esc(m.updated_at) + '</strong></div>'
         + '</button>';
     }).join('');
   }
@@ -129,7 +129,7 @@
       selectedId = allMarkers.some(function (m) { return m.id === ctxId; }) ? ctxId : allMarkers[0].id;
 
       refresh();
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);
+      S.setUpdated(r.meta);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;
       S.setState('panel', 'error', err.message);

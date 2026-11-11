@@ -1,8 +1,11 @@
 /** Aquapulse — Central de alertas. */
 /*
- * Página: dashboard/alertas.php | API: GET api/v1/alerts.php.
- * Fluxo: empresas -> represas -> load() (cards, tabela, gráfico, canais).
- * A busca por texto e as ações "assumir/resolver" acontecem só no navegador.
+ * Página: dashboard/alertas.php
+ * API: GET api/v1/alerts.php (lista, números do topo e gráfico)
+ *      POST api/v1/alerts.php (assumir / resolver — grava em alerts e alert_timeline)
+ *
+ * Fluxo: empresas -> represas -> load(). A busca por texto filtra só no
+ * navegador; severidade e status são filtrados no servidor.
  */
 (function () {
   'use strict';
@@ -18,29 +21,13 @@
   var selSeverity = document.getElementById('filtro-severidade');
   var selStatus = document.getElementById('filtro-status');
   var search = document.getElementById('busca-alerta');
+  var btnAck = document.querySelector('[data-ack]');
+  var btnResolve = document.querySelector('[data-resolve]');
 
-  var rows = [];                                                      // alertas recebidos da API (antes da busca por texto)
-  var selectedId = null;                                              // alerta aberto no painel de detalhes
+  var rows = [];            // alertas recebidos da API (antes da busca por texto)
+  var selectedId = null;    // alerta aberto no painel de detalhes
 
-  /*
-   * Ações locais (assumir / resolver) em modo DEMONSTRATIVO.
-   * Vivem apenas nesta sessão do navegador — não há persistência real.
-   */
-  var DEMO_KEY = 'aq.demo.alerts';                                    // guarda um mapa { idDoAlerta: novoStatus }
-
-  function readLocal() {
-    try { return JSON.parse(sessionStorage.getItem(DEMO_KEY) || '{}'); } catch (e) { return {}; }
-  }
-  function writeLocal(map) {
-    try { sessionStorage.setItem(DEMO_KEY, JSON.stringify(map)); } catch (e) { /* segue sem persistir */ }
-  }
-  /** Status efetivo de um alerta: o alterado na sessão, ou o original da API. */
-  function localStatus(id, fallback) {
-    var m = readLocal();
-    return m[id] || fallback;
-  }
-
-  var SEV_ICON = {                                                    // ícone por gravidade
+  var SEV_ICON = {
     critical: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.7"/><path d="M12 16.2h.01"/>',
     attention: '<path d="M12 4 2.8 19.5h18.4L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
     info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11.5v5"/><path d="M12 7.8h.01"/>'
@@ -52,7 +39,12 @@
       + (SEV_ICON[sev] || SEV_ICON.info) + '</svg>';
   }
 
-  /** Converte o andamento do alerta na cor do badge: resolvido verde, em análise âmbar, novo azul. */
+  /** Cor do texto para cada severidade. */
+  function sevColor(sev) {
+    return sev === 'critical' ? 'danger' : (sev === 'attention' ? 'warning' : 'info');
+  }
+
+  /** Cor do selo de andamento: resolvido verde, em análise âmbar, novo azul. */
   function statusKey(st) {
     return st === 'resolved' ? 'normal' : (st === 'analysis' ? 'attention' : 'info');
   }
@@ -66,7 +58,6 @@
 
   /* ------------------------------------------------------ painel lateral */
 
-  /** Preenche o painel de detalhes com um alerta (ou mostra "sem dados"). */
   function showDetail(a) {
     if (!a) {
       S.setState('detail', 'empty');
@@ -76,29 +67,28 @@
     selectedId = a.id;
     S.setState('detail', 'ready');
 
-    var st = localStatus(a.id, a.status);                             // considera ações feitas nesta sessão
-    var stLabel = st === 'resolved' ? 'Resolvido' : (st === 'analysis' ? 'Em análise' : 'Novo');
-
     S.fill({
-      'detail.icon': { html: '<span style="color:var(--aq-' + (a.severity === 'critical' ? 'danger' : a.severity === 'attention' ? 'warning' : 'info') + ')">' + sevIcon(a.severity) + '</span>' },
-      'detail.title': a.title,
-      'detail.severity': { html: S.badge(a.severity_label, a.severity) },
-      'detail.reservoir': 'Represa ' + a.reservoir + ' · ' + stLabel,
+      'detail.icon': { html: '<span style="color:var(--aq-' + sevColor(a.severity) + ')">' + sevIcon(a.severity) + '</span>' },
+      'detail.title': a.id + ' · ' + a.title,
+      'detail.severity': { html: S.badge(S.esc(a.severity_label), a.severity) },
+      'detail.reservoir': 'Represa ' + a.reservoir + ' · ' + a.status_label + ' · Responsável: ' + a.owner,
       'detail.value': a.current_value,
       'detail.detail': a.detail,
       'detail.threshold': a.threshold,
       'detail.threshold_detail': a.threshold_detail
     });
 
-    document.querySelector('[data-timeline]').innerHTML = a.timeline.map(function (t) { // etapas do tratamento
-      var color = t.done ? 'var(--aq-primary)' : 'var(--aq-border)'; // etapa concluída = bolinha azul; pendente = cinza
+    document.querySelector('[data-timeline]').innerHTML = a.timeline.map(function (t) {
       return '<li style="display:flex;gap:12px">'
-        + '<span style="width:11px;height:11px;border-radius:50%;flex:none;margin-top:4px;background:' + color + '"></span>'
+        + '<span style="width:11px;height:11px;border-radius:50%;flex:none;margin-top:4px;background:var(--aq-primary)"></span>'
         + '<div><strong style="display:block;font-size:.82rem;color:var(--aq-text-secondary)">' + S.esc(t.at) + '</strong>'
         + '<span style="font-size:.86rem">' + S.esc(t.text) + '</span></div></li>';
     }).join('');
 
-    // destaca a linha selecionada
+    // Só é possível assumir um alerta novo e resolver um que ainda não foi resolvido.
+    btnAck.disabled = a.status !== 'new';
+    btnResolve.disabled = a.status === 'resolved';
+
     document.querySelectorAll('[data-rows] tr').forEach(function (tr) {
       tr.classList.toggle('is-selected', tr.getAttribute('data-alert') === a.id);
     });
@@ -106,20 +96,18 @@
 
   /* --------------------------------------------------------- renderização */
 
-  /** Filtra a lista pelo texto digitado (título, represa ou métrica). */
   function applySearch(list) {
     var term = (search.value || '').trim().toLowerCase();
     if (!term) return list;
     return list.filter(function (a) {
-      return (a.title + ' ' + a.reservoir + ' ' + a.metric).toLowerCase().indexOf(term) >= 0; // indexOf >= 0 = o texto contém o termo
+      return (a.id + ' ' + a.title + ' ' + a.reservoir + ' ' + a.metric).toLowerCase().indexOf(term) >= 0;
     });
   }
 
-  /** Redesenha a tabela (após carregar, buscar ou assumir/resolver) e mantém o detalhe aberto. */
   function renderRows() {
     var list = applySearch(rows);
 
-    if (!list.length) {                                               // nenhum alerta para os filtros/busca
+    if (!list.length) {
       S.setState('alerts', 'empty');
       S.setState('detail', 'empty');
       return;
@@ -127,101 +115,88 @@
     S.setState('alerts', 'ready');
 
     document.querySelector('[data-rows]').innerHTML = list.map(function (a) {
-      var st = localStatus(a.id, a.status);
-      var stLabel = st === 'resolved' ? 'Resolvido' : (st === 'analysis' ? 'Em análise' : 'Novo');
-      var color = a.severity === 'critical' ? 'danger' : (a.severity === 'attention' ? 'warning' : 'info');
-
-      return '<tr data-alert="' + S.esc(a.id) + '" style="cursor:pointer">'   // data-alert identifica a linha no clique
-        + '<td><span class="aq-status-text" style="color:var(--aq-' + color + ')">'
+      return '<tr data-alert="' + S.esc(a.id) + '" style="cursor:pointer">'
+        + '<td><span class="aq-status-text" style="color:var(--aq-' + sevColor(a.severity) + ')">'
         + sevIcon(a.severity) + S.esc(a.severity_label) + '</span></td>'
         + '<td>' + S.esc(a.title) + '</td>'
         + '<td>' + S.esc(a.reservoir) + '</td>'
         + '<td>' + S.esc(a.metric) + '</td>'
         + '<td class="is-nowrap">' + S.esc(a.detected_at) + '</td>'
         + '<td>' + S.esc(a.owner) + '</td>'
-        + '<td>' + S.badge(stLabel, statusKey(st)) + '</td>'
+        + '<td>' + S.badge(S.esc(a.status_label), statusKey(a.status)) + '</td>'
         + '</tr>';
     }).join('');
 
-    S.fill({
-      'pagination.count': list.length,
-      'pagination.range': '1–' + list.length + ' de ' + list.length + ' alertas'
-    });
+    S.fill({ 'list.count': list.length });
 
-    var keep = list.filter(function (a) { return a.id === selectedId; })[0]; // o alerta selecionado continua na lista?
-    showDetail(keep || list[0]);                                      // se não, abre o primeiro
+    var keep = list.filter(function (a) { return a.id === selectedId; })[0];
+    showDetail(keep || list[0]);
   }
 
-  /** Busca os alertas com os filtros atuais e desenha a tela inteira. */
-  function load() {
-    S.setState('alerts', 'loading');
-    S.setState('detail', 'loading');
-    S.setState('chart', 'loading');
+  /**
+   * Busca os alertas e desenha a tela.
+   * @param {boolean} silent true nas recargas automáticas: não troca a tela por "carregando"
+   */
+  function load(silent) {
+    if (!silent) {
+      S.setState('alerts', 'loading');
+      S.setState('detail', 'loading');
+      S.setState('chart', 'loading');
+    }
 
     var ctx = Ctx.get();
-    return Api.alerts({                                               // GET alerts.php com empresa, represa, severidade e status
+    return Api.alerts({
       company_id: ctx.company_id,
       reservoir_id: ctx.reservoir_id,
       severity: selSeverity.value,
       status: selStatus.value
     }).then(function (r) {
       var d = r.data;
+      var c = d.counts;
 
-      S.fill({                                                        // cards de resumo
-        'active.value': F.int(d.counts.active), 'active.foot': 'Requerem atenção',
-        'critical.value': F.int(d.counts.critical),
-        'critical.foot': d.counts.active ? F.pct(d.counts.critical / d.counts.active * 100) + ' do total ativo' : '—', // só calcula % se houver ativos (evita dividir por zero)
-        'attention.value': F.int(d.counts.attention),
-        'attention.foot': d.counts.active ? F.pct(d.counts.attention / d.counts.active * 100) + ' do total ativo' : '—',
-        'resolved.value': F.int(d.counts.resolved), 'resolved.foot': 'Desde 00:00',
-        'avg.value': F.int(d.counts.avg_minutes), 'avg.foot': 'Últimos 7 dias'
+      S.fill({
+        'active.value': F.int(c.active), 'active.foot': c.active ? 'Requerem ação' : 'Nenhum em aberto',
+        'critical.value': F.int(c.critical),
+        'critical.foot': c.active ? F.pct(c.critical / c.active * 100) + ' dos abertos' : '—',
+        'attention.value': F.int(c.attention),
+        'attention.foot': c.active ? F.pct(c.attention / c.active * 100) + ' dos abertos' : '—',
+        'resolved.value': F.int(c.resolved), 'resolved.foot': 'Nos últimos 7 dias',
+        'avg.value': c.avg_minutes === null ? '—' : F.int(c.avg_minutes),
+        'avg.foot': c.avg_minutes === null ? 'Nenhum alerta resolvido em 7 dias' : 'Da detecção à resolução',
+        'period': d.period
       });
 
       rows = d.alerts;
       renderRows();
 
-      /* -------------------------- alertas dos últimos 7 dias (empilhado) */
+      /* ------------------- alertas dos últimos 7 dias (barras empilhadas) */
       S.setState('chart', 'ready');
-      G.guard('grafico-alertas', function () {                        // guard: se o gráfico falhar, o resto da tela continua funcionando
-      var c = d.chart;
-      G.create('grafico-alertas', {
-        type: 'bar',
-        data: {
-          labels: c.labels,
-          datasets: [                                                 // uma série por gravidade, empilhadas no mesmo dia
-            G.bar('Críticos', c.critical, G.colors.danger, { radius: 0, maxThickness: 22 }),
-            G.bar('Atenção', c.attention, G.colors.warning, { radius: 0, maxThickness: 22 }),
-            G.bar('Informação', c.info, '#3b82f6', { radius: 0, maxThickness: 22 }),
-            G.bar('Resolvidos', c.resolved, G.colors.success, { radius: 4, maxThickness: 22 })
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { stacked: true, grid: { display: false }, ticks: { color: G.colors.axis }, border: { display: false } },  // stacked: barras empilhadas
-            y: { stacked: true, beginAtZero: true, max: 10, grid: { color: G.colors.grid }, ticks: { color: G.colors.axis, stepSize: 2 }, border: { display: false } }
+      G.guard('grafico-alertas', function () {
+        var ch = d.chart;
+        G.create('grafico-alertas', {
+          type: 'bar',
+          data: {
+            labels: ch.labels,
+            datasets: [
+              G.bar('Abertos — críticos', ch.critical, G.colors.danger, { radius: 0, maxThickness: 22 }),
+              G.bar('Abertos — atenção', ch.attention, G.colors.warning, { radius: 0, maxThickness: 22 }),
+              G.bar('Abertos — informação', ch.info, '#3b82f6', { radius: 0, maxThickness: 22 }),
+              G.bar('Resolvidos', ch.resolved, G.colors.success, { radius: 4, maxThickness: 22 })
+            ]
           },
-          plugins: G.plugins('', 0)
-        }
-      });
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { stacked: true, grid: { display: false }, ticks: { color: G.colors.axis }, border: { display: false } },
+              y: { stacked: true, beginAtZero: true, suggestedMax: 4, grid: { color: G.colors.grid }, ticks: { color: G.colors.axis, precision: 0 }, border: { display: false } }
+            },
+            plugins: G.plugins('', 0)
+          }
+        });
       });
 
-      /* --------------------------------------- canais de notificação */
-      document.querySelector('[data-channels]').innerHTML = (d.channels || []).map(function (ch) {
-        return '<div class="aq-list__item">'
-          + '<span class="aq-list__icon aq-list__icon--info" aria-hidden="true">'
-          + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-          + ' stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/>'
-          + '<path d="m3.2 7.1 8 5.4a1.6 1.6 0 0 0 1.6 0l8-5.4"/></svg></span>'
-          + '<div class="aq-list__body"><p class="aq-list__title">' + S.esc(ch.label) + '</p>'
-          + '<p class="aq-list__meta">' + S.esc(ch.target) + '</p></div>'
-          + '<div class="aq-list__side">' + S.badge(ch.enabled ? 'Ativo' : 'Inativo', ch.enabled ? 'normal' : 'neutral') + '</div></div>';
-      }).join('');
-
-      var upd = document.querySelector('[data-context-updated]');
-      if (upd) upd.textContent = r.meta.updated_label || '';
-      S.setUpdated(r.meta.generated_at, r.meta.updated_label);
+      S.setUpdated(r.meta);
     }).catch(function (err) {
       if (Api.isAbort(err)) return;
       S.setState('alerts', 'error', err.message);
@@ -230,9 +205,25 @@
     });
   }
 
+  /** Envia "assumir" ou "resolver" e recarrega a lista com o que ficou gravado. */
+  function act(action, titulo) {
+    if (!selectedId) return;
+
+    btnAck.disabled = true;
+    btnResolve.disabled = true;
+
+    Api.alertAction(action, selectedId).then(function () {
+      S.notify(titulo, 'A alteração foi gravada no alerta ' + selectedId + '.', 'info');
+      return load(true);
+    }).catch(function (err) {
+      S.notify('Não foi possível concluir', err.message, 'error');
+      return load(true);
+    });
+  }
+
   /* ----------------------------------------------------------- eventos */
 
-  selCompany.addEventListener('change', function () {                 // troca de empresa: recarrega represas e depois os alertas
+  selCompany.addEventListener('change', function () {
     Ctx.set({ company_id: selCompany.value });
     Api.reservoirs(selCompany.value).then(function (r) {
       fillSelect(selReservoir, r.data.reservoirs, 'Todas as represas');
@@ -246,50 +237,36 @@
     load();
   });
 
-  selSeverity.addEventListener('change', load);                       // severidade e status são filtrados no servidor
-  selStatus.addEventListener('change', load);
-  search.addEventListener('input', renderRows);                       // a busca por texto filtra só no navegador, sem nova requisição
+  selSeverity.addEventListener('change', function () { load(); });
+  selStatus.addEventListener('change', function () { load(); });
+  search.addEventListener('input', renderRows);
 
-  document.addEventListener('click', function (e) {                   // um único ouvinte para linhas e botões (delegação de eventos)
+  document.querySelector('[data-rows]').addEventListener('click', function (e) {
     var tr = e.target.closest('[data-alert]');
-    if (tr) {                                                         // clicou em uma linha da tabela
-      var a = rows.filter(function (x) { return x.id === tr.getAttribute('data-alert'); })[0];
-      if (a) showDetail(a);
-      return;
-    }
-
-    if (e.target.closest('[data-ack]')) {                             // botão "Assumir alerta"
-      if (!selectedId) return;
-      var m = readLocal(); m[selectedId] = 'analysis'; writeLocal(m); // marca como "em análise" só nesta sessão
-      S.notify('Alerta assumido', 'Registro demonstrativo mantido apenas nesta sessão.', 'info');
-      renderRows();
-      return;
-    }
-
-    if (e.target.closest('[data-resolve]')) {                         // botão "Marcar como resolvido"
-      if (!selectedId) return;
-      var mm = readLocal(); mm[selectedId] = 'resolved'; writeLocal(mm);
-      S.notify('Alerta resolvido', 'Registro demonstrativo mantido apenas nesta sessão.', 'info');
-      renderRows();
-    }
+    if (!tr) return;
+    var a = rows.filter(function (x) { return x.id === tr.getAttribute('data-alert'); })[0];
+    if (a) showDetail(a);
   });
 
-  S.onRetry('alerts', load);
-  S.onRetry('detail', load);
-  S.onRetry('chart', load);
-  S.onReload(load);
+  btnAck.addEventListener('click', function () { act('acknowledge', 'Alerta assumido'); });
+  btnResolve.addEventListener('click', function () { act('resolve', 'Alerta resolvido'); });
+
+  S.onRetry('alerts', function () { load(); });
+  S.onRetry('detail', function () { load(); });
+  S.onRetry('chart', function () { load(); });
+  S.onReload(function () { return load(true); });   // recarga automática: mantém a tela e o alerta selecionado
 
   /* ------------------------------------------------------------- início */
-  Api.companies()                                                     // 1. empresas
+  Api.companies()
     .then(function (r) {
       fillSelect(selCompany, r.data.companies, 'Todas as empresas');
       selCompany.value = Ctx.get().company_id;
-      return Api.reservoirs(Ctx.get().company_id);                    // 2. represas da empresa do contexto
+      return Api.reservoirs(Ctx.get().company_id);
     })
     .then(function (r) {
       fillSelect(selReservoir, r.data.reservoirs, 'Todas as represas');
       selReservoir.value = Ctx.reconcile(r.data.reservoirs).reservoir_id;
-      return load();                                                  // 3. alertas
+      return load();
     })
     .catch(function (err) {
       if (Api.isAbort(err)) return;

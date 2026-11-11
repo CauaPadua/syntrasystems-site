@@ -14,21 +14,25 @@
     scopes: ['evolution', 'occupancy', 'balance'],
     fetch: function (p) { return window.AqApi.storage(p); },
 
-    render: function (d) {                                            // d = MonitoringService::storage()
+    render: function (d) {
       var k = d.kpis;
 
       S.fill({
-        'volume.value': F.int(k.volume.value), 'volume.foot': k.volume.note,          // volumes em hm³ sem casas decimais
+        'volume.value': F.int(k.volume.value), 'volume.foot': k.volume.note,
         'capacity.value': F.int(k.capacity.value), 'capacity.foot': k.capacity.note,
         'occupancy.value': F.num(k.occupancy.value, 1), 'occupancy.foot': k.occupancy.note,
         'available.value': F.int(k.available.value), 'available.foot': k.available.note,
         'occupancy.total': 'Capacidade total: ' + F.int(d.occupancy.capacity) + ' hm³',
         'distribution.total': F.int(k.capacity.value) + ' hm³  ·  100%',
-        'insight.value': F.signed(d.insight.value, 0),                // ganho do período com sinal
-        'insight.badge': { html: S.badge(F.signed(d.insight.pct, 1) + '%', 'normal') }
+        'insight.value': F.signed(d.insight.value, 0),
+        'insight.badge': { html: S.badge(F.signed(d.insight.pct, 1) + '%', d.insight.value >= 0 ? 'normal' : 'attention') }
       });
 
-      /* ------------------- evolução com linha de capacidade máxima */
+      // ganho em verde; perda sem destaque
+      var destaque = document.querySelector('[data-insight-value]');
+      if (destaque) destaque.classList.toggle('aq-kpi__value--success', d.insight.value >= 0);
+
+      /* ------------------- evolução com a linha de capacidade máxima */
       var e = d.evolution;
       var ctx = document.getElementById('grafico-volume').getContext('2d');
 
@@ -41,14 +45,11 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: G.scales({ max: 1800, decimals: 0 }),               // teto fixo de 1.800 hm³ (acima da maior capacidade cadastrada)
+          scales: G.scales({ max: Math.ceil(e.capacity * 1.15 / 100) * 100, decimals: 0 }),   // folga acima da capacidade
           plugins: G.plugins('hm³', 0, {
             annotation: {
               annotations: {
-                capacidade: G.limitLine(                              // linha vermelha na capacidade máxima
-                  e.capacity, G.colors.danger,
-                  'Capacidade máxima (' + F.int(e.capacity) + ' hm³)', 'end'
-                )
+                capacidade: G.limitLine(e.capacity, G.colors.danger, 'Capacidade máxima (' + F.int(e.capacity) + ' hm³)', 'end')
               }
             }
           })
@@ -64,15 +65,15 @@
         max: 100,
         color: G.colors.primary,
         cutout: '76%',
-        center: [                                                     // texto no centro do medidor
+        center: [
           { text: F.pct(o.pct), size: 30 },
           { text: 'Ocupação atual', size: 12, color: '#536b96', weight: '600' }
         ]
       });
 
-      document.querySelector('[data-occupancy-legend]').innerHTML = [ // legenda: armazenado x disponível
+      document.querySelector('[data-occupancy-legend]').innerHTML = [
         { label: 'Armazenado', v: o.stored, p: o.pct, color: 'var(--aq-primary)' },
-        { label: 'Disponível', v: o.available, p: o.available_pct, color: '#c7dcfb' }
+        { label: 'Espaço livre', v: o.available, p: o.available_pct, color: '#c7dcfb' }
       ].map(function (i) {
         return '<li style="display:flex;align-items:center;gap:10px;font-size:.87rem">'
           + '<span style="width:11px;height:11px;border-radius:50%;background:' + i.color + '"></span>'
@@ -81,7 +82,7 @@
           + '<span style="color:var(--aq-text-secondary);min-width:52px;text-align:right">' + F.pct(i.p) + '</span></li>';
       }).join('');
 
-      /* ------------------------------------------- balanço hídrico */
+      /* ----- balanço hídrico: entradas acima do eixo, saídas (negativas) abaixo */
       var b = d.balance;
       G.create('grafico-balanco', {
         type: 'bar',
@@ -89,22 +90,22 @@
           labels: b.labels,
           datasets: [
             G.bar('Entrada (hm³)', b.inflow, G.colors.primary, { maxThickness: 14 }),
-            G.bar('Saída (hm³)', b.outflow, '#b6d3fe', { maxThickness: 14 }) // a API manda saídas negativas: as barras ficam abaixo do zero
+            G.bar('Saída (hm³)', b.outflow, '#b6d3fe', { maxThickness: 14 })
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {                                                   // eixos definidos à mão: o Y precisa ir de -150 a +150 (G.scales começa em zero)
-            x: { stacked: false, grid: { display: false }, ticks: { color: G.colors.axis, maxRotation: 0 }, border: { display: false } },
-            y: { min: -150, max: 150, grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } }
+          scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { color: G.colors.axis, maxRotation: 0, autoSkipPadding: 12 }, border: { display: false } },
+            y: { grid: { color: G.colors.grid }, border: { display: false }, ticks: { color: G.colors.axis } }
           },
-          plugins: G.plugins('hm³', 0)
+          plugins: G.plugins('hm³', 2)
         }
       });
 
       /* --------------------------------- distribuição da capacidade */
-      document.querySelector('[data-distribution]').innerHTML = d.distribution.map(function (i) { // volume útil, reserva técnica, disponível
+      document.querySelector('[data-distribution]').innerHTML = d.distribution.map(function (i) {
         return '<div class="aq-list__item">'
           + '<span class="aq-list__icon aq-list__icon--' + i.status + '" aria-hidden="true">'
           + '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
@@ -125,9 +126,9 @@
           + '<td class="is-num">' + F.int(r.volume) + '</td>'
           + '<td class="is-num">' + F.num(r.occupancy, 1) + '</td>'
           + '<td class="is-num">' + F.signed(r.variation, 0) + '</td>'
-          + '<td><span class="aq-status-text"><span class="aq-dot aq-dot--normal"></span>Normal</span></td>' // status fixo "Normal"
+          + '<td>' + S.badge(r.status.label, r.status.key) + '</td>'
           + '</tr>';
-      }).join('');
+      }).join('') || '<tr><td colspan="5">Nenhuma leitura de volume nos últimos 60 dias.</td></tr>';
     }
   });
 })();

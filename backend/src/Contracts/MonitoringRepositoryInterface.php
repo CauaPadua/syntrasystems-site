@@ -1,116 +1,120 @@
 <?php
 /**
- * Aquapulse — contrato de acesso aos dados de monitoramento.
+ * Aquapulse — contrato de LEITURA dos dados de monitoramento.
  *
- * ============================================================================
- * PONTO DE TROCA PARA O BANCO DE DADOS
- * ============================================================================
+ * Services e endpoints de consulta dependem apenas desta interface. Há duas
+ * implementações, escolhidas por Support\Container:
+ *   Repositories\PdoMonitoringRepository        lê o MySQL (uso normal);
+ *   Repositories\Mock\MockMonitoringRepository  lê storage/mock (sem banco).
+ * As duas devolvem as mesmas estruturas, então as telas não mudam.
  *
- * Services e endpoints dependem APENAS desta interface — nunca dos arquivos
- * simulados. Para conectar o banco, a equipe responsável deve criar
- * `backend/src/Repositories/Pdo/PdoMonitoringRepository.php` implementando
- * exatamente estes métodos e devolvendo as mesmas estruturas, e trocar a
- * instância em `backend/src/Support/Container.php`.
- *
- * Nenhuma tela, JavaScript, endpoint ou contrato de API precisa ser alterado.
- *
- * Os campos esperados de cada entidade são os de backend/storage/mock/monitoring.php.
- *
- * Situação atual do código: a implementação com banco já existe em
- * backend/src/Repositories/PdoMonitoringRepository.php (sem a subpasta Pdo/),
- * e o Container já escolhe entre ela e a versão simulada automaticamente.
- *
- * Implementações:
- *  - Repositories\Mock\MockMonitoringRepository -> lê backend/storage/mock/monitoring.php
- *  - Repositories\PdoMonitoringRepository       -> lê as tabelas MySQL
+ * Operações de escrita não fazem parte deste contrato — ficam em classes que
+ * exigem banco: EquipmentRepository, IngestService, AlertService,
+ * MaintenanceService e ReportService.
  */
 
 declare(strict_types=1);
 
 namespace Aquapulse\Contracts;
 
+use DateTimeImmutable;
+
 interface MonitoringRepositoryInterface
 {
     /**
-     * Todas as empresas.
-     *
-     * Consumido por: api/v1/companies.php e pela validação de company_id.
+     * Empresas que o usuário pode consultar.
      *
      * @return array<int,array{id:string,code:string,name:string,manager:string,status:string,status_label:string}>
      */
     public function companies(): array;
 
     /**
-     * Represas, opcionalmente filtradas por empresa.
+     * Represas com o estado atual (última leitura de cada grandeza).
      *
-     * Consumido por: api/v1/reservoirs.php, mapa, visão geral e validação de reservoir_id.
+     * Campos de cada represa:
+     *   cadastro    id, code, name, company_id, city, basin, lat, lng, coordinates_label,
+     *               capacity_hm3, useful_volume_hm3, technical_reserve_hm3,
+     *               daily_consumption_hm3, cota_spill_m, cota_alert_m, cota_min_m, cota_max_m
+     *   atuais      level_pct, cota_m, volume_hm3, inflow_m3s, outflow_m3s, ph, water_temp_c
+     *   calculados  ph_min, ph_max (24 h), rain_24h_mm, rain_7d_mm, rain_month_mm,
+     *               cota_variation_m (24 h), inflow_24h_ago_m3s, rain_prev_24h_mm
+     *   situação    sensors_online, sensors_total, open_alerts, last_reading_at (ISO ou null)
      *
-     * @param string $companyId ID da empresa ou 'all'.
-     * @return array<int,array<string,mixed>> Cada item traz os campos descritos
-     *         em backend/storage/mock/monitoring.php (chave "reservoirs").
+     * @param string $companyId ID da empresa ou 'all'
+     * @return array<int,array<string,mixed>>
      */
     public function reservoirs(string $companyId = 'all'): array;
 
-    /** Uma represa pelo ID, ou null se não existir. */
+    /** Uma represa pelo ID; null se não existir ou estiver fora do escopo do usuário. */
     public function reservoir(string $reservoirId): ?array;
 
     /**
-     * Série temporal de uma métrica.
+     * Série de uma grandeza para o gráfico, já agrupada conforme o período:
+     * 24h por hora, 7d/30d/90d por dia e 12m por mês.
      *
-     * Alimenta os gráficos de linha/barra das telas de monitoramento: "labels" é o
-     * eixo X (datas/horas) e "values" é o eixo Y, na mesma ordem.
-     *
-     * @param string $reservoirId ID da represa.
-     * @param string $metric      level|flow|inflow|outflow|ph|storage|precipitation
-     * @param string $period      24h|7d|30d|90d|12m
+     * @param string $metric level|cota|storage|inflow|outflow|ph|precipitation|water_temp
+     * @param string $period 24h|7d|30d|90d|12m
      * @return array{labels:array<int,string>,values:array<int,float>}
      */
     public function series(string $reservoirId, string $metric, string $period): array;
 
     /**
-     * Últimas leituras registradas de uma métrica.
+     * Série diária entre duas datas (inclusive) — comparação entre períodos.
      *
-     * Alimenta as tabelas "últimas leituras" das telas detalhadas.
+     * @return array{labels:array<int,string>,values:array<int,float>}
+     */
+    public function dailySeries(string $reservoirId, string $metric, DateTimeImmutable $from, DateTimeImmutable $to): array;
+
+    /**
+     * Últimas leituras para as tabelas das telas. O formato da linha depende da
+     * grandeza: 'inflow' (afluência x defluência), 'level', 'ph' ou 'storage'.
      *
      * @return array<int,array<string,mixed>>
      */
     public function readings(string $reservoirId, string $metric, int $limit = 5): array;
 
-    /** Sensores de uma represa. @return array<int,array<string,mixed>> */
+    /**
+     * Equipamentos da represa com a última leitura e a situação de comunicação.
+     *
+     * @return array<int,array{id:string,name:string,location:string,type:string,type_label:string,unit:string,
+     *         status:string,status_label:string,last_value:?float,last_reading_at:?string,last_reading_label:string}>
+     */
     public function sensors(string $reservoirId): array;
 
-    /** Pontos de coleta de pH. @return array<int,array<string,mixed>> */
+    /** Pontos de coleta de pH. @return array<int,array{name:string,ph:float,status:string}> */
     public function phPoints(string $reservoirId): array;
 
-    /** Estações pluviométricas. @return array<int,array<string,mixed>> */
+    /** Estações pluviométricas. @return array<int,array{id:string,name:string,rain_24h:float,status:string}> */
     public function rainStations(string $reservoirId): array;
 
     /**
-     * Alertas filtrados.
+     * Alertas, dos mais recentes para os mais antigos.
      *
-     * @param string $reservoirId ID ou 'all'.
+     * @param string $reservoirId ID ou 'all'
      * @param string $severity    all|critical|attention|info
      * @param string $status      all|new|analysis|resolved
      * @return array<int,array<string,mixed>>
      */
     public function alerts(string $reservoirId = 'all', string $severity = 'all', string $status = 'all'): array;
 
+    /** Quantidade de alertas ainda não resolvidos (contador do menu). */
+    public function openAlertCount(): int;
+
     /**
-     * Relatórios filtrados.
+     * Relatórios gerados.
      *
+     * @param string $type all|operational|hydrological|quality
      * @return array<int,array<string,mixed>>
      */
-    public function reports(string $reservoirId = 'all', string $type = 'all', string $status = 'all'): array;
+    public function reports(string $reservoirId = 'all', string $type = 'all'): array;
 
-    /** Relatórios agendados. @return array<int,array<string,mixed>> */
-    public function scheduledReports(): array;
-
-    /** Eventos operacionais recentes. @return array<int,array<string,mixed>> */
-    public function operationEvents(string $reservoirId): array;
-
-    /** Próximas manutenções. @return array<int,array<string,mixed>> */
+    /** Manutenções e chamados em aberto. @return array<int,array<string,mixed>> */
     public function maintenances(string $reservoirId): array;
 
-    /** Configurações e limites do sistema. @return array<string,mixed> */
-    public function settings(): array;
+    /**
+     * Limites operacionais em vigor, no formato usado por StatusRules::configure().
+     *
+     * @return array<string,array<string,array{min:?float,max:?float}>>
+     */
+    public function limits(): array;
 }

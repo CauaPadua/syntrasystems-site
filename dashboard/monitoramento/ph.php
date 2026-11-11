@@ -22,21 +22,21 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
 
 <div class="aq-grid aq-grid--4">
   <?php
-  echo aq_kpi(['id' => 'ph', 'label' => 'pH atual', 'icon' => 'droplet', 'tip' => 'Última leitura registrada pelos sensores de qualidade.']);
-  echo aq_kpi(['id' => 'min', 'label' => 'Mínimo', 'icon' => 'arrow-down-circle', 'tip' => 'Menor valor registrado no período.']);
-  echo aq_kpi(['id' => 'max', 'label' => 'Máximo', 'icon' => 'arrow-up-circle', 'tip' => 'Maior valor registrado no período.']);
-  echo aq_kpi(['id' => 'condition', 'label' => 'Condição', 'icon' => 'check-circle', 'tone' => 'success', 'tip' => 'Classificação em relação à faixa ideal configurada.']); // "Ideal" ou "Atenção"
+  echo aq_kpi(['id' => 'ph', 'label' => 'pH atual', 'icon' => 'droplet', 'tip' => 'Leitura mais recente da sonda de pH.']);
+  echo aq_kpi(['id' => 'min', 'label' => 'Mínimo', 'icon' => 'arrow-down-circle', 'tip' => 'Menor leitura das últimas 24 horas.']);
+  echo aq_kpi(['id' => 'max', 'label' => 'Máximo', 'icon' => 'arrow-up-circle', 'tip' => 'Maior leitura das últimas 24 horas.']);
+  echo aq_kpi(['id' => 'condition', 'label' => 'Condição', 'icon' => 'check-circle', 'tip' => 'Classificação em relação à faixa ideal cadastrada.']); // "Ideal" ou "Atenção"
   ?>
 </div>
 
 <div class="aq-grid aq-grid--3-2">
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Variação do pH — últimas 24 horas', 'tip' => 'Leituras do período com a faixa ideal destacada.']); ?>
+    <?php echo aq_card_head(['title' => 'Variação do pH', 'tip' => 'Média por hora (24 horas) ou por dia (7 dias), com a faixa ideal destacada.']); ?>
     <div data-content="variation" hidden>
       <?php echo aq_chart(['id' => 'grafico-ph', 'size' => 'lg', 'desc' => 'Variação do pH ao longo do período com faixa ideal.']); // data.variation + faixa ideal_min/ideal_max ?>
       <?php echo aq_legend([
           ['label' => 'pH observado', 'color' => '#0b5bea'],
-          ['label' => 'Faixa ideal (6,5 – 8,5)', 'color' => '#16a34a', 'style' => 'dashed'],
+          ['label' => 'Faixa ideal', 'color' => '#16a34a', 'style' => 'dashed'],
       ]); ?>
     </div>
     <?php echo aq_states('variation'); ?>
@@ -58,7 +58,7 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
         <span><strong>14</strong><br><span style="color:var(--aq-info)">Alcalino</span></span>
       </div>
       <p style="font-size:2rem;font-weight:800;margin-top:6px" data-field="scale.value">—</p> <?php /* pH atual em destaque */ ?>
-      <p style="font-weight:700;color:var(--aq-success)" data-field="scale.label"></p>
+      <p style="font-weight:700" data-field="scale.label"></p> <?php /* "Ideal" ou "Atenção"; a cor é aplicada pelo JS conforme o status */ ?>
       <p style="margin-top:12px" data-field="scale.range"></p>
     </div>
     <?php echo aq_states('scale'); ?>
@@ -72,18 +72,18 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
     <?php echo aq_chart(['id' => 'grafico-ph-diario', 'size' => 'md', 'axis' => 'pH', 'desc' => 'Média diária de pH nos últimos sete dias.']); // data.daily ?>
     <?php echo aq_legend([
         ['label' => 'pH médio diário', 'color' => '#0b5bea', 'style' => 'square'],
-        ['label' => 'Faixa ideal (6,5 – 8,5)', 'color' => '#16a34a', 'style' => 'dashed'],
+        ['label' => 'Faixa ideal', 'color' => '#16a34a', 'style' => 'dashed'],
     ]); ?>
     </div>
     <?php echo aq_states('daily'); ?>
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Pontos de coleta', 'tip' => 'Locais monitorados dentro do reservatório.']); ?>
+    <?php echo aq_card_head(['title' => 'Pontos de coleta', 'tip' => 'Última amostra registrada em cada ponto de coleta do reservatório.']); ?>
     <?php echo aq_table_open('Pontos de coleta de pH'); ?>
     <table class="aq-table aq-table--tight">
       <thead>
-        <tr><th scope="col">Ponto de coleta</th><th scope="col" class="is-num">pH atual</th><th scope="col">Status</th></tr>
+        <tr><th scope="col">Ponto de coleta</th><th scope="col" class="is-num">pH</th><th scope="col">Status</th></tr>
       </thead>
       <tbody data-points></tbody> <?php /* data.points (ph_points da represa) */ ?>
     </table>
@@ -91,10 +91,7 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head([
-        'title'   => 'Últimas leituras',
-        'actions' => '<a class="aq-card__link" href="#">Ver histórico completo ' . aq_icon('arrow-right') . '</a>',
-    ]); ?>
+    <?php echo aq_card_head(['title' => 'Últimas leituras', 'tip' => 'Leituras mais recentes recebidas, com o equipamento que enviou.']); ?>
     <?php echo aq_table_open('Últimas leituras de pH'); ?>
     <table class="aq-table aq-table--tight">
       <thead>
@@ -102,7 +99,7 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
           <th scope="col">Horário</th>
           <th scope="col" class="is-num">pH</th>
           <th scope="col" class="is-num">Temperatura (°C)</th>
-          <th scope="col">Ponto</th>
+          <th scope="col">Equipamento</th>
           <th scope="col">Status</th>
         </tr>
       </thead>
@@ -112,9 +109,10 @@ echo aq_monitor_bar(['periods' => ['24h' => 'Últimas 24 horas', '7d' => 'Últim
   </article>
 </div>
 
-<div class="aq-demo-note">
+<div class="aq-note">
   <?php aq_the_icon('info'); ?>
-  <span><strong>Faixa operacional configurada:</strong> 6,5 a 8,5 — definida em Configurações › Limites e alertas.</span> <?php /* mesma faixa de StatusRules::PH_MIN/PH_MAX */ ?>
+  <span><strong data-field="scale.range">Faixa ideal</strong> — vem dos limites operacionais cadastrados (Configurações › Limites) e é a mesma usada para abrir alertas.</span>
 </div>
+
 
 <?php aq_page_end(['scripts' => ['pages/ph.js'], 'monitor' => true]); // lógica desta tela

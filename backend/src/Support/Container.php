@@ -1,16 +1,17 @@
 <?php
-/*
- * Aquapulse — Container de dependências (ponto único de troca da fonte de dados).
+/**
+ * Aquapulse — ponto único de escolha da fonte de dados.
  *
- * Todo código que precisa ler usuários ou dados de monitoramento pede o
- * repositório AQUI, em vez de instanciar uma classe concreta. Assim a decisão
- * "banco de dados real ou dados simulados" fica em um só lugar:
- *   - existe a variável de ambiente DB_HOST (definida no .env) -> repositórios PDO (MySQL);
- *   - não existe                                               -> repositórios Mock (arquivos PHP em storage/mock).
+ * Quem precisa de dados pede o repositório aqui, em vez de instanciar uma
+ * classe concreta. A decisão fica em um só lugar:
+ *   - há DB_HOST no ambiente (backend/.env)  -> repositórios PDO (MySQL);
+ *   - não há                                 -> repositórios de demonstração,
+ *                                               somente leitura (storage/mock).
  *
- * Os serviços e endpoints dependem só das INTERFACES (MonitoringRepositoryInterface
- * e UserRepositoryInterface), então não percebem qual implementação está em uso.
+ * Gravações (ingestão de leituras, cadastro de equipamentos, alertas,
+ * chamados e relatórios) só existem com banco: ver requireDatabase().
  */
+
 declare(strict_types=1);
 
 namespace Aquapulse\Support;
@@ -21,41 +22,59 @@ use Aquapulse\Repositories\MockUserRepository;
 use Aquapulse\Repositories\PdoMonitoringRepository;
 use Aquapulse\Repositories\PdoUserRepository;
 use Aquapulse\Repositories\UserRepositoryInterface;
+use Aquapulse\Services\StatusRules;
+use PDO;
 
-final class Container                                                    // final: não pode ser estendida; só oferece métodos estáticos
+final class Container
 {
-    private static ?MonitoringRepositoryInterface $monitoring = null;    // instância única do repositório de monitoramento (criada na 1ª chamada)
-    private static ?UserRepositoryInterface $users = null;               // instância única do repositório de usuários
+    private static ?MonitoringRepositoryInterface $monitoring = null;
+    private static ?UserRepositoryInterface $users = null;
 
     /**
-     * Devolve o repositório de dados de monitoramento (empresas, represas, séries, alertas...).
-     * Usado por api/v1/_boot.php (todos os endpoints de dados) e por páginas do dashboard.
+     * Repositório de monitoramento (empresas, represas, séries, alertas...).
+     *
+     * @param array<int,string>|null $companies empresas que o usuário pode ver;
+     *        null = todas. Vale o escopo informado na primeira chamada da requisição.
      */
-    public static function monitoring(): MonitoringRepositoryInterface
+    public static function monitoring(?array $companies = null): MonitoringRepositoryInterface
     {
-        if (self::$monitoring === null) {                                // padrão "singleton preguiçoso": só cria quando alguém pede, e uma vez por requisição
-            if (getenv('DB_HOST')) {                                     // DB_HOST definido (via servidor ou backend/.env) = banco configurado
-                self::$monitoring = new PdoMonitoringRepository(Database::conexao()); // lê as tabelas MySQL pela conexão PDO compartilhada
-            } else {
-                self::$monitoring = new MockMonitoringRepository();      // sem banco: lê backend/storage/mock/monitoring.php
-            }
+        if (self::$monitoring === null) {
+            self::$monitoring = Database::configurado()
+                ? new PdoMonitoringRepository(Database::conexao(), $companies)
+                : new MockMonitoringRepository();
+
+            // Os limites cadastrados passam a valer para toda a classificação.
+            StatusRules::configure(self::$monitoring->limits());
         }
+
         return self::$monitoring;
     }
 
-    /**
-     * Devolve o repositório de usuários (busca por e-mail e por ID).
-     * Usado por Support\Guard para identificar o usuário da sessão.
-     */
     public static function users(): UserRepositoryInterface
     {
         if (self::$users === null) {
-            if (getenv('DB_HOST')) {                                     // mesma regra do método acima, para as duas fontes ficarem sempre coerentes
-                self::$users = new PdoUserRepository(Database::conexao()); // tabela users do MySQL
-            } else {
-                self::$users = new MockUserRepository();                 // backend/storage/mock/users.php
-            }
+            self::$users = Database::configurado()
+                ? new PdoUserRepository(Database::conexao())
+                : new MockUserRepository();
         }
+
         return self::$users;
+    }
+
+    /**
+     * Conexão para as operações de escrita. Sem banco configurado, responde
+     * 503 em JSON: o modo demonstração é somente leitura.
+     */
+    public static function requireDatabase(): PDO
+    {
+        if (!Database::configurado()) {
+            ApiResponse::error(
+                'DATABASE_REQUIRED',
+                'Esta ação precisa do banco de dados, que não está configurado neste ambiente.',
+                503
+            );
+        }
+
+        return Database::conexao();
     }
 }

@@ -7,11 +7,12 @@
  *   - menu do usuário e logout;
  *   - estados de carregando / vazio / erro;
  *   - atualização manual e automática (pausada com a aba oculta);
- *   - avisos (toast) e modais de ações demonstrativas.
+ *   - avisos (toast), modais e mensagens de validação de formulários.
  *
  * "Shell" = a moldura fixa da página (sidebar + topbar) gerada por
  * dashboard/includes/page.php. Exposto como window.AqShell; as telas usam
- * principalmente fill(), setState(), badge(), esc(), notify() e onReload().
+ * principalmente fill(), setState(), badge(), esc(), notify(), onReload(),
+ * setUpdated() e showErrors().
  */
 window.AqShell = (function () {
   'use strict';
@@ -213,20 +214,28 @@ window.AqShell = (function () {
     refreshBtn.addEventListener('click', function () { runReload(true); });
   }
 
-  /** Mostra "Atualizado há X" a partir do meta.generated_at da API. */
-  function setUpdated(iso, label) {
-    if (!updatedLabel) return;
-    // o relogio do sistema e demonstrativo e fixo: o rotulo vem pronto do servidor
-    var rel = label || window.AqFormat.relative(iso);                    // prefere o rótulo do servidor; senão calcula pelo relógio local
-    updatedLabel.textContent = 'Atualizado ' + (rel || 'agora');
+  /**
+   * Escreve no botão da topbar quando os dados da tela foram buscados.
+   * @param {{generated_at:string,source:string}} meta campo "meta" da resposta da API
+   */
+  function setUpdated(meta) {
+    if (!updatedLabel || !meta) return;
+
+    if (meta.source === 'demo') {                                        // sem banco: os valores não mudam
+      updatedLabel.textContent = 'Dados de exemplo';
+      return;
+    }
+
+    var quando = meta.generated_at ? new Date(meta.generated_at) : new Date();
+    updatedLabel.textContent = 'Atualizado às ' + quando.toLocaleTimeString('pt-BR');
   }
 
   /*
-   * Atualização automática demonstrativa: 5 minutos, pausada enquanto a aba
-   * estiver oculta e retomada ao voltar. Não altera os dados aleatoriamente —
-   * apenas relê a mesma fonte determinística.
+   * Atualização automática: a tela busca os dados de novo a cada 15 segundos,
+   * para as leituras enviadas pelos equipamentos aparecerem sem recarregar a
+   * página. Fica pausada enquanto a aba estiver oculta.
    */
-  var AUTO_INTERVAL = 5 * 60 * 1000;                                     // 5 minutos em milissegundos
+  var AUTO_INTERVAL = 15 * 1000;
 
   function startAuto() {
     stopAuto();                                                          // garante que nunca existam dois intervalos ao mesmo tempo
@@ -327,6 +336,33 @@ window.AqShell = (function () {
     return '<span class="aq-badge aq-badge--' + status + '">' + svg + '<span>' + label + '</span></span>'; // atenção: label entra sem escape; quem chama deve passar texto confiável
   }
 
+  /* ------------------------------------------------ erros de formulário */
+
+  /**
+   * Mostra as mensagens de validação devolvidas pela API abaixo dos campos.
+   * Cada campo tem um elemento [data-error-for="nome"] no formulário.
+   * @param {HTMLElement} form
+   * @param {object} details { campo: 'mensagem' } (vazio limpa tudo)
+   */
+  function showErrors(form, details) {
+    form.querySelectorAll('[data-error-for]').forEach(function (el) {
+      var campo = el.getAttribute('data-error-for');
+      var msg = (details || {})[campo] || '';
+      el.textContent = msg;
+      el.hidden = !msg;
+
+      var input = form.querySelector('[name="' + campo + '"]');
+      if (input) {
+        if (msg) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
+      }
+    });
+  }
+
+  /** O usuário logado é administrador? (a API confere de novo a cada gravação) */
+  function isAdmin() {
+    return body.getAttribute('data-role') === 'admin';
+  }
+
   /** Escapa texto que será inserido como HTML. */
   function esc(value) {
     return String(value === null || value === undefined ? '' : value)
@@ -341,6 +377,8 @@ window.AqShell = (function () {
     onReload: onReload,
     reload: function () { runReload(true); },
     setUpdated: setUpdated,
+    showErrors: showErrors,
+    isAdmin: isAdmin,
     openModal: openModal,
     closeModal: closeModal,
     fill: fill,

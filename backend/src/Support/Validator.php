@@ -20,8 +20,7 @@ final class Validator
     public const PERIODS   = ['24h', '7d', '30d', '90d', '12m'];                          // janelas de tempo aceitas nos gráficos (24 horas, 7/30/90 dias, 12 meses)
     public const SEVERITY  = ['all', 'critical', 'attention', 'info'];                    // gravidade dos alertas; "all" = sem filtro
     public const ALERT_STATUS  = ['all', 'new', 'analysis', 'resolved'];                  // andamento do alerta: novo, em análise, resolvido
-    public const REPORT_STATUS = ['all', 'done', 'processing', 'scheduled'];              // situação do relatório: concluído, processando, agendado
-    public const REPORT_TYPES  = ['all', 'operational', 'hydrological', 'quality', 'planning']; // categorias de relatório
+    public const REPORT_TYPES  = ['all', 'operational', 'hydrological', 'quality'];              // tipos de relatório (ver Services\ReportService::TYPES)
 
     /** Lê um parâmetro de query como string simples. */
     public static function query(string $key, string $default = ''): string

@@ -12,6 +12,7 @@
  *   200 { data: { user: {id, name, email, role} } } + cookie de sessão novo
  *   400 INVALID_CONTENT_TYPE / INVALID_JSON  -> requisição mal formada
  *   401 INVALID_CREDENTIALS                  -> e-mail ou senha incorretos
+ *   403 ACCOUNT_SUSPENDED                    -> senha correta, mas a conta está suspensa
  *   405 METHOD_NOT_ALLOWED                   -> método diferente de POST
  *   422 VALIDATION_ERROR (+ details por campo) -> campos vazios ou e-mail inválido
  */
@@ -77,6 +78,12 @@ $user = $auth->attempt($email, $password);                                // con
 if ($user === null) {
     // Mensagem genérica: não revela se o e-mail existe.
     JsonResponse::error('INVALID_CREDENTIALS', 'E-mail ou senha inválidos.', 401);
+}
+
+// Conta suspensa não entra. A mensagem só aparece para quem acertou a senha,
+// então não revela a terceiros quais e-mails existem.
+if ($user['status'] !== 'active') {
+    JsonResponse::error('ACCOUNT_SUSPENDED', 'Esta conta está suspensa. Procure o administrador do sistema.', 403);
 }
 
 $auth->login($user);                                                      // regenera o ID da sessão e grava user_id e horários

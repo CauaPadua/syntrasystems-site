@@ -2,50 +2,70 @@
 /**
  * Aquapulse — inicialização comum dos endpoints do sistema.
  *
- * Todo endpoint de dados inclui este arquivo. Ele garante, em um só lugar:
- *   - carregamento do back-end e do autoload;
- *   - método HTTP permitido (somente GET nos endpoints de leitura);
- *   - sessão válida — sem ela, 401 em JSON (nunca uma página HTML);
- *   - acesso ao repositório através do Container (ponto de troca do banco).
+ * Todo endpoint usado pelas telas inclui este arquivo. Ele garante, em um só lugar:
+ *   - método HTTP permitido;
+ *   - sessão válida de uma conta ativa — sem ela, 401 em JSON;
+ *   - repositório já restrito às empresas que o usuário pode consultar.
  *
- * Não emite nada por conta própria: quem responde é cada endpoint.
- *
- * O nome começa com "_" para indicar que não é um endpoint: não deve ser
- * chamado diretamente pelo navegador, só incluído pelos outros arquivos.
+ * O nome começa com "_" para indicar que não é um endpoint.
  */
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/backend/bootstrap.php';          // sobe 2 pastas (api/v1 -> raiz) e carrega o back-end; require_once evita carregar duas vezes
+require_once dirname(__DIR__, 2) . '/backend/bootstrap.php';
 
+use Aquapulse\Http\Request;
 use Aquapulse\Support\ApiResponse;
 use Aquapulse\Support\Container;
 use Aquapulse\Support\Guard;
 
 /**
- * Prepara o endpoint: valida método, exige sessão e devolve o repositório.
+ * Prepara o endpoint: valida o método, exige sessão e devolve o repositório.
  *
- * Fluxo:
- *  1. lê o método HTTP da requisição;
- *  2. se não estiver na lista permitida, responde 405 e encerra;
- *  3. exige usuário logado (sem sessão: 401 e encerra);
- *  4. devolve o repositório de dados e o usuário autenticado.
- *
- * Uso típico nos endpoints: [$repo] = aq_api_boot();
- * (a desestruturação pega só o primeiro item do array, o repositório).
+ * Uso: [$repo, $user] = aq_api_boot(['GET', 'POST']);
  *
  * @param array<int,string> $allowedMethods
  * @return array{0:\Aquapulse\Contracts\MonitoringRepositoryInterface,1:array<string,mixed>}
  */
 function aq_api_boot(array $allowedMethods = ['GET']): array
 {
-    $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')); // método da requisição atual, em maiúsculas
-
-    if (!in_array($method, $allowedMethods, true)) {                   // ex.: POST em um endpoint só de leitura
-        ApiResponse::methodNotAllowed($allowedMethods);                // 405 + cabeçalho Allow; encerra a requisição
+    if (!in_array(Request::method(), $allowedMethods, true)) {
+        ApiResponse::methodNotAllowed($allowedMethods);
     }
 
-    $user = Guard::requireApiSession();                                // só continua se houver sessão válida
+    $user = Guard::requireApiSession();
 
-    return [Container::monitoring(), $user];                           // repositório escolhido pelo Container (mock ou banco) + usuário logado
+    return [Container::monitoring(Guard::companyScope($user)), $user];
+}
+
+/**
+ * Corpo JSON de uma requisição de escrita (POST), já decodificado.
+ * Responde 400 quando o conteúdo não é um objeto JSON válido.
+ *
+ * @return array<string,mixed>
+ */
+function aq_json_body(): array
+{
+    if (!Request::hasJsonContentType()) {
+        ApiResponse::error('INVALID_CONTENT_TYPE', 'Envie os dados com Content-Type: application/json.', 400);
+    }
+
+    $body = Request::decodeJson(Request::rawBody());
+
+    if ($body === null) {
+        ApiResponse::error('INVALID_JSON', 'Corpo da requisição não é um JSON válido.', 400);
+    }
+
+    return $body;
+}
+
+/**
+ * IDs das represas que o usuário pode consultar — usado pelas operações de
+ * escrita para conferir se o registro pertence ao escopo dele.
+ *
+ * @return array<int,string>
+ */
+function aq_reservoir_ids(\Aquapulse\Contracts\MonitoringRepositoryInterface $repo): array
+{
+    return array_column($repo->reservoirs(), 'id');
 }

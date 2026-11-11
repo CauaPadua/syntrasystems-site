@@ -36,7 +36,7 @@ aq_page_start([
   <?php
   echo aq_kpi(['id' => 'cota', 'label' => 'Nível atual', 'icon' => 'waves', 'unit' => 'm', 'badge' => true, 'tip' => 'Cota atual do reservatório em metros.']);
   echo aq_kpi(['id' => 'used', 'label' => 'Capacidade utilizada', 'icon' => 'box', 'unit' => '%', 'ring' => true, 'tip' => 'Percentual da capacidade total em uso.']);
-  echo aq_kpi(['id' => 'variation', 'label' => 'Variação em 24h', 'icon' => 'chart-up', 'unit' => 'm', 'tip' => 'Diferença de cota nas últimas 24 horas.']);
+  echo aq_kpi(['id' => 'variation', 'label' => 'Variação em 24h', 'icon' => 'chart-up', 'unit' => 'm', 'tip' => 'Cota atual menos a cota de 24 horas atrás.']);
   echo aq_kpi(['id' => 'spill', 'label' => 'Cota de vertimento', 'icon' => 'arrow-down-circle', 'unit' => 'm', 'tip' => 'Cota a partir da qual o reservatório verte.']);
   echo aq_kpi(['id' => 'margin', 'label' => 'Margem disponível', 'icon' => 'ruler', 'unit' => 'm', 'tip' => 'Distância entre a cota atual e a cota de vertimento.']); // calculada no JS: cota de vertimento - cota atual
   echo aq_kpi(['id' => 'status', 'label' => 'Status operacional', 'icon' => 'shield-check', 'tone' => 'warning', 'tip' => 'Classificação atual conforme as faixas operacionais.']);
@@ -47,7 +47,7 @@ aq_page_start([
   <article class="aq-card">
     <?php echo aq_card_head([
         'title'   => 'Histórico do nível do reservatório',
-        'tip'     => 'Cota observada com as linhas de atenção, alerta e vertimento.',
+        'tip'     => 'Cota média de cada dia (ou mês), com as linhas dos limites.',
         'actions' => '<button class="aq-btn aq-btn--ghost aq-btn--sm" type="button" data-toggle-table>'   // alterna entre gráfico e tabela
                      . aq_icon('table') . '<span>Ver tabela</span></button>',
     ]); ?>
@@ -65,7 +65,7 @@ aq_page_start([
       <div data-chart-table hidden style="margin-top:14px">
         <?php echo aq_table_open('Tabela equivalente ao gráfico de níveis'); ?>
         <table class="aq-table">
-          <thead><tr><th scope="col">Data</th><th scope="col" class="is-num">Nível (%)</th></tr></thead>
+          <thead><tr><th scope="col">Data</th><th scope="col" class="is-num">Cota (m)</th></tr></thead>
           <tbody data-chart-rows></tbody> <?php /* uma linha por ponto do gráfico */ ?>
         </table>
         <?php echo aq_table_close(); ?>
@@ -85,12 +85,15 @@ aq_page_start([
     <article class="aq-card">
       <?php echo aq_card_head(['title' => 'Capacidade do reservatório', 'tip' => 'Faixas operacionais e posição do nível atual.']); ?>
       <div style="display:flex;gap:18px;align-items:center">
-        <!-- coluna de faixas desenhada em CSS; as proporções são as mesmas
-             regras de StatusRules (atenção 80%, crítico 90%) -->
+        <?php
+        // Coluna de faixas com as proporções dos limites em vigor.
+        $atencao = \Aquapulse\Services\StatusRules::levelAttention();
+        $critico = \Aquapulse\Services\StatusRules::levelCritical();
+        ?>
         <div style="flex:none;width:92px;position:relative;height:250px;border-radius:10px;overflow:hidden;display:flex;flex-direction:column">
-          <div style="flex:10;background:var(--aq-danger)"></div> <?php /* 90–100%: vermelho (flex 10 = 10% da altura) */ ?>
-          <div style="flex:10;background:var(--aq-warning)"></div> <?php /* 80–90%: amarelo */ ?>
-          <div style="flex:80;background:var(--aq-primary)"></div> <?php /* 0–80%: azul */ ?>
+          <div style="flex:<?php echo 100 - $critico; ?>;background:var(--aq-danger)"></div>
+          <div style="flex:<?php echo $critico - $atencao; ?>;background:var(--aq-warning)"></div>
+          <div style="flex:<?php echo $atencao; ?>;background:var(--aq-primary)"></div>
           <?php /* linha que marca o nível atual; o JS define "bottom" com a porcentagem e o CSS anima a mudança */ ?>
           <div data-level-marker
                style="position:absolute;left:-4px;right:-4px;height:2.5px;background:var(--aq-text);transition:bottom 600ms ease"></div>
@@ -99,18 +102,6 @@ aq_page_start([
       </div>
     </article>
 
-    <article class="aq-card">
-      <?php echo aq_card_head(['title' => 'Tendência para 7 dias', 'tip' => 'Projeção demonstrativa do nível.']); ?>
-      <div data-content="trend" hidden>
-        <p style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-          <span class="aq-kpi__icon aq-kpi__icon--success" aria-hidden="true"><?php aq_the_icon('chart-up'); ?></span>
-          <span><strong style="font-size:1.2rem" data-field="trend.value">—</strong> <?php /* diferença entre o último e o primeiro ponto da projeção */ ?>
-          <span style="display:block;font-size:.82rem;color:var(--aq-text-secondary)">Variação projetada</span></span>
-        </p>
-        <?php echo aq_chart(['id' => 'grafico-tendencia', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Projeção do nível para os próximos sete dias.']); // data.forecast ?>
-      </div>
-      <?php echo aq_states('trend'); ?>
-    </article>
   </div>
 </div>
 
@@ -134,28 +125,27 @@ aq_page_start([
       <tbody data-records></tbody> <?php /* últimas leituras (data.readings) */ ?>
     </table>
     <?php echo aq_table_close(); ?>
-    <p class="aq-card__sub" style="margin-top:12px">Atualização automática a cada 5 minutos</p>
+    <p class="aq-card__sub" style="margin-top:12px">Leituras agrupadas por minuto. A tela busca novas leituras a cada 15 segundos.</p>
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Comparativo mensal', 'tip' => 'Cota máxima, média e mínima por mês.']); ?>
+    <?php echo aq_card_head(['title' => 'Comparativo mensal', 'tip' => 'Maior, média e menor cota diária de cada um dos últimos seis meses.']); ?>
     <div data-content="monthly" hidden>
-      <?php echo aq_chart(['id' => 'grafico-mensal', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Comparativo mensal de cota máxima, média, mínima e atual.']); ?>
+      <?php echo aq_chart(['id' => 'grafico-mensal', 'size' => 'md', 'axis' => 'Cota (m)', 'desc' => 'Comparativo mensal de cota máxima, média e mínima.']); ?>
       <?php echo aq_legend([
           ['label' => 'Máxima', 'color' => '#38bdf8', 'style' => 'dashed'],
-          ['label' => 'Média', 'color' => '#16a34a', 'style' => 'dashed'],
+          ['label' => 'Média', 'color' => '#0b5bea'],
           ['label' => 'Mínima', 'color' => '#fb923c', 'style' => 'dashed'],
-          ['label' => 'Atual', 'color' => '#0b5bea'],
       ]); ?>
     </div>
     <?php echo aq_states('monthly'); ?>
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Limites configurados', 'tip' => 'Cotas definidas em Configurações › Limites e alertas.']); ?>
+    <?php echo aq_card_head(['title' => 'Limites configurados', 'tip' => 'Cotas de atenção e crítica calculadas a partir dos limites de nível; alerta e vertimento vêm do cadastro da represa.']); ?>
     <div data-limits></div> <?php /* lista de cotas: alerta, atenção, crítica e vertimento */ ?>
     <p style="margin-top:14px">
-      <a class="aq-card__link" href="configuracoes.php"><?php aq_the_icon('edit'); ?> Editar limites</a>
+      <a class="aq-card__link" href="configuracoes.php#limites">Ver limites operacionais <?php aq_the_icon('arrow-right'); ?></a>
     </p>
   </article>
 </div>

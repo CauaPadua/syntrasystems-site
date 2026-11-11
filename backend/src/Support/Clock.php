@@ -4,16 +4,11 @@
  *
  * Todas as datas do sistema passam por aqui, sempre em America/Sao_Paulo.
  *
- * MODO DEMONSTRATIVO: por padrão o "agora" é fixado em 22/05/2024 09:30 -03:00,
- * o mesmo instante das referências visuais. Isso mantém os dados simulados
- * determinísticos — a mesma requisição sempre devolve a mesma resposta, sem
- * números mudando a cada atualização.
+ * Com banco de dados configurado, "agora" é o horário real do servidor: as
+ * telas mostram as leituras conforme chegam dos equipamentos.
  *
- * Ao conectar o banco, basta AQ_DEMO_CLOCK = false para o sistema passar a usar
- * o horário real.
- *
- * Observação: no código atual a chave que controla isso é a constante
- * Clock::DEMO_MODE, logo abaixo — não existe uma constante AQ_DEMO_CLOCK.
+ * Sem banco (modo demonstração), "agora" fica fixo no instante dos dados de
+ * exemplo de backend/storage/mock/, para que eles continuem coerentes.
  */
 
 declare(strict_types=1);
@@ -25,15 +20,16 @@ use DateTimeZone;
 
 final class Clock
 {
-    /** Instante de referência das capturas usadas como modelo visual. */
+    /** Instante dos dados de exemplo, usado apenas no modo demonstração. */
     public const DEMO_INSTANT = '2024-05-22 09:30:00';
 
-    /** true = horário demonstrativo fixo; false = horário real do servidor. */
-    public const DEMO_MODE = true;
+    private const MESES_CURTOS = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-    private static ?DateTimeZone $tz = null;                              // fuso reaproveitado entre chamadas (criado uma vez)
+    private const MESES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                           'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
-    /** Fuso horário oficial do sistema (Brasília), independente da configuração do servidor. */
+    private static ?DateTimeZone $tz = null;
+
     public static function timezone(): DateTimeZone
     {
         if (self::$tz === null) {
@@ -43,65 +39,81 @@ final class Clock
     }
 
     /** "Agora" da aplicação. */
-    public static function now(): DateTimeImmutable                      // Immutable: operações como modify() devolvem uma data nova, sem alterar a original
+    public static function now(): DateTimeImmutable
     {
-        return self::DEMO_MODE
-            ? new DateTimeImmutable(self::DEMO_INSTANT, self::timezone())  // modo demonstrativo: sempre 22/05/2024 09:30
-            : new DateTimeImmutable('now', self::timezone());             // modo real: horário atual do servidor, no fuso de Brasília
+        return Database::configurado()
+            ? new DateTimeImmutable('now', self::timezone())
+            : new DateTimeImmutable(self::DEMO_INSTANT, self::timezone());
     }
 
-    /** Momento da última coleta simulada (2 minutos antes do "agora"). */
-    public static function lastUpdate(): DateTimeImmutable
+    /** Converte um texto de data (do banco ou ISO 8601) para o fuso da aplicação. */
+    public static function parse(string $texto): DateTimeImmutable
     {
-        return self::now()->modify('-2 minutes');                         // coerente com o rótulo fixo "há 2 min" enviado em ApiResponse::success()
+        return (new DateTimeImmutable($texto, self::timezone()))->setTimezone(self::timezone());
     }
 
-    /** Formato ISO 8601 (ex.: 2024-05-22T09:28:00-03:00), usado em campos de máquina como meta.generated_at. */
+    /** 2026-11-10T14:03:00-03:00 */
     public static function iso(?DateTimeImmutable $d = null): string
     {
-        return ($d ?? self::now())->format('c');                          // sem data informada, formata o "agora"
+        return ($d ?? self::now())->format('c');
     }
 
-    /** 22/05/2024 */
+    /** 2026-11-10 14:03:00 (formato aceito pelo MySQL) */
+    public static function sql(?DateTimeImmutable $d = null): string
+    {
+        return ($d ?? self::now())->format('Y-m-d H:i:s');
+    }
+
+    /** 10/11/2026 */
     public static function date(?DateTimeImmutable $d = null): string
     {
         return ($d ?? self::now())->format('d/m/Y');
     }
 
-    /** 22/05/2024 09:30 */
+    /** 10/11/2026 14:03 */
     public static function dateTime(?DateTimeImmutable $d = null): string
     {
         return ($d ?? self::now())->format('d/m/Y H:i');
     }
 
-    /** 16 Mai */
+    /** 10 Nov */
     public static function shortDate(DateTimeImmutable $d): string
     {
-        $meses = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']; // índice 0 vazio para o mês 1 cair em "Jan"
-        return $d->format('d') . ' ' . $meses[(int) $d->format('n')];     // "n" = número do mês sem zero à esquerda (1 a 12)
+        return $d->format('d') . ' ' . self::MESES_CURTOS[(int) $d->format('n')];
     }
 
-    /** Mai */
+    /** Nov */
     public static function shortMonth(DateTimeImmutable $d): string
     {
-        $meses = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']; // nomes em português montados à mão: não depende do locale do servidor
-        return $meses[(int) $d->format('n')];
+        return self::MESES_CURTOS[(int) $d->format('n')];
     }
 
-    /** 22 de maio de 2024, 09:30 */
+    /** 10 de novembro de 2026, 14:03 */
     public static function longDateTime(?DateTimeImmutable $d = null): string
     {
-        $meses = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-                  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
         $d = $d ?? self::now();
-        return $d->format('d') . ' de ' . $meses[(int) $d->format('n')] . ' de ' . $d->format('Y') . ', ' . $d->format('H:i'); // exibido na topbar do dashboard
+        return $d->format('d') . ' de ' . self::MESES[(int) $d->format('n')] . ' de ' . $d->format('Y') . ', ' . $d->format('H:i');
     }
 
-    /** 14 de agosto de 2024 */
-    public static function longDate(DateTimeImmutable $d): string
+    /**
+     * Tempo decorrido até agora, em texto: "há 12 s", "há 3 min", "há 2 h", "há 4 dias".
+     * Usado para mostrar quando chegou a última leitura.
+     */
+    public static function relative(DateTimeImmutable $d): string
     {
-        $meses = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-                  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-        return (int) $d->format('d') . ' de ' . $meses[(int) $d->format('n')] . ' de ' . $d->format('Y'); // (int) tira o zero à esquerda do dia: "04" vira "4"
+        $segundos = max(0, self::now()->getTimestamp() - $d->getTimestamp());
+
+        if ($segundos < 60) {
+            return 'há ' . $segundos . ' s';
+        }
+        if ($segundos < 3600) {
+            return 'há ' . intdiv($segundos, 60) . ' min';
+        }
+        if ($segundos < 86400) {
+            return 'há ' . intdiv($segundos, 3600) . ' h';
+        }
+
+        $dias = intdiv($segundos, 86400);
+        return 'há ' . $dias . ($dias === 1 ? ' dia' : ' dias');
     }
 }

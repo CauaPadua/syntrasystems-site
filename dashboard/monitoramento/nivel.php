@@ -36,8 +36,8 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
       <?php echo aq_chart(['id' => 'grafico-historico-nivel', 'size' => 'lg', 'axis' => '% da capacidade', 'desc' => 'Histórico do nível do reservatório com limites operacionais.']); // data.history com linhas em 80% e 90% ?>
       <?php echo aq_legend([
           ['label' => 'Nível observado (%)', 'color' => '#0b5bea'],
-          ['label' => 'Cota de atenção', 'color' => '#f59e0b', 'style' => 'dashed'],
-          ['label' => 'Cota crítica', 'color' => '#ef4444', 'style' => 'dashed'],
+          ['label' => 'Limite de atenção', 'color' => '#f59e0b', 'style' => 'dashed'],
+          ['label' => 'Limite crítico', 'color' => '#ef4444', 'style' => 'dashed'],
       ]); ?>
     </div>
     <?php echo aq_states('history'); ?>
@@ -72,23 +72,11 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
   </article>
 </div>
 
-<div class="aq-grid aq-grid--5-4-7">
+<div class="aq-grid aq-grid--1-2">
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Tendência para os próximos 7 dias', 'tip' => 'Projeção demonstrativa baseada na variação recente.']); ?>
-    <div data-content="forecast" hidden>
-    <?php echo aq_chart(['id' => 'grafico-tendencia-nivel', 'size' => 'md', 'axis' => '% da capacidade', 'desc' => 'Tendência projetada do nível para os próximos sete dias.']); // data.forecast ?>
-    <?php echo aq_legend([
-        ['label' => 'Observado', 'color' => '#0b5bea'],
-        ['label' => 'Previsão', 'color' => '#6ea8fe', 'style' => 'dashed'],
-    ]); ?>
-    </div>
-    <?php echo aq_states('forecast'); ?>
-  </article>
-
-  <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Faixas operacionais', 'tip' => 'Regras de classificação usadas em todo o sistema.']); ?>
+    <?php echo aq_card_head(['title' => 'Faixas operacionais', 'tip' => 'Regras de classificação usadas em todo o sistema e na abertura de alertas.']); ?>
     <div class="aq-list" data-bands></div> <?php /* data.bands: normal, atenção e crítico com a descrição de cada uma */ ?>
-    <p class="aq-card__sub" style="margin-top:12px">Faixas definidas conforme regras operacionais.</p>
+    <p class="aq-card__sub" style="margin-top:12px">Faixas lidas dos limites operacionais cadastrados no banco.</p>
   </article>
 
   <article class="aq-card">
@@ -110,7 +98,7 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
       <tbody data-readings></tbody> <?php /* data.readings, cada uma já com status calculado no servidor */ ?>
     </table>
     <?php echo aq_table_close(); ?>
-    <p class="aq-card__sub" style="margin-top:12px">Atualização automática a cada 5 minutos</p>
+    <p class="aq-card__sub" style="margin-top:12px">Leituras agrupadas por minuto. A tela busca novas leituras a cada 15 segundos.</p>
   </article>
 </div>
 

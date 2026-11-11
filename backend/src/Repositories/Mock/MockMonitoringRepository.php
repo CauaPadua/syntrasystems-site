@@ -1,22 +1,13 @@
 <?php
 /**
- * Aquapulse — implementação SIMULADA do repositório de monitoramento.
+ * Aquapulse — repositório do MODO DEMONSTRAÇÃO (sem banco de dados).
  *
- * Lê backend/storage/mock/monitoring.php. Não escreve nem persiste nada: é a
- * origem usada quando o sistema roda SEM banco de dados configurado.
+ * Lê backend/storage/mock/monitoring.php e devolve as mesmas estruturas do
+ * PdoMonitoringRepository, para as telas funcionarem sem MySQL. É somente
+ * leitura: não há ingestão, cadastro nem tratamento de alertas neste modo.
  *
- * DETERMINISMO: as séries são geradas por uma função senoidal com semente fixa
- * derivada do ID da represa e da métrica. Nunca usa rand()/time(). O ÚLTIMO
- * ponto de toda série é forçado ao valor atual do KPI, garantindo que gráfico
- * e card nunca se contradigam.
- *
- * SITUAÇÃO: o PdoMonitoringRepository já existe e lê o MySQL. Esta versão
- * simulada continua sendo a origem usada quando não há banco configurado
- * (sem DB_HOST no backend/.env) — desenvolvimento e demonstração offline.
- *
- * É a implementação usada hoje sempre que não existe DB_HOST (Support\Container).
- * O arquivo de dados guarda só os valores "atuais" de cada represa; o histórico
- * dos gráficos e as últimas leituras são FABRICADOS aqui, a partir desses valores.
+ * O arquivo guarda só o valor atual de cada grandeza; o histórico dos gráficos
+ * é gerado por Support\HistoryGenerator (o mesmo usado na carga do banco).
  */
 
 declare(strict_types=1);
@@ -24,234 +15,211 @@ declare(strict_types=1);
 namespace Aquapulse\Repositories\Mock;
 
 use Aquapulse\Contracts\MonitoringRepositoryInterface;
+use Aquapulse\Services\EquipmentRules;
+use Aquapulse\Services\ReservoirCurve;
+use Aquapulse\Services\StatusRules;
 use Aquapulse\Support\Clock;
+use Aquapulse\Support\HistoryGenerator;
+use DateTimeImmutable;
 
 final class MockMonitoringRepository implements MonitoringRepositoryInterface
 {
+    /** Dias de série diária gerados para cada grandeza (cobre o gráfico de 90 dias). */
+    private const DIAS = 120;
+
     /** @var array<string,mixed>|null */
-    private ?array $data = null;                                                   // conteúdo do arquivo simulado em memória; null até a primeira leitura
+    private ?array $data = null;
 
-    private string $file;                                                          // caminho do arquivo de dados
+    private string $file;
 
-    /** @param string|null $file permite usar outro arquivo de dados; por padrão, storage/mock/monitoring.php */
     public function __construct(?string $file = null)
     {
         $this->file = $file ?? AQ_BACKEND_PATH . '/storage/mock/monitoring.php';
     }
 
-    /** Carrega o arquivo simulado uma única vez por requisição. */
     private function db(): array
     {
         if ($this->data === null) {
-            $this->data = is_file($this->file) ? (array) require $this->file : []; // o arquivo faz "return [...]"; se não existir, tudo fica vazio
+            $this->data = is_file($this->file) ? (array) require $this->file : [];
         }
         return $this->data;
     }
 
-    /* ------------------------------------------------------------ empresas */
+    /* ------------------------------------------------- empresas e represas */
 
-    /** Lista de empresas do arquivo simulado. */
     public function companies(): array
     {
-        return $this->db()['companies'] ?? [];                                     // "?? []" evita erro se a chave não existir
+        return $this->db()['companies'] ?? [];
     }
 
-    /* ------------------------------------------------------------ represas */
-
-    /** Represas de todas as empresas, ou só da empresa informada. */
     public function reservoirs(string $companyId = 'all'): array
     {
-        $all = $this->db()['reservoirs'] ?? [];
-
-        if ($companyId === 'all') {
-            return $all;
+        $lista = [];
+        foreach ($this->db()['reservoirs'] ?? [] as $r) {
+            if ($companyId === 'all' || $r['company_id'] === $companyId) {
+                $lista[] = $this->completar($r);
+            }
         }
-
-        return array_values(array_filter(                                          // equivalente em memória a "WHERE company_id = ?"
-            $all,
-            static fn (array $r): bool => $r['company_id'] === $companyId
-        ));                                                                        // array_values reindexa (0, 1, 2...) para virar lista no JSON
+        return $lista;
     }
 
-    /** Uma represa pelo ID, ou null. */
     public function reservoir(string $reservoirId): ?array
     {
-        foreach ($this->db()['reservoirs'] ?? [] as $r) {                          // busca linear: são poucas represas
+        foreach ($this->db()['reservoirs'] ?? [] as $r) {
             if ($r['id'] === $reservoirId) {
-                return $r;
+                return $this->completar($r);
             }
         }
         return null;
     }
 
+    /** Acrescenta ao cadastro os campos calculados que o repositório do banco devolve. */
+    private function completar(array $r): array
+    {
+        $id = (string) $r['id'];
+        $sensores = $this->sensors($id);
+        $chuva = $this->serieDiaria($r, 'precipitation');
+        $cota = ReservoirCurve::cota($r, (float) $r['level_pct']);
+        $nivelOntem = $this->serieHoraria($r, 'level')[0];   // primeiro dos 24 pontos horários
+
+        return $r + [
+            'cota_m'             => $cota,
+            'volume_hm3'         => ReservoirCurve::storage($r, (float) $r['level_pct']),
+            'ph_min'             => round((float) $r['ph'] - 0.3, 2),
+            'ph_max'             => round((float) $r['ph'] + 0.3, 2),
+            'rain_prev_24h_mm'   => $chuva[self::DIAS - 2],
+            'rain_7d_mm'         => round(array_sum(array_slice($chuva, -7)), 1),
+            'rain_month_mm'      => round(array_sum(array_slice($chuva, -(int) Clock::now()->format('j'))), 1),
+            'cota_variation_m'   => round($cota - ReservoirCurve::cota($r, $nivelOntem), 1),
+            'inflow_24h_ago_m3s' => $this->serieHoraria($r, 'inflow')[0],
+            'sensors_online'     => count(array_filter($sensores, static fn (array $s): bool => $s['status'] === 'online')),
+            'sensors_total'      => count($sensores),
+            'open_alerts'        => count(array_filter($this->alerts($id), static fn (array $a): bool => $a['status'] !== 'resolved')),
+            'last_reading_at'    => Clock::iso(Clock::now()->modify('-2 minutes')),
+        ];
+    }
+
     /* -------------------------------------------------------------- séries */
 
-    /**
-     * Semente determinística: mesma represa + métrica sempre produz a mesma
-     * variação. Deriva de crc32 para não depender de rand().
-     *
-     * @return float número entre 0 e 0,999 usado para deslocar a onda de cada série
-     */
-    private function seed(string $reservoirId, string $metric): float
+    /** Valor atual da grandeza no arquivo (cota e volume saem do nível). */
+    private function atual(array $r, string $metric): float
     {
-        return (crc32($reservoirId . '|' . $metric) % 1000) / 1000.0;              // crc32 gera um inteiro fixo para o texto; "% 1000 / 1000" o reduz a 0.000–0.999
+        $campos = ['level' => 'level_pct', 'inflow' => 'inflow_m3s', 'outflow' => 'outflow_m3s',
+                   'ph' => 'ph', 'water_temp' => 'water_temp_c', 'precipitation' => 'rain_24h_mm'];
+
+        return (float) ($r[$campos[$metric] ?? ''] ?? 0);
     }
 
     /**
-     * Gera pontos oscilando em torno de uma base e termina exatamente no
-     * valor final informado.
+     * Série diária dos últimos DIAS dias, terminando no valor atual.
      *
-     * @param int   $count     quantidade de pontos (depende do período)
-     * @param float $end       valor do último ponto (o valor atual do KPI)
-     * @param float $amplitude tamanho da oscilação para cima e para baixo
-     * @param float $drift     quanto a série sobe do primeiro ao último ponto
-     * @param float $seed      deslocamento da onda (seed())
-     * @param int   $decimals  casas decimais de cada ponto
      * @return array<int,float>
      */
-    private function wave(int $count, float $end, float $amplitude, float $drift, float $seed, int $decimals = 1): array
+    private function serieDiaria(array $r, string $metric): array
     {
-        $values = [];
-        $start = $end - $drift;                                                    // a série começa "drift" unidades abaixo do valor final
-
-        for ($i = 0; $i < $count; $i++) {                                          // gera um ponto por posição do eixo X
-            $t = $count > 1 ? $i / ($count - 1) : 1.0;                             // posição normalizada: 0 no primeiro ponto, 1 no último
-
-            // tendência linear do início até o fim
-            $base = $start + ($end - $start) * $t;
-
-            // oscilação suave e reprodutível
-            $osc = sin(($i * 0.9) + $seed * 6.283) * $amplitude                    // onda principal (6,283 ≈ 2π: a semente desloca a onda por uma volta inteira)
-                 + sin(($i * 0.37) + $seed * 3.14) * ($amplitude * 0.45);          // segunda onda mais lenta e menor, para não parecer um seno perfeito
-
-            // a oscilação desaparece no último ponto para cravar o valor atual
-            $osc *= (1 - $t * $t);                                                 // fator 1 no início e 0 no fim: a oscilação some gradualmente
-
-            $values[] = round($base + $osc, $decimals);
+        if ($metric === 'cota' || $metric === 'storage') {
+            // derivadas do nível, ponto a ponto
+            return array_map(
+                static fn (float $nivel): float => $metric === 'cota' ? ReservoirCurve::cota($r, $nivel) : ReservoirCurve::storage($r, $nivel),
+                $this->serieDiaria($r, 'level')
+            );
         }
 
-        // garante que o último ponto é exatamente o KPI atual
-        $values[$count - 1] = round($end, $decimals);
+        $semente = HistoryGenerator::seed($r['id'] . '|' . $metric);
 
-        return $values;
+        if ($metric === 'precipitation') {
+            return HistoryGenerator::dailyRain(self::DIAS, $this->atual($r, $metric), $semente);
+        }
+
+        $cfg = HistoryGenerator::WAVES[$metric] ?? null;
+        if ($cfg === null) {
+            return array_fill(0, self::DIAS, 0.0);
+        }
+
+        return HistoryGenerator::wave(self::DIAS, $this->atual($r, $metric), $cfg['amplitude'], $cfg['drift'], $semente, $cfg['decimals']);
     }
 
     /**
-     * Rótulos do eixo X conforme o período.
+     * Série das últimas 24 horas (um ponto por hora), terminando no valor atual.
      *
-     * @param int $count recebido por REFERÊNCIA (&): o método grava nele quantos
-     *                   pontos o período tem, e series() usa esse número
-     * @return array<int,string>
+     * @return array<int,float>
      */
-    private function labels(string $period, int &$count): array
+    private function serieHoraria(array $r, string $metric): array
     {
-        $tz = Clock::timezone();
-        $now = Clock::now();                                                       // "agora" demonstrativo: 22/05/2024 09:30
-        $labels = [];
-
-        switch ($period) {
-            case '24h':                                                            // 24 pontos, um por hora, terminando na hora atual
-                $count = 24;
-                $cursor = (clone $now)->modify('-23 hours');
-                for ($i = 0; $i < $count; $i++) {
-                    $labels[] = $cursor->format('H:i');                            // "10:30", "11:30"...
-                    $cursor = $cursor->modify('+1 hour');
-                }
-                break;
-
-            case '30d':                                                            // 30 pontos diários, terminando hoje
-                $count = 30;
-                $cursor = (clone $now)->modify('-29 days');
-                for ($i = 0; $i < $count; $i++) {
-                    $labels[] = Clock::shortDate($cursor);                         // "23 Abr", "24 Abr"...
-                    $cursor = $cursor->modify('+1 day');
-                }
-                break;
-
-            case '90d':                                                            // 91 pontos diários a partir de HOJE para frente (datas futuras)
-                $count = 91;
-                $cursor = clone $now;
-                for ($i = 0; $i < $count; $i++) {
-                    $labels[] = Clock::shortDate($cursor);
-                    $cursor = $cursor->modify('+1 day');
-                }
-                break;
-
-            case '12m':                                                            // 12 pontos mensais, terminando no mês atual
-                $count = 12;
-                $cursor = (clone $now)->modify('first day of -11 months');         // "first day of" evita pular meses curtos (ex.: 31 de janeiro + 1 mês)
-                for ($i = 0; $i < $count; $i++) {
-                    $labels[] = Clock::shortMonth($cursor);                        // "Jun", "Jul"...
-                    $cursor = $cursor->modify('+1 month');
-                }
-                break;
-
-            case '7d':
-            default:                                                               // padrão: 7 pontos diários, terminando hoje
-                $count = 7;
-                $cursor = (clone $now)->modify('-6 days');
-                for ($i = 0; $i < $count; $i++) {
-                    $labels[] = Clock::shortDate($cursor);
-                    $cursor = $cursor->modify('+1 day');
-                }
-                break;
+        if ($metric === 'cota' || $metric === 'storage') {
+            return array_map(
+                static fn (float $nivel): float => $metric === 'cota' ? ReservoirCurve::cota($r, $nivel) : ReservoirCurve::storage($r, $nivel),
+                $this->serieHoraria($r, 'level')
+            );
         }
 
-        unset($tz);                                                                // $tz não é usado; é descartado aqui
-        return $labels;
+        $semente = HistoryGenerator::seed($r['id'] . '|' . $metric);
+
+        if ($metric === 'precipitation') {
+            return HistoryGenerator::spreadRain($this->atual($r, $metric), $semente);
+        }
+
+        $cfg = HistoryGenerator::WAVES[$metric] ?? null;
+        if ($cfg === null) {
+            return array_fill(0, 24, 0.0);
+        }
+
+        return HistoryGenerator::wave(24, $this->atual($r, $metric), $cfg['amplitude'] * 0.6, $cfg['drift'] * 0.15, $semente, $cfg['decimals']);
     }
 
-    /**
-     * Série temporal simulada de uma métrica.
-     *
-     * Cada métrica usa como "âncora" o valor atual da represa e parâmetros
-     * próprios de oscilação: o pH oscila pouco (0,14), o volume oscila muito (18 hm³).
-     */
     public function series(string $reservoirId, string $metric, string $period): array
     {
         $r = $this->reservoir($reservoirId);
-        if ($r === null) {                                                         // represa inexistente: série vazia
+        if ($r === null) {
             return ['labels' => [], 'values' => []];
         }
 
-        $count = 7;                                                                // valor inicial; labels() sobrescreve pela referência
-        $labels = $this->labels($period, $count);
-        $seed = $this->seed($reservoirId, $metric);
+        $agora = Clock::now();
 
-        // âncora final + amplitude + deriva por métrica
-        switch ($metric) {                                                         // wave(qtd, valor final, amplitude, deriva, semente, casas)
-            case 'level':                                                          // nível em %
-                $values = $this->wave($count, (float) $r['level_pct'], 1.4, 2.2, $seed, 1);
-                break;
-            case 'cota':                                                           // cota em metros
-                $values = $this->wave($count, (float) $r['cota_m'], 0.9, 2.4, $seed, 1);
-                break;
-            case 'flow':                                                           // vazão em m³/s
-                $values = $this->wave($count, (float) $r['flow_m3s'], 3.2, 9.5, $seed, 1);
-                break;
-            case 'inflow':                                                         // afluência (entrada)
-                $values = $this->wave($count, (float) $r['inflow_m3s'], 5.0, 4.2, $seed, 1);
-                break;
-            case 'outflow':                                                        // defluência (saída)
-                $values = $this->wave($count, (float) $r['outflow_m3s'], 3.6, 2.2, $seed, 1);
-                break;
-            case 'ph':                                                             // pH varia pouco e usa 2 casas decimais
-                $values = $this->wave($count, (float) $r['ph'], 0.14, 0.1, $seed, 2);
-                break;
-            case 'storage':                                                        // volume em hm³, sem casas decimais
-                $values = $this->wave($count, (float) $r['volume_hm3'], 18.0, 260.0, $seed, 0);
-                break;
-            case 'precipitation':
-                // chuva não tem tendência: valores independentes e não negativos
-                $values = [];
-                for ($i = 0; $i < $count; $i++) {
-                    $v = abs(sin(($i * 1.7) + $seed * 6.283)) * ((float) $r['rain_24h_mm'] * 0.85) + 2.0; // abs() impede chuva negativa; +2 mm de mínimo
-                    $values[] = round($v, 1);
-                }
-                $values[$count - 1] = (float) $r['rain_24h_mm'];                   // último ponto = chuva das últimas 24 h
-                break;
-            default:                                                               // métrica desconhecida: zeros, para o gráfico não quebrar
-                $values = array_fill(0, $count, 0.0);
+        if ($period === '24h') {
+            $labels = [];
+            for ($i = 23; $i >= 0; $i--) {
+                $labels[] = $agora->modify("-{$i} hours")->format('H:00');
+            }
+            return ['labels' => $labels, 'values' => $this->serieHoraria($r, $metric)];
+        }
+
+        if ($period === '12m') {
+            // um ponto por mês: média (ou soma, para chuva) de blocos de 30 dias
+            $diaria = $this->serieDiaria($r, $metric);
+            $labels = [];
+            $values = [];
+            for ($i = 3; $i >= 0; $i--) {
+                $bloco = array_slice($diaria, self::DIAS - ($i + 1) * 30, 30);
+                $labels[] = Clock::shortMonth($agora->modify("first day of -{$i} months"));
+                $values[] = round($metric === 'precipitation' ? array_sum($bloco) : array_sum($bloco) / count($bloco), 1);
+            }
+            return ['labels' => $labels, 'values' => $values];
+        }
+
+        $dias = ['7d' => 7, '30d' => 30, '90d' => 90][$period] ?? 7;
+        return $this->dailySeries($reservoirId, $metric, $agora->modify('-' . ($dias - 1) . ' days'), $agora);
+    }
+
+    public function dailySeries(string $reservoirId, string $metric, DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $r = $this->reservoir($reservoirId);
+        if ($r === null) {
+            return ['labels' => [], 'values' => []];
+        }
+
+        $diaria = $this->serieDiaria($r, $metric);
+        $hoje = Clock::now()->setTime(0, 0);
+        $labels = [];
+        $values = [];
+
+        for ($dia = $from->setTime(0, 0); $dia <= $to->setTime(0, 0); $dia = $dia->modify('+1 day')) {
+            $atras = (int) $dia->diff($hoje)->format('%r%a');   // há quantos dias foi; negativo = futuro
+            if ($atras < 0 || $atras >= self::DIAS) {
+                continue;
+            }
+            $labels[] = Clock::shortDate($dia);
+            $values[] = $diaria[self::DIAS - 1 - $atras];
         }
 
         return ['labels' => $labels, 'values' => $values];
@@ -259,10 +227,6 @@ final class MockMonitoringRepository implements MonitoringRepositoryInterface
 
     /* ------------------------------------------------------------ leituras */
 
-    /**
-     * Últimas leituras simuladas, da mais recente para a mais antiga.
-     * Cada linha tem colunas diferentes conforme a métrica (a tabela de cada tela é diferente).
-     */
     public function readings(string $reservoirId, string $metric, int $limit = 5): array
     {
         $r = $this->reservoir($reservoirId);
@@ -270,84 +234,90 @@ final class MockMonitoringRepository implements MonitoringRepositoryInterface
             return [];
         }
 
-        $rows = [];
-        $cursor = Clock::now();
+        $agora = Clock::now();
+        $linhas = [];
 
-        for ($i = 0; $i < $limit; $i++) {                                          // uma linha por leitura
-            $when = (clone $cursor)->modify('-' . ($i * 15) . ' minutes');         // leituras a cada 15 minutos, voltando no tempo
-            $step = $i * 0.1;                                                      // pequena diferença crescente em relação ao valor atual
+        if ($metric === 'storage') {
+            $volume = array_reverse($this->serieDiaria($r, 'storage'));   // do dia mais recente para trás
+            $nivel = array_reverse($this->serieDiaria($r, 'level'));
+
+            for ($i = 0; $i < $limit; $i++) {
+                $dia = $agora->modify("-{$i} days");
+                $linhas[] = [
+                    'at'        => Clock::iso($dia),
+                    'date'      => Clock::date($dia),
+                    'volume'    => round($volume[$i], 0),
+                    'occupancy' => $nivel[$i],
+                    'variation' => round($volume[$i] - $volume[$i + 1], 0),
+                    'status'    => StatusRules::fromLevel($nivel[$i]),
+                ];
+            }
+            return $linhas;
+        }
+
+        // demais tabelas: uma linha por hora, da mais recente para trás
+        $serie = fn (string $m): array => array_reverse($this->serieHoraria($r, $m));
+        $entrada = $serie('inflow');
+        $saida = $serie('outflow');
+        $nivel = $serie('level');
+        $ph = $serie('ph');
+        $temperatura = $serie('water_temp');
+
+        for ($i = 0; $i < $limit; $i++) {
+            $quando = $agora->modify("-{$i} hours");
+            $base = ['at' => Clock::iso($quando), 'time' => Clock::dateTime($quando)];
 
             switch ($metric) {
-                case 'flow':
-                    $rows[] = [
-                        'at'      => Clock::iso($when),                            // data em formato de máquina
-                        'time'    => Clock::dateTime($when),                       // data para exibição
-                        'inflow'  => round((float) $r['inflow_m3s'] - $step * 4, 1),
-                        'outflow' => round((float) $r['outflow_m3s'] - $step * 3, 1),
-                        'balance' => round(((float) $r['inflow_m3s'] - $step * 4) - ((float) $r['outflow_m3s'] - $step * 3), 1), // entrada - saída da mesma linha
-                        'status'  => 'online',
-                    ];
+                case 'inflow':
+                    $linhas[] = $base + ['inflow' => $entrada[$i], 'outflow' => $saida[$i], 'balance' => round($entrada[$i] - $saida[$i], 1)];
                     break;
 
                 case 'level':
-                    $rows[] = [
-                        'at'        => Clock::iso($when),
-                        'time'      => Clock::dateTime($when),
-                        'cota'      => round((float) $r['cota_m'] - $step * 3, 1),
-                        'level'     => round((float) $r['level_pct'] - $step * 3, 1),
-                        'variation' => round((float) $r['cota_variation_m'] - $step, 1),
-                        // a classificação fica no MonitoringService, não no repositório
-                    ];
+                    $cota = ReservoirCurve::cota($r, $nivel[$i]);
+                    $linhas[] = $base + ['cota' => $cota, 'level' => $nivel[$i], 'variation' => round($cota - ReservoirCurve::cota($r, $nivel[23]), 1)];
                     break;
 
                 case 'ph':
-                    $rows[] = [
-                        'at'     => Clock::iso($when),
-                        'time'   => Clock::dateTime($when),
-                        'ph'     => round((float) $r['ph'] - $step * 0.5, 1),
-                        'temp'   => round((float) $r['water_temp_c'] + $step * 0.5, 1), // temperatura da água (°C)
-                        'point'  => ['Entrada principal', 'Centro do reservatório', 'Próximo à barragem'][$i % 3], // alterna entre os 3 pontos de coleta
-                        'status' => 'normal',
-                    ];
+                    $linhas[] = $base + ['ph' => $ph[$i], 'temp' => $temperatura[$i], 'point' => 'Sonda de pH', 'status' => StatusRules::fromPh($ph[$i])];
                     break;
-
-                case 'storage':                                                    // volume é registrado por DIA, não a cada 15 min
-                    $day = (clone Clock::now())->modify('-' . $i . ' days');
-                    $rows[] = [
-                        'at'        => Clock::iso($day),
-                        'date'      => Clock::date($day),
-                        'volume'    => round((float) $r['volume_hm3'] - $i * 12, 0),   // 12 hm³ a menos por dia para trás
-                        'occupancy' => round((float) $r['level_pct'] - $i * 0.9, 1),
-                        'variation' => 12 + $i,
-                        'status'    => 'normal',
-                    ];
-                    break;
-
-                default:                                                           // métrica sem tabela própria
-                    $rows[] = [
-                        'at'     => Clock::iso($when),
-                        'time'   => Clock::dateTime($when),
-                        'value'  => 0,
-                        'status' => 'normal',
-                    ];
             }
         }
-
-        return $rows;
+        return $linhas;
     }
 
     /* ---------------------------------------------------- listas auxiliares */
-    /* No arquivo de dados estas listas são agrupadas pelo ID da represa:
-       'sensors' => ['santa-clara' => [...], 'rio-verde' => [...]]. */
 
     public function sensors(string $reservoirId): array
     {
-        return $this->db()['sensors'][$reservoirId] ?? [];                         // represa sem sensores cadastrados = lista vazia
+        $ultima = Clock::now()->modify('-2 minutes');
+        $lista = [];
+
+        foreach ($this->db()['sensors'][$reservoirId] ?? [] as $s) {
+            $transmitindo = $s['status'] === 'active' && $s['online'];
+            $comunicacao = EquipmentRules::communication($s['status'], $transmitindo ? $ultima : null, Clock::now());
+
+            $lista[] = [
+                'id'                 => $s['id'],
+                'name'               => $s['name'],
+                'location'           => $s['location'],
+                'type'               => $s['type'],
+                'type_label'         => EquipmentRules::label($s['type']),
+                'unit'               => EquipmentRules::unit($s['type']),
+                'status'             => $comunicacao,
+                'status_label'       => EquipmentRules::communicationLabel($comunicacao),
+                'last_value'         => null,
+                'last_reading_at'    => $transmitindo ? Clock::iso($ultima) : null,
+                'last_reading_label' => $transmitindo ? Clock::relative($ultima) : 'Nenhuma leitura',
+            ];
+        }
+        return $lista;
     }
 
     public function phPoints(string $reservoirId): array
     {
-        return $this->db()['ph_points'][$reservoirId] ?? [];
+        return array_map(static function (array $p): array {
+            return ['name' => $p['name'], 'ph' => $p['ph'], 'status' => StatusRules::fromPh((float) $p['ph'])];
+        }, $this->db()['ph_points'][$reservoirId] ?? []);
     }
 
     public function rainStations(string $reservoirId): array
@@ -355,66 +325,44 @@ final class MockMonitoringRepository implements MonitoringRepositoryInterface
         return $this->db()['rain_stations'][$reservoirId] ?? [];
     }
 
-    public function operationEvents(string $reservoirId): array
-    {
-        return $this->db()['operation_events'][$reservoirId] ?? [];
-    }
-
     public function maintenances(string $reservoirId): array
     {
         return $this->db()['maintenances'][$reservoirId] ?? [];
     }
 
-    public function scheduledReports(): array
-    {
-        return $this->db()['scheduled_reports'] ?? [];                             // não depende de represa
-    }
+    /* ------------------------------------------------- alertas e relatórios */
 
-    public function settings(): array
-    {
-        return $this->db()['settings'] ?? [];
-    }
-
-    /* ------------------------------------------------------------ filtros */
-
-    /**
-     * Alertas filtrados em memória. Cada filtro diferente de 'all' elimina os
-     * alertas que não batem; um alerta só permanece se passar pelos três.
-     */
     public function alerts(string $reservoirId = 'all', string $severity = 'all', string $status = 'all'): array
     {
-        $rows = $this->db()['alerts'] ?? [];
-
-        return array_values(array_filter($rows, static function (array $a) use ($reservoirId, $severity, $status): bool { // "use" traz os filtros para dentro da função anônima
-            if ($reservoirId !== 'all' && $a['reservoir_id'] !== $reservoirId) {   // filtro por represa
-                return false;
+        return array_values(array_filter(
+            $this->db()['alerts'] ?? [],
+            static function (array $a) use ($reservoirId, $severity, $status): bool {
+                return ($reservoirId === 'all' || $a['reservoir_id'] === $reservoirId)
+                    && ($severity === 'all' || $a['severity'] === $severity)
+                    && ($status === 'all' || $a['status'] === $status);
             }
-            if ($severity !== 'all' && $a['severity'] !== $severity) {             // filtro por gravidade
-                return false;
-            }
-            if ($status !== 'all' && $a['status'] !== $status) {                   // filtro por andamento
-                return false;
-            }
-            return true;                                                           // passou por todos os filtros ativos
-        }));
+        ));
     }
 
-    /** Relatórios filtrados em memória (mesma lógica de alerts()). */
-    public function reports(string $reservoirId = 'all', string $type = 'all', string $status = 'all'): array
+    public function openAlertCount(): int
     {
-        $rows = $this->db()['reports'] ?? [];
+        return count(array_filter($this->alerts(), static fn (array $a): bool => $a['status'] !== 'resolved'));
+    }
 
-        return array_values(array_filter($rows, static function (array $r) use ($reservoirId, $type, $status): bool {
-            if ($reservoirId !== 'all' && $r['reservoir_id'] !== $reservoirId) {
-                return false;
+    public function reports(string $reservoirId = 'all', string $type = 'all'): array
+    {
+        return array_values(array_filter(
+            $this->db()['reports'] ?? [],
+            static function (array $r) use ($reservoirId, $type): bool {
+                return ($reservoirId === 'all' || $r['reservoir_id'] === $reservoirId)
+                    && ($type === 'all' || $r['type'] === $type);
             }
-            if ($type !== 'all' && $r['type'] !== $type) {                         // filtro por tipo de relatório
-                return false;
-            }
-            if ($status !== 'all' && $r['status'] !== $status) {                   // filtro por situação do relatório
-                return false;
-            }
-            return true;
-        }));
+        ));
+    }
+
+    /** Sem banco não há tabela de limites: valem os padrões de StatusRules. */
+    public function limits(): array
+    {
+        return StatusRules::limits();
     }
 }

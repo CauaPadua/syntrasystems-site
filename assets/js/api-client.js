@@ -2,143 +2,153 @@
  * Aquapulse — cliente da API do sistema interno.
  *
  * Responsabilidades:
- *   - falar com os endpoints PHP na mesma origem (credentials: same-origin);
- *   - cancelar a requisição anterior do mesmo escopo com AbortController,
- *     evitando que uma resposta atrasada sobrescreva a atual;
+ *   - falar com os endpoints PHP na mesma origem (o cookie de sessão vai junto);
+ *   - cancelar a consulta anterior do mesmo escopo, para uma resposta atrasada
+ *     não sobrescrever a atual;
  *   - traduzir erros da API em mensagens claras;
- *   - tratar sessão expirada (401) devolvendo o usuário ao login.
+ *   - devolver o usuário ao login quando a sessão expira (401).
  *
- * Nada de token, senha ou dado de autenticação é guardado aqui:
- * a sessão vive no cookie HttpOnly, inacessível ao JavaScript.
+ * Nada de autenticação é guardado aqui: a sessão vive em um cookie HttpOnly,
+ * inacessível ao JavaScript.
  *
- * Exposto como window.AqApi. As telas chamam os atalhos (AqApi.overview(...),
- * AqApi.flow(...)), que devolvem Promises com { data, meta }.
+ * Exposto como window.AqApi. As consultas (GET) e as gravações (POST) devolvem
+ * Promises com { data, meta }.
  */
 window.AqApi = (function () {
   'use strict';
 
-  var base = document.body.getAttribute('data-api-base') || 'api/v1'; // caminho da API escrito por page.php no <body> (ex.: "../../api/v1")
+  var base = document.body.getAttribute('data-api-base') || 'api/v1';
 
-  /** Controllers ativos por escopo, para cancelar requisições superadas. */
+  /** Controllers ativos por escopo, para cancelar consultas superadas. */
   var controllers = {};
 
-  /** Erro com código da API, para as telas reagirem de forma específica. */
-  function ApiError(code, message, status) {
+  /** Erro com o código da API, para as telas reagirem de forma específica. */
+  function ApiError(code, message, status, details) {
     this.name = 'ApiError';
-    this.code = code;                                                 // ex.: NO_DATA, INVALID_PERIOD, UNAUTHENTICATED
-    this.message = message;                                           // texto já pronto para exibir
-    this.status = status;                                             // código HTTP da resposta
+    this.code = code;                 // ex.: NO_DATA, VALIDATION_ERROR, FORBIDDEN
+    this.message = message;           // texto pronto para exibir
+    this.status = status;             // código HTTP
+    this.details = details || {};     // erros por campo, nas validações de formulário
   }
-  ApiError.prototype = Object.create(Error.prototype);                // herda de Error: funciona com try/catch e .catch() como um erro comum
+  ApiError.prototype = Object.create(Error.prototype);
 
   /** Monta a query string ignorando valores vazios. */
   function qs(params) {
     var parts = [];
-    Object.keys(params || {}).forEach(function (k) {                  // percorre cada parâmetro recebido
+    Object.keys(params || {}).forEach(function (k) {
       var v = params[k];
-      if (v !== undefined && v !== null && v !== '') {                // omite parâmetros vazios em vez de mandar "?x="
-        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v)); // codifica espaços, acentos e "&" para a URL não quebrar
+      if (v !== undefined && v !== null && v !== '') {
+        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
       }
     });
-    return parts.length ? '?' + parts.join('&') : '';                 // ex.: "?reservoir_id=santa-clara&period=7d"
+    return parts.length ? '?' + parts.join('&') : '';
+  }
+
+  /** Lê a resposta e a converte em { data, meta } ou em ApiError. */
+  function handle(response) {
+    return response.text().then(function (text) {
+      var body;
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch (e) {
+        throw new ApiError('INVALID_RESPONSE', 'A resposta do servidor não pôde ser lida.', response.status);
+      }
+
+      if (response.status === 401) {
+        window.location.href = base.replace(/api\/v1\/?$/, '') + 'login.php';
+        throw new ApiError('UNAUTHENTICATED', 'Sessão expirada.', 401);
+      }
+
+      if (!response.ok || !body.success) {
+        var err = body.error || {};
+        throw new ApiError(
+          err.code || 'REQUEST_FAILED',
+          err.message || 'Não foi possível concluir a operação.',
+          response.status,
+          err.details
+        );
+      }
+
+      return { data: body.data, meta: body.meta || {} };
+    });
   }
 
   /**
-   * GET em um endpoint.
+   * Consulta (GET).
    *
    * @param {string} path   ex.: "/overview.php"
    * @param {object} params parâmetros de query
    * @param {string} scope  identificador para cancelamento (opcional)
-   * @returns {Promise<{data:object, meta:object}>}
    */
   function get(path, params, scope) {
-    // cancela a requisição anterior do mesmo escopo
+    var options = { method: 'GET', credentials: 'same-origin', headers: { Accept: 'application/json' } };
+
     if (scope) {
-      if (controllers[scope]) {                                       // ainda há uma requisição deste escopo em andamento?
-        controllers[scope].abort();                                   // cancela: a resposta antiga nunca chegará à tela
-      }
-      controllers[scope] = new AbortController();                     // controlador novo para esta requisição
+      if (controllers[scope]) controllers[scope].abort();
+      controllers[scope] = new AbortController();
+      options.signal = controllers[scope].signal;
     }
 
-    var options = {
-      method: 'GET',
-      credentials: 'same-origin',                                     // envia o cookie de sessão (AQUAPULSE_SESSION) para o mesmo domínio
-      headers: { Accept: 'application/json' }                         // avisa o servidor que a resposta esperada é JSON
-    };
-    if (scope) {
-      options.signal = controllers[scope].signal;                     // liga a requisição ao controlador, permitindo cancelar
-    }
+    return fetch(base + path + qs(params), options).then(handle);
+  }
 
-    return fetch(base + path + qs(params), options).then(function (response) {
-      return response.text().then(function (text) {                   // lê como texto primeiro para tratar corpo vazio ou não-JSON
-        var body;
-        try {
-          body = text ? JSON.parse(text) : {};
-        } catch (e) {                                                 // ex.: um erro fatal do PHP devolveu HTML em vez de JSON
-          throw new ApiError('INVALID_RESPONSE', 'A resposta do servidor não pôde ser lida.', response.status);
-        }
-
-        if (response.status === 401) {
-          // sessão expirada: volta ao login preservando o destino
-          var login = base.replace(/api\/v1\/?$/, '') + 'login.php';  // remove "api/v1" do fim do caminho para chegar à raiz do site
-          window.location.href = login + '?expired=1';                // redireciona ao login; obs.: hoje nenhum arquivo lê o parâmetro ?expired=1
-          throw new ApiError('UNAUTHENTICATED', 'Sessão expirada.', 401);
-        }
-
-        if (!response.ok || !body.success) {                          // HTTP de erro ou envelope com success = false
-          var err = body.error || {};
-          throw new ApiError(
-            err.code || 'REQUEST_FAILED',
-            err.message || 'Não foi possível carregar os dados.',
-            response.status
-          );
-        }
-
-        return { data: body.data, meta: body.meta || {} };            // sucesso: entrega só o que as telas usam
-      });
-    });
+  /**
+   * Gravação (POST com corpo JSON). Não é cancelável: uma vez enviada, a
+   * operação precisa terminar.
+   */
+  function post(path, body) {
+    return fetch(base + path, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    }).then(handle);
   }
 
   /** true quando o erro veio de um cancelamento (não deve virar mensagem). */
   function isAbort(error) {
-    return error && (error.name === 'AbortError' || error.code === 20); // 20 = código de cancelamento em navegadores mais antigos
+    return error && (error.name === 'AbortError' || error.code === 20);
   }
 
-  /** Cancela tudo que ainda estiver em voo (usado ao sair da página). */
+  /** Cancela tudo que ainda estiver em andamento (usado ao sair da página). */
   function abortAll() {
     Object.keys(controllers).forEach(function (scope) {
-      try {
-        controllers[scope].abort();
-      } catch (e) {
-        console.warn('[AqApi] não foi possível cancelar o escopo "' + scope + '": ' + e.message);
-      }
+      try { controllers[scope].abort(); } catch (e) { /* já encerrado */ }
       delete controllers[scope];
     });
   }
 
   return {
     get: get,
+    post: post,
     isAbort: isAbort,
     abortAll: abortAll,
     ApiError: ApiError,
 
-    /* atalhos por recurso — mantêm os caminhos em um único lugar */
-    /* o terceiro argumento é o escopo: todas as telas de monitoramento usam "page",
-       então trocar o filtro rapidamente cancela a busca anterior da mesma tela */
-    companies:  function ()      { return get('/companies.php', {}, 'companies'); },
-    reservoirs: function (c)     { return get('/reservoirs.php', { company_id: c }, 'reservoirs'); },
-    overview:   function (p)     { return get('/overview.php', p, 'overview'); },
-    flow:       function (p)     { return get('/monitoring/flow.php', p, 'page'); },
-    level:      function (p)     { return get('/monitoring/level.php', p, 'page'); },
-    ph:         function (p)     { return get('/monitoring/ph.php', p, 'page'); },
-    storage:    function (p)     { return get('/monitoring/storage.php', p, 'page'); },
-    rain:       function (p)     { return get('/monitoring/precipitation.php', p, 'page'); },
-    duration:   function (p)     { return get('/monitoring/duration.php', p, 'page'); },
-    operation:  function (p)     { return get('/monitoring/operation.php', p, 'page'); },
-    comparison: function (p)     { return get('/monitoring/flow-comparison.php', p, 'page'); },
-    reports:    function (p)     { return get('/reports.php', p, 'page'); },
-    alerts:     function (p)     { return get('/alerts.php', p, 'page'); },
-    mapMarkers: function (c)     { return get('/map/reservoirs.php', { company_id: c }, 'map'); },
-    settings:   function ()      { return get('/settings.php', {}, 'page'); }
+    /* consultas — os caminhos ficam em um único lugar */
+    companies:  function ()  { return get('/companies.php', {}, 'companies'); },
+    reservoirs: function (c) { return get('/reservoirs.php', { company_id: c }, 'reservoirs'); },
+    overview:   function (p) { return get('/overview.php', p, 'overview'); },
+    flow:       function (p) { return get('/monitoring/flow.php', p, 'page'); },
+    level:      function (p) { return get('/monitoring/level.php', p, 'page'); },
+    ph:         function (p) { return get('/monitoring/ph.php', p, 'page'); },
+    storage:    function (p) { return get('/monitoring/storage.php', p, 'page'); },
+    rain:       function (p) { return get('/monitoring/precipitation.php', p, 'page'); },
+    operation:  function (p) { return get('/monitoring/operation.php', p, 'page'); },
+    comparison: function (p) { return get('/monitoring/flow-comparison.php', p, 'page'); },
+    reports:    function (p) { return get('/reports.php', p, 'page'); },
+    alerts:     function (p) { return get('/alerts.php', p, 'page'); },
+    equipment:  function (p) { return get('/equipment.php', p, 'page'); },
+    mapMarkers: function (c) { return get('/map/reservoirs.php', { company_id: c }, 'map'); },
+    settings:   function ()  { return get('/settings.php', {}, 'page'); },
+
+    /* gravações */
+    saveEquipment:   function (action, fields) { return post('/equipment.php', Object.assign({ action: action }, fields)); },
+    alertAction:     function (action, id)     { return post('/alerts.php', { action: action, id: id }); },
+    createReport:    function (fields)         { return post('/reports.php', fields); },
+    openTicket:      function (fields)         { return post('/monitoring/operation.php', fields); },
+
+    /** Endereço de download do CSV de um relatório. */
+    reportUrl: function (id) { return base + '/reports.php?download=' + encodeURIComponent(id); }
   };
 })();

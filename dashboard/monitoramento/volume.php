@@ -25,7 +25,7 @@ echo aq_monitor_bar(['periods' => ['30d' => 'Últimos 30 dias', '7d' => 'Último
   echo aq_kpi(['id' => 'volume', 'label' => 'Volume atual', 'icon' => 'waves', 'unit' => 'hm³', 'tip' => 'Volume de água armazenado no momento.']);
   echo aq_kpi(['id' => 'capacity', 'label' => 'Capacidade total', 'icon' => 'ruler', 'unit' => 'hm³', 'tip' => 'Capacidade máxima de armazenamento do reservatório.']);
   echo aq_kpi(['id' => 'occupancy', 'label' => 'Ocupação', 'icon' => 'chart-up', 'unit' => '%', 'tip' => 'Percentual da capacidade total em uso.']);
-  echo aq_kpi(['id' => 'available', 'label' => 'Volume disponível', 'icon' => 'droplet', 'unit' => 'hm³', 'tip' => 'Volume ainda disponível para utilização.']); // capacidade - volume
+  echo aq_kpi(['id' => 'available', 'label' => 'Espaço livre', 'icon' => 'droplet', 'unit' => 'hm³', 'tip' => 'Capacidade total menos o volume armazenado.']);
   ?>
 </div>
 
@@ -43,7 +43,7 @@ echo aq_monitor_bar(['periods' => ['30d' => 'Últimos 30 dias', '7d' => 'Último
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Ocupação do reservatório', 'tip' => 'Proporção entre volume armazenado e volume disponível.']); ?>
+    <?php echo aq_card_head(['title' => 'Ocupação do reservatório', 'tip' => 'Proporção entre o volume armazenado e o espaço livre.']); ?>
     <div data-content="occupancy" hidden>
       <div style="max-width:280px;margin:0 auto;position:relative">
         <?php echo aq_chart(['id' => 'medidor-ocupacao', 'size' => 'md', 'desc' => 'Indicador circular da ocupação do reservatório.']); // rosca armazenado x disponível (data.occupancy) ?>
@@ -57,9 +57,9 @@ echo aq_monitor_bar(['periods' => ['30d' => 'Últimos 30 dias', '7d' => 'Último
 
 <div class="aq-grid aq-grid--5-4-7">
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Balanço hídrico diário', 'tip' => 'Entradas e saídas de água por dia no período.']); ?>
+    <?php echo aq_card_head(['title' => 'Balanço hídrico — últimos 30 dias', 'tip' => 'Vazão média de cada dia convertida em volume: 1 m³/s durante um dia equivale a 0,0864 hm³.']); ?>
     <div data-content="balance" hidden>
-    <?php echo aq_chart(['id' => 'grafico-balanco', 'size' => 'md', 'axis' => 'Volume (hm³)', 'desc' => 'Balanço hídrico diário com entradas e saídas.']); // barras positivas (entrada) e negativas (saída) ?>
+    <?php echo aq_chart(['id' => 'grafico-balanco', 'size' => 'md', 'axis' => 'hm³ por dia', 'desc' => 'Balanço hídrico diário com entradas e saídas.']); // barras positivas (entrada) e negativas (saída) ?>
     <?php echo aq_legend([
         ['label' => 'Entrada (hm³)', 'color' => '#0b5bea', 'style' => 'square'],
         ['label' => 'Saída (hm³)', 'color' => '#b6d3fe', 'style' => 'square'],
@@ -78,10 +78,7 @@ echo aq_monitor_bar(['periods' => ['30d' => 'Últimos 30 dias', '7d' => 'Último
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head([
-        'title'   => 'Histórico de volume',
-        'actions' => '<a class="aq-card__link" href="#">Ver histórico completo ' . aq_icon('arrow-right') . '</a>',
-    ]); ?>
+    <?php echo aq_card_head(['title' => 'Histórico de volume', 'tip' => 'Média diária do volume e da ocupação.']); ?>
     <?php echo aq_table_open('Histórico de volume'); ?>
     <table class="aq-table aq-table--tight">
       <thead>
@@ -89,24 +86,25 @@ echo aq_monitor_bar(['periods' => ['30d' => 'Últimos 30 dias', '7d' => 'Último
           <th scope="col">Data</th>
           <th scope="col" class="is-num">Volume (hm³)</th>
           <th scope="col" class="is-num">Ocupação (%)</th>
-          <th scope="col" class="is-num">Variação (24h)</th>
+          <th scope="col" class="is-num">Variação no dia</th>
           <th scope="col">Status</th>
         </tr>
       </thead>
       <tbody data-history></tbody> <?php /* data.history: um registro por dia */ ?>
     </table>
     <?php echo aq_table_close(); ?>
-    <p class="aq-card__sub" style="margin-top:12px">Atualização automática a cada 5 minutos</p>
+    <p class="aq-card__sub" style="margin-top:12px">O dia de hoje é recalculado a cada leitura recebida.</p>
   </article>
 </div>
 
 <article class="aq-card" style="flex-direction:row;align-items:center;gap:18px"> <?php /* faixa de destaque com o ganho no período (data.insight) */ ?>
   <span class="aq-kpi__icon aq-kpi__icon--success" aria-hidden="true"><?php aq_the_icon('chart-up'); ?></span>
   <div style="flex:1 1 auto">
-    <h3 style="font-size:1rem">Ganho acumulado no período</h3>
-    <p class="aq-card__sub">Diferença entre o primeiro e o último dia do período selecionado.</p>
+    <h3 style="font-size:1rem">Variação do volume no período</h3>
+    <p class="aq-card__sub">Diferença entre o primeiro dia do período selecionado e o volume atual.</p>
   </div>
-  <p class="aq-kpi__value aq-kpi__value--success" style="font-size:1.9rem">
+  <p class="aq-kpi__value" style="font-size:1.9rem" data-insight-value>
+
     <span data-field="insight.value">—</span><span class="aq-kpi__unit">hm³</span>
   </p>
   <span data-field="insight.badge"></span> <?php /* badge com a variação em % */ ?>

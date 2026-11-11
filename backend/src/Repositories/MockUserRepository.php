@@ -1,10 +1,9 @@
 <?php
 /**
- * Aquapulse — repositório simulado, exclusivo para desenvolvimento local.
+ * Aquapulse — usuários do modo demonstração (sem banco).
  *
- * Lê um único usuário fixo de backend/storage/mock/users.php. Não há banco,
- * não há escrita e não há cadastro nesta etapa. Será substituído por um
- * PdoUserRepository quando o banco de dados entrar no projeto.
+ * Lê backend/storage/mock/users.php. É somente leitura: não há cadastro,
+ * vínculo com empresa nem registro de login.
  */
 
 declare(strict_types=1);
@@ -13,70 +12,80 @@ namespace Aquapulse\Repositories;
 
 final class MockUserRepository implements UserRepositoryInterface
 {
-    /** @var array<int,array{id:int,name:string,email:string,role:string,password_hash:string}>|null */
-    private ?array $users = null;                                        // cache dos usuários lidos; null = arquivo ainda não carregado
+    /** @var array<int,array<string,mixed>>|null */
+    private ?array $users = null;
 
-    private string $arquivo;                                             // caminho do arquivo PHP que contém os usuários simulados
+    private string $arquivo;
 
-    /**
-     * @param string|null $arquivo permite apontar outro arquivo (útil em testes); por padrão usa storage/mock/users.php
-     */
     public function __construct(?string $arquivo = null)
     {
-        $this->arquivo = $arquivo ?? AQ_BACKEND_PATH . '/storage/mock/users.php'; // "??" usa o padrão quando nenhum caminho foi informado
+        $this->arquivo = $arquivo ?? AQ_BACKEND_PATH . '/storage/mock/users.php';
     }
 
-    /** Procura o usuário cujo e-mail é igual ao informado. */
     public function findByEmail(string $email): ?array
     {
-        foreach ($this->all() as $user) {                                // percorre todos os usuários simulados
-            if (hash_equals($user['email'], $email)) {                   // comparação em tempo constante: não revela, pelo tempo, quantos caracteres coincidiram
+        foreach ($this->carregar() as $user) {
+            if (hash_equals($user['email'], $email)) {
                 return $user;
             }
         }
-
-        return null;                                                     // nenhum e-mail igual
-    }
-
-    /** Procura o usuário pelo ID (vindo da sessão). */
-    public function findById(int $id): ?array
-    {
-        foreach ($this->all() as $user) {
-            if ($user['id'] === $id) {                                   // comparação estrita entre inteiros
-                return $user;
-            }
-        }
-
         return null;
     }
 
-    /** Carrega e valida os registros simulados uma única vez por requisição. */
-    private function all(): array
+    public function findById(int $id): ?array
     {
-        if ($this->users !== null) {                                     // já carregado: evita ler o arquivo de novo
+        foreach ($this->carregar() as $user) {
+            if ($user['id'] === $id) {
+                return $user;
+            }
+        }
+        return null;
+    }
+
+    /** Sem banco não há vínculos: o usuário de demonstração é administrador e vê tudo. */
+    public function companyIds(int $userId): array
+    {
+        return [];
+    }
+
+    public function registerLogin(int $userId): void
+    {
+        // nada a gravar no modo demonstração
+    }
+
+    public function all(): array
+    {
+        return array_map(static fn (array $u): array => [
+            'id'            => $u['id'],
+            'name'          => $u['name'],
+            'email'         => $u['email'],
+            'role'          => $u['role'],
+            'status'        => $u['status'],
+            'last_login_at' => null,
+        ], $this->carregar());
+    }
+
+    /** Carrega e normaliza os registros uma única vez por requisição. */
+    private function carregar(): array
+    {
+        if ($this->users !== null) {
             return $this->users;
         }
 
-        $dados = is_file($this->arquivo) ? require $this->arquivo : [];  // o arquivo PHP faz "return [...]"; sem arquivo, lista vazia
+        $dados = is_file($this->arquivo) ? require $this->arquivo : [];
         $this->users = [];
 
-        foreach ((array) $dados as $registro) {                          // percorre cada usuário declarado no arquivo
-            if (!is_array($registro)) {                                  // ignora entradas mal formadas
-                continue;
+        foreach ((array) $dados as $registro) {
+            if (!is_array($registro) || !isset($registro['id'], $registro['name'], $registro['email'], $registro['role'], $registro['password_hash'])) {
+                continue;                                     // registro incompleto é ignorado
             }
 
-            $obrigatorios = ['id', 'name', 'email', 'role', 'password_hash'];
-            foreach ($obrigatorios as $chave) {                          // confere se o registro tem todos os campos exigidos pela interface
-                if (!isset($registro[$chave])) {
-                    continue 2;                                          // falta um campo: pula para o PRÓXIMO registro (sai dos dois loops)
-                }
-            }
-
-            $this->users[] = [                                           // normaliza tipos e formato, igual ao repositório do banco
+            $this->users[] = [
                 'id'            => (int) $registro['id'],
                 'name'          => (string) $registro['name'],
-                'email'         => mb_strtolower(trim((string) $registro['email']), 'UTF-8'), // e-mail sempre minúsculo, para bater com o digitado já normalizado
+                'email'         => mb_strtolower(trim((string) $registro['email']), 'UTF-8'),
                 'role'          => (string) $registro['role'],
+                'status'        => (string) ($registro['status'] ?? 'active'),
                 'password_hash' => (string) $registro['password_hash'],
             ];
         }

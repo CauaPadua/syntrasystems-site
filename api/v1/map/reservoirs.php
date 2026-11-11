@@ -2,52 +2,45 @@
 /**
  * GET /api/v1/map/reservoirs.php?company_id={id|all} — marcadores do mapa.
  *
- * COORDENADAS DEMONSTRATIVAS: vêm da fonte simulada e deverão ser substituídas
- * pelas coordenadas reais do banco. O navegador nunca acessa o banco direto.
+ * Cada marcador traz a posição, o status e os indicadores mostrados no popup.
+ * As coordenadas vêm do cadastro das represas (no seed, são fictícias).
  *
- * Chamado por: AqApi.mapMarkers() — usado por assets/js/maps.js nas telas Mapas
- * e Visão geral. Cada marcador traz posição (lat/lng), status e os indicadores
- * mostrados no popup do mapa.
+ * Chamado por AqApi.mapMarkers() — telas Mapas e Visão geral.
  */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../_boot.php';                                   // este arquivo está em api/v1/map/, por isso sobe uma pasta
+require_once __DIR__ . '/../_boot.php';
 
+use Aquapulse\Services\ReservoirCurve;
 use Aquapulse\Services\StatusRules;
 use Aquapulse\Support\ApiResponse;
+use Aquapulse\Support\Clock;
 use Aquapulse\Support\Validator;
 
 [$repo] = aq_api_boot();
 
 $companyId = Validator::companyId($repo->companies());
 
-$markers = array_map(static function (array $r): array {                  // converte cada represa em um marcador
-    $status = StatusRules::fromLevel((float) $r['level_pct']);            // define a cor do marcador
-
+$markers = array_map(static function (array $r): array {
     return [
         'id'          => $r['id'],
         'name'        => $r['name'],
         'company_id'  => $r['company_id'],
         'city'        => $r['city'],
         'basin'       => $r['basin'],
-        'lat'         => $r['lat'],                                       // posição no mapa
+        'lat'         => $r['lat'],
         'lng'         => $r['lng'],
-        'coordinates' => $r['coordinates_label'],                         // texto em graus/minutos/segundos
+        'coordinates' => $r['coordinates_label'],
         'level'       => $r['level_pct'],
         'cota'        => $r['cota_m'],
-        'flow'        => $r['flow_m3s'],
+        'flow'        => $r['inflow_m3s'],
         'ph'          => $r['ph'],
         'rain'        => $r['rain_24h_mm'],
-        'duration'    => $r['duration_days'],
-        'status'      => StatusRules::describe($status),
-        'updated_at'  => '22/05/2024, ' . $r['last_reading_time'],        // a data é fixa (relógio demonstrativo); só o horário vem dos dados
+        'duration'    => ReservoirCurve::durationDays($r),
+        'status'      => StatusRules::describe(StatusRules::fromLevel((float) $r['level_pct'])),
+        'updated_at'  => $r['last_reading_at'] === null ? 'Sem leituras' : Clock::dateTime(Clock::parse($r['last_reading_at'])),
     ];
 }, $repo->reservoirs($companyId));
 
-ApiResponse::success([
-    'markers'          => $markers,
-    'coordinates_note' => 'Coordenadas demonstrativas — substituir pelo banco de dados.',
-], [
-    'company_id' => $companyId,
-]);
+ApiResponse::success(['markers' => $markers], ['company_id' => $companyId]);

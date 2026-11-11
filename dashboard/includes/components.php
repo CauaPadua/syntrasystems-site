@@ -299,8 +299,8 @@ function aq_table_close(): string
 /**
  * Barra de contexto das telas detalhadas de Monitoramento.
  *
- * Todas as oito telas usam a mesma estrutura: represa analisada, código,
- * indicador de telemetria e um seletor de período/horizonte.
+ * Todas usam a mesma estrutura: represa analisada, código, situação dos
+ * equipamentos, horário da última leitura e um seletor de período.
  *
  * O seletor de represa sai vazio: monitor-page.js o preenche com as represas da API.
  *
@@ -322,14 +322,19 @@ function aq_monitor_bar(array $o = []): string
            . '<span class="aq-dot aq-dot--normal" data-field-class="reservoir.telemetry"></span>' // bolinha colorida; o JS troca a classe conforme online/partial
            . '<span data-field="reservoir.telemetry">—</span></span></div>';
 
+    $html .= '<div class="aq-field"><span class="aq-field__label">&nbsp;</span>'
+           . '<span class="aq-status-text" style="line-height:42px" data-field="reservoir.last_reading">—</span></div>'; // "Última leitura há 12 s"
+
     $html .= '<span class="aq-context__spacer"></span>';                  // empurra o seletor de período para a direita
 
-    $html .= aq_select([
-        'id'      => $periodId,
-        'label'   => $o['period_label'] ?? 'Período',
-        'options' => $periods,
-        'value'   => $o['period_value'] ?? null,
-    ]);
+    if ($periods !== []) {                                                // telas sem período (ex.: situação operacional) passam uma lista vazia
+        $html .= aq_select([
+            'id'      => $periodId,
+            'label'   => $o['period_label'] ?? 'Período',
+            'options' => $periods,
+            'value'   => $o['period_value'] ?? null,
+        ]);
+    }
     $html .= '</section>';
     return $html;
 }
