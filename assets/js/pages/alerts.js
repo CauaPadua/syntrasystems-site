@@ -166,6 +166,14 @@
         'period': d.period
       });
 
+      // Com "todas as empresas e represas", os alertas em aberto são os mesmos
+      // do contador do menu: ele acompanha a tela sem recarregar a página.
+      var badge = document.querySelector('.aq-nav__badge');
+      if (badge && ctx.company_id === 'all' && ctx.reservoir_id === 'all') {
+        badge.firstChild.textContent = c.active;
+        badge.hidden = c.active === 0;
+      }
+
       rows = d.alerts;
       renderRows();
 
