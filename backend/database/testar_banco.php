@@ -8,7 +8,9 @@
  *   3. CRUD        INSERT, SELECT, UPDATE e DELETE em sensors;
  *   4. regras      chaves estrangeiras, UNIQUE e CHECK recusam dados inválidos;
  *   5. views       as duas views devolvem uma linha por equipamento / represa;
- *   6. ingestão    uma leitura válida é gravada e gera o alerta esperado.
+ *   6. ingestão    uma leitura válida é gravada e gera o alerta esperado;
+ *   7. comunicação equipamento parado abre o alerta "Equipamento sem leituras"
+ *                  e a volta dele fica registrada.
  *
  * Tudo que é escrito roda dentro de uma transação desfeita no final (rollback):
  * o banco termina exatamente como estava.
@@ -179,10 +181,43 @@ teste('ingestão: equipamento em manutenção é recusado', static function () u
     }
 });
 
+/* --- 7. comunicação: equipamento que transmitia e parou */
+$alertas = new AlertService($pdo);
+$pdo->exec("INSERT INTO sensors (id, reservoir_id, name, location, type, status)
+            VALUES ('SEN-TESTE-COM', 'santa-clara', 'Sonda de teste', 'Laboratório', 'ph', 'active')");
+$pdo->exec("INSERT INTO readings (sensor_id, reservoir_id, metric, value, recorded_at)
+            VALUES ('SEN-TESTE-COM', 'santa-clara', 'ph', 7.2, '" . Clock::sql(Clock::now()->modify('-10 minutes')) . "')");
+
+$alertaDoTeste = static function () use ($pdo): ?string {
+    $id = $pdo->query("SELECT id FROM alerts WHERE sensor_id = 'SEN-TESTE-COM' AND metric = 'communication' AND status <> 'resolved'")->fetchColumn();
+    return $id === false ? null : (string) $id;
+};
+
+teste('comunicação: estação que acabou de ligar não acusa sensor parado', static fn () =>
+    $alertas->checkCommunication(Clock::now(), ['SEN-TESTE-COM'], Clock::now()->modify('-30 seconds')) === []);
+
+$ligadaHa15min = Clock::now()->modify('-15 minutes');
+
+teste('comunicação: equipamento parado há 10 min abre "Equipamento sem leituras"', static function () use ($alertas, $alertaDoTeste, $ligadaHa15min) {
+    $abertos = array_column($alertas->checkCommunication(Clock::now(), ['SEN-TESTE-COM'], $ligadaHa15min), 'equipment_id');
+    return $abertos === ['SEN-TESTE-COM'] && $alertaDoTeste() !== null ? 'alerta ' . $alertaDoTeste() : false;
+});
+
+teste('comunicação: não abre um segundo alerta para o mesmo equipamento', static fn () =>
+    $alertas->checkCommunication(Clock::now(), ['SEN-TESTE-COM'], $ligadaHa15min) === []
+    && contar($pdo, "SELECT COUNT(*) FROM alerts WHERE sensor_id = 'SEN-TESTE-COM' AND metric = 'communication'") === 1);
+
+teste('comunicação: leitura nova registra que o equipamento voltou', static function () use ($pdo, $ingestao, $alertaDoTeste) {
+    $ingestao->store(['equipment_id' => 'SEN-TESTE-COM', 'recorded_at' => Clock::now()->format(DATE_ATOM), 'value' => 7.1]);
+    $etapa = $pdo->query("SELECT description FROM alert_timeline WHERE alert_id = '" . $alertaDoTeste() . "' ORDER BY step_order DESC LIMIT 1")->fetchColumn();
+    return strpos((string) $etapa, 'voltou a transmitir') !== false ? (string) $etapa : false;
+});
+
 $pdo->rollBack();
 
 teste('rollback: o banco voltou ao estado anterior', static fn () =>
-    contar($pdo, "SELECT COUNT(*) FROM sensors WHERE id = 'SEN-PH-01'") === 1);
+    contar($pdo, "SELECT COUNT(*) FROM sensors WHERE id = 'SEN-PH-01'") === 1
+    && contar($pdo, "SELECT COUNT(*) FROM sensors WHERE id = 'SEN-TESTE-COM'") === 0);
 
 /* ===================================================================== resumo */
 echo str_repeat('-', 64), "\n";

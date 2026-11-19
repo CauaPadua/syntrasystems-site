@@ -10,6 +10,7 @@
  *   php backend/database/migrate.php install        cria o banco, aplica tudo e carrega os dados
  *   php backend/database/migrate.php migrate        aplica apenas as migrations pendentes
  *   php backend/database/migrate.php seed           recarrega cadastros de exemplo e o histórico simulado
+ *   php backend/database/migrate.php completar      completa o histórico até agora (projeto ficou dias desligado)
  *   php backend/database/migrate.php status         mostra o que já foi aplicado e quantas linhas há
  *   php backend/database/migrate.php reset --force  APAGA o banco e recria vazio
  *
@@ -30,6 +31,7 @@ require dirname(__DIR__) . '/bootstrap.php';
 
 use Aquapulse\Repositories\PdoMonitoringRepository;
 use Aquapulse\Services\AlertService;
+use Aquapulse\Services\ReservoirCurve;
 use Aquapulse\Services\StatusRules;
 use Aquapulse\Support\Clock;
 use Aquapulse\Support\Database;
@@ -386,6 +388,146 @@ function comandoSeed(): void
     saida('  alertas abertos pelo estado atual: ' . semearAlertas($pdo));
 }
 
+/**
+ * Completa o histórico até a hora atual, sem apagar nem alterar nada.
+ *
+ * Se o projeto ficou dias desligado, as leituras param no último dia em que foi
+ * usado e o painel mostra "Última leitura há 7 dias" com os gráficos vazios.
+ * Este comando gera, para cada grandeza de cada represa, uma leitura por hora
+ * entre a última gravada e agora, continuando do último valor (para o que for
+ * mais antigo que 31 dias, uma por dia). O iniciar.bat roda este comando sempre
+ * que liga o projeto; se o histórico já está em dia, não faz nada.
+ */
+function comandoCompletar(): void
+{
+    $pdo = Database::conexao();
+    $agora = Clock::now();
+    $limiteHorario = $agora->modify('-31 days');
+
+    $represas = $pdo->query('SELECT id, name, capacity_hm3, cota_min_m, cota_max_m FROM reservoirs ORDER BY sort_order')->fetchAll();
+
+    $equipamentos = [];
+    foreach ($pdo->query("SELECT id, reservoir_id, type FROM sensors WHERE status = 'active' ORDER BY sort_order DESC, id DESC")->fetchAll() as $s) {
+        $equipamentos[$s['reservoir_id']][$s['type']] = $s['id'];
+    }
+
+    $ultima = $pdo->prepare('SELECT value, recorded_at FROM readings WHERE reservoir_id = :r AND metric = :m ORDER BY recorded_at DESC LIMIT 1');
+    $inserir = $pdo->prepare(
+        'INSERT IGNORE INTO readings (sensor_id, reservoir_id, metric, value, recorded_at)
+         VALUES (:sensor_id, :reservoir_id, :metric, :value, :recorded_at)'
+    );
+    $gravar = static function (?string $sensor, string $represa, string $metric, float $valor, DateTimeImmutable $quando) use ($inserir): void {
+        $inserir->execute(['sensor_id' => $sensor, 'reservoir_id' => $represa, 'metric' => $metric, 'value' => $valor, 'recorded_at' => Clock::sql($quando)]);
+    };
+
+    $total = 0;
+    $maisAntiga = null;
+
+    $pdo->beginTransaction();
+    foreach ($represas as $represa) {
+        $rid = (string) $represa['id'];
+
+        foreach (['level', 'inflow', 'outflow', 'ph', 'water_temp', 'precipitation'] as $metric) {
+            $ultima->execute(['r' => $rid, 'm' => $metric]);
+            $linha = $ultima->fetch();
+            if ($linha === false) {
+                continue;                                     // grandeza sem histórico: nada a continuar
+            }
+
+            $de = new DateTimeImmutable((string) $linha['recorded_at'], Clock::timezone());
+            $instantes = instantesDaLacuna($de, $agora, $limiteHorario);
+            if ($instantes === []) {
+                continue;                                     // já está em dia
+            }
+            $maisAntiga = ($maisAntiga === null || $de < $maisAntiga) ? $de : $maisAntiga;
+
+            $semente = HistoryGenerator::seed($rid . '|' . $metric . '|completar');
+            $sensor = $equipamentos[$rid][$metric] ?? null;
+            $valores = $metric === 'precipitation'
+                ? chuvaDaLacuna($instantes, $limiteHorario, $semente)
+                : continuarSerie($metric, (float) $linha['value'], count($instantes), $semente);
+
+            foreach ($instantes as $i => $quando) {
+                $gravar($sensor, $rid, $metric, $valores[$i], $quando);
+                $total++;
+
+                if ($metric === 'level') {                    // cota e volume acompanham o nível, como na ingestão
+                    $gravar($sensor, $rid, 'cota', ReservoirCurve::cota($represa, $valores[$i]), $quando);
+                    $gravar($sensor, $rid, 'storage', ReservoirCurve::storage($represa, $valores[$i]), $quando);
+                    $total += 2;
+                }
+            }
+        }
+    }
+    $pdo->commit();
+
+    saida($total === 0
+        ? 'histórico: já está em dia'
+        : sprintf('histórico: %d leituras geradas de %s até agora', $total, $maisAntiga->format('d/m/Y H:i')));
+}
+
+/**
+ * Instantes a preencher depois de $de: uma vez por hora cheia até $ate; o que
+ * for mais antigo que $limiteHorario recebe só um ponto por dia (meio-dia).
+ *
+ * @return list<DateTimeImmutable>
+ */
+function instantesDaLacuna(DateTimeImmutable $de, DateTimeImmutable $ate, DateTimeImmutable $limiteHorario): array
+{
+    $lista = [];
+    $t = $de->setTime((int) $de->format('H'), 0)->modify('+1 hour');
+
+    while ($t <= $ate) {
+        if ($t < $limiteHorario) {
+            $meioDia = $t->setTime(12, 0);
+            if ($meioDia > $de && $meioDia < $limiteHorario) {
+                $lista[] = $meioDia;
+            }
+            $t = $t->setTime(0, 0)->modify('+1 day');
+            continue;
+        }
+        $lista[] = $t;
+        $t = $t->modify('+1 hour');
+    }
+    return $lista;
+}
+
+/**
+ * Continua uma série a partir do último valor gravado: começa nele e oscila de
+ * leve, com a mesma forma do histórico gerado na instalação.
+ *
+ * @return list<float>
+ */
+function continuarSerie(string $metric, float $ultimo, int $quantos, float $semente): array
+{
+    $cfg = HistoryGenerator::WAVES[$metric];
+    $serie = array_reverse(HistoryGenerator::wave($quantos + 1, $ultimo, $cfg['amplitude'] * 0.3, 0.0, $semente, $cfg['decimals']));
+    $serie = array_slice($serie, 1);                          // o primeiro é o próprio último valor
+
+    return $metric === 'level' ? array_map(static fn (float $v): float => max(0.0, min(100.0, $v)), $serie) : $serie;
+}
+
+/**
+ * Chuva fraca e espaçada para a lacuna: de 0 a 4 mm por dia (muitos dias secos),
+ * abaixo do limite de atenção de 24 h, para não inventar alertas.
+ *
+ * @param list<DateTimeImmutable> $instantes
+ * @return list<float>
+ */
+function chuvaDaLacuna(array $instantes, DateTimeImmutable $limiteHorario, float $semente): array
+{
+    $valores = [];
+    foreach ($instantes as $quando) {
+        $dia = (int) $quando->format('z') + 366 * (int) $quando->format('Y');
+        $totalDoDia = round(max(0.0, sin($dia * 1.7 + $semente * 6.283) * 6.0 - 2.0), 1);
+
+        $valores[] = $quando < $limiteHorario
+            ? $totalDoDia                                                    // ponto diário
+            : HistoryGenerator::spreadRain($totalDoDia, $semente)[(int) $quando->format('G')];   // parcela da hora
+    }
+    return $valores;
+}
+
 /** Mostra o estado atual do banco. */
 function comandoStatus(): void
 {
@@ -448,6 +590,10 @@ try {
             comandoSeed();
             break;
 
+        case 'completar':
+            comandoCompletar();
+            break;
+
         case 'status':
             comandoStatus();
             break;
@@ -462,7 +608,8 @@ try {
             saida('  php backend/database/migrate.php install        cria o banco, aplica as migrations e carrega os dados');
             saida('  php backend/database/migrate.php migrate        aplica migrations pendentes');
             saida('  php backend/database/migrate.php seed           recarrega cadastros de exemplo e o histórico simulado');
-            saida('  php backend/database/migrate.php status         mostra migrations aplicadas e linhas por tabela');
+            saida('  php backend/database/migrate.php completar      completa o histórico até agora, sem apagar nada');
+            saida('  php backend/database/migrate.php status        mostra migrations aplicadas e linhas por tabela');
             saida('  php backend/database/migrate.php reset --force  apaga e recria o banco');
             saida('');
             saida('Configure antes backend/.env (ver backend/.env.example).');

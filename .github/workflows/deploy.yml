@@ -44,7 +44,9 @@ jobs:
           # nas próximas execuções só os arquivos alterados são transferidos.
           state-name: ftp-deploy-sync-state.json
 
-          # Arquivos que NÃO são publicados: controle de versão, este fluxo e a documentação.
+          # Arquivos que NÃO são publicados: controle de versão, este fluxo, a documentação
+          # e as ferramentas que só rodam no computador (simulador de sensores, estação de
+          # telemetria e o iniciar.bat). O site publicado continua recebendo leituras pela API.
           # (Comentários não podem ir dentro da lista abaixo: ela é um bloco de texto.)
           exclude: |
             **/.git*
@@ -52,3 +54,6 @@ jobs:
             **/.github/**
             **/README.md
             **/CNAME
+            simulador-sensor/**
+            estacao/**
+            iniciar.bat

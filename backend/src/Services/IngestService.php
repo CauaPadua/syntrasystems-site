@@ -2,7 +2,8 @@
 /**
  * Aquapulse — recebimento das leituras enviadas pelos equipamentos.
  *
- * Fluxo: equipamento (ou simulador) -> api/v1/ingest/readings.php -> store()
+ * Fluxo: sensores -> estação de telemetria (estacao/estacao.php ou uma placa real)
+ *        -> api/v1/ingest/batch.php -> store(), uma vez por leitura
  *        -> tabela readings -> painel.
  *
  * Cada envio traz o código do equipamento, o instante da medição e o valor:
@@ -112,6 +113,9 @@ final class IngestService
             $avaliado = $grandeza === 'precipitation' ? $this->chuva24h($represa, $quando) : $valor;
             $alerta = $this->alerts->evaluate($represa, $sensor, $grandeza, $avaliado, $quando);
 
+            // Se o equipamento estava com alerta de "sem leituras", registra que voltou.
+            $this->alerts->communicationRestored($sensor, $quando);
+
             if ($propria) {
                 $this->pdo->commit();
             }
@@ -140,14 +144,14 @@ final class IngestService
 
     /**
      * Equipamentos que podem transmitir, com o valor mais recente da grandeza
-     * na represa. O simulador usa esta lista para saber o que simular e de que
-     * valor partir, mantendo a continuidade com o histórico.
+     * na represa. A estação usa esta lista para saber quais sensores ler, e o
+     * simulador de sensores para começar do último valor gravado.
      *
      * @return array<int,array<string,mixed>>
      */
     public function equipmentList(?string $equipmentId = null, ?string $reservoirId = null): array
     {
-        $sql = "SELECT s.id, s.name, s.type, s.status, s.reservoir_id, r.name AS reservoir_name,
+        $sql = "SELECT s.id, s.name, s.type, s.status, s.reservoir_id, r.name AS reservoir_name, r.code AS reservoir_code, r.capacity_hm3,
                        (SELECT l.value
                           FROM readings l
                          WHERE l.reservoir_id = s.reservoir_id AND l.metric = s.type
@@ -167,7 +171,7 @@ final class IngestService
             $params['rid'] = $reservoirId;
         }
 
-        $sql .= ' ORDER BY s.reservoir_id, s.type, s.id';
+        $sql .= ' ORDER BY r.sort_order, s.sort_order, s.id';
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -191,6 +195,8 @@ final class IngestService
                 'status'         => (string) $l['status'],
                 'reservoir_id'   => (string) $l['reservoir_id'],
                 'reservoir_name' => (string) $l['reservoir_name'],
+                'reservoir_code' => (string) $l['reservoir_code'],
+                'capacity_hm3'   => (float) $l['capacity_hm3'],
                 'current_value'  => $l['current_value'] === null ? null : (float) $l['current_value'],
                 'limits'         => $limites[$tipo] ?? [],
             ];

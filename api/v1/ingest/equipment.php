@@ -2,7 +2,7 @@
 /**
  * GET /api/v1/ingest/equipment.php[?equipment_id=X | ?reservoir_id=Y]
  *
- * Lista os equipamentos cadastrados para quem vai transmitir (o simulador):
+ * Lista os equipamentos cadastrados para quem vai transmitir (a estação de telemetria):
  * grandeza, unidade, faixa aceita, situação, limites de alerta e o valor mais
  * recente da grandeza na represa. Exige o cabeçalho X-Api-Key.
  */

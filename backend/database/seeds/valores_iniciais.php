@@ -5,7 +5,8 @@
  * O instalador (backend/database/migrate.php) gera um passado para cada represa
  * terminando nestes valores, no momento da carga. São números de exemplo, não
  * medições reais. Depois da carga, quem atualiza o painel são as leituras
- * enviadas pelo simulador.
+ * enviadas pela estação de telemetria (estacao/estacao.php), vindas do
+ * simulador de sensores (simulador-sensor/), que começa do último valor gravado.
  */
 
 declare(strict_types=1);

@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de Sensores</title>
+<style>
+  :root {
+    --bg: #061524; --bg2: #0a2036; --card: #0c2540; --card2: #0f2d4c; --linha: #1a4366; --linha2: #24557f;
+    --texto: #e7f2fb; --suave: #8eb0c9; --fraco: #5f819b;
+    --ciano: #22d3ee; --azul: #3b82f6; --verde: #22c55e; --amarelo: #facc15; --vermelho: #f05252; --roxo: #a78bfa; --laranja: #fb923c;
+    --raio: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh; color: var(--texto); font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 500px at 15% -10%, #0e3a5c 0%, transparent 60%), radial-gradient(900px 400px at 100% 0%, #0b2f4f 0%, transparent 55%), var(--bg);
+  }
+  button, input, select { font: inherit; color: inherit; }
+
+  /* ---------- topo */
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; padding: 14px 22px; border-bottom: 1px solid var(--linha); background: rgba(6, 21, 36, .7); backdrop-filter: blur(6px); position: sticky; top: 0; z-index: 5; }
+  .marca { display: flex; align-items: center; gap: 12px; }
+  .marca svg { width: 38px; height: 38px; }
+  .marca b { display: block; font-size: 18px; letter-spacing: .2px; }
+  .marca span { color: var(--suave); font-size: 12.5px; }
+  .espaco { flex: 1; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--linha2); background: var(--bg2); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .chip.ok { color: #86efac; border-color: #166534; background: #052e1a; }
+  .chip.warn { color: #fde68a; border-color: #854d0e; background: #2b2106; }
+  .chip.erro { color: #fca5a5; border-color: #991b1b; background: #2e0b0b; }
+  .relogio { color: var(--suave); font-variant-numeric: tabular-nums; }
+
+  /* ---------- layout */
+  main { display: grid; gap: 16px; padding: 16px 22px 28px; grid-template-columns: 280px minmax(0, 1fr) 320px; align-items: start; }
+  .card { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); min-width: 0; }
+  .card + .card { margin-top: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--suave); font-weight: 700; }
+  .col { min-width: 0; }
+
+  /* ---------- lista de sensores */
+  .grupo { margin-bottom: 14px; }
+  .grupo:last-child { margin-bottom: 0; }
+  .grupo h3 { margin: 0 0 6px; font-size: 12px; color: var(--fraco); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+  .item { width: 100%; display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; margin-bottom: 4px; border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; text-align: left; }
+  .item:hover { background: var(--bg2); border-color: var(--linha); }
+  .item.sel { background: #0f3557; border-color: var(--ciano); }
+  .item .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; }
+  .item .ic svg { width: 18px; height: 18px; }
+  .item .nm { font-size: 13px; font-weight: 600; line-height: 1.2; }
+  .item .cd { font-size: 11.5px; color: var(--suave); }
+  .item .vl { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+  .item .vl small { color: var(--suave); font-weight: 500; }
+  .item .st { display: flex; justify-content: flex-end; align-items: center; gap: 5px; font-size: 11px; color: var(--suave); font-weight: 500; }
+  .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--fraco); flex: none; display: inline-block; }
+  .ponto.ok { background: var(--verde); box-shadow: 0 0 0 3px rgba(34, 197, 94, .15); }
+  .ponto.warn, .ponto.pausado { background: var(--amarelo); }
+  .ponto.erro, .ponto.falha { background: var(--vermelho); }
+  .ponto.info { background: var(--ciano); }
+  .ponto.vivo { animation: pulsa 1.6s infinite; }
+  @keyframes pulsa { 50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } }
+
+  /* ---------- detalhe */
+  .cabeca { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .icone-g { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; }
+  .icone-g svg { width: 30px; height: 30px; }
+  .cabeca h1 { margin: 0; font-size: 22px; letter-spacing: .4px; }
+  .cabeca p { margin: 2px 0 0; color: var(--suave); }
+  .etq { padding: 5px 12px; border-radius: 8px; font-weight: 700; font-size: 13px; border: 1px solid; white-space: nowrap; }
+  .etq.normal { color: #86efac; border-color: #166534; background: #052e1a; }
+  .etq.attention { color: #fde68a; border-color: #a16207; background: #2b2106; }
+  .etq.critical { color: #fecaca; border-color: #b91c1c; background: #3a0d0d; }
+  .etq.parado { color: var(--suave); border-color: var(--linha2); background: var(--bg2); }
+  .numeros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 22px; margin: 18px 0 8px; }
+  .grande { font-size: 64px; font-weight: 800; line-height: .95; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .grande small { font-size: 26px; font-weight: 600; color: var(--suave); margin-left: 4px; letter-spacing: 0; }
+  .grande.apagado { opacity: .35; }
+  .todos { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .todos span { color: var(--fraco); font-size: 12px; margin-right: 2px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+  .stat { min-width: 104px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--linha); background: var(--bg2); }
+  .stat span { display: block; font-size: 11.5px; color: var(--suave); }
+  .stat b { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .limites { color: var(--fraco); font-size: 12.5px; margin-bottom: 4px; }
+  .grafico { position: relative; height: 290px; margin-top: 6px; }
+  .grafico svg { width: 100%; height: 100%; display: block; }
+  .dica { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: #021220; border: 1px solid var(--linha2); font-size: 12.5px; white-space: nowrap; transform: translate(-50%, -120%); display: none; }
+
+  /* ---------- controles */
+  .controles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .bloco h2 { margin-bottom: 10px; }
+  .botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .bt { padding: 8px 13px; border-radius: 9px; border: 1px solid var(--linha2); background: #103455; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .bt:hover { border-color: var(--ciano); }
+  .bt:disabled { opacity: .45; cursor: default; border-color: var(--linha2); }
+  .bt.verde { background: #15803d; border-color: #16a34a; }
+  .bt.perigo { background: #5a1414; border-color: #b91c1c; }
+  .bt.ligado { box-shadow: 0 0 0 2px var(--amarelo) inset; }
+  .bt.peq { padding: 6px 10px; font-size: 12.5px; }
+  .seg { display: inline-flex; border: 1px solid var(--linha2); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--suave); }
+  .seg button.on { background: var(--ciano); color: #03202e; }
+  .campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .campo label { color: var(--suave); font-size: 12.5px; }
+  .entrada { display: inline-flex; align-items: center; gap: 6px; }
+  input[type=number], select { width: 92px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--linha2); background: #071d31; }
+  input:focus, select:focus { outline: 2px solid var(--ciano); outline-offset: 0; }
+  .unid { color: var(--suave); font-size: 12px; min-width: 28px; }
+  .msg { margin-top: 12px; min-height: 20px; font-size: 13px; color: var(--suave); }
+  .msg.ok { color: #86efac; } .msg.erro { color: #fca5a5; }
+
+  /* ---------- coluna direita */
+  .linha-i { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--linha); font-size: 13px; }
+  .linha-i:last-child { border-bottom: 0; }
+  .linha-i span { color: var(--suave); }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; color: var(--ciano); background: #061a2c; border: 1px solid var(--linha); border-radius: 6px; padding: 2px 6px; word-break: break-all; }
+  .fluxo { display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+  .fluxo li { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--linha); font-size: 12.5px; color: var(--suave); }
+  .fluxo li b { color: var(--texto); }
+  .fluxo li.aqui { border-color: var(--ciano); }
+  .fluxo .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #0f3557; color: var(--ciano); font-weight: 700; font-size: 12px; flex: none; }
+  .log { max-height: 340px; overflow: auto; }
+  .log div { display: grid; grid-template-columns: 10px 58px 1fr; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--linha); font-size: 12.5px; }
+  .log time { color: var(--fraco); font-variant-numeric: tabular-nums; }
+  .vazio { color: var(--fraco); font-size: 12.5px; }
+
+  @media (max-width: 1280px) { main { grid-template-columns: 260px minmax(0, 1fr); } .direita { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; } .direita .card + .card { margin-top: 0; } }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px 24px; } .controles { grid-template-columns: 1fr; } .grande { font-size: 48px; } header { padding: 12px 16px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marca">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4c6 8 11 13.5 11 19.5A11 11 0 0 1 9 23.5C9 17.5 14 12 20 4z" fill="#22d3ee"/><path d="M6 31c3 0 3-2 7-2s4 2 7 2 4-2 7-2 4 2 7 2" stroke="#3b82f6" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>
+    <div><b>Simulador de Sensores</b><span>Equipamentos de campo virtuais · Aquapulse</span></div>
+  </div>
+  <div class="espaco"></div>
+  <span class="chip" id="chipResumo">—</span>
+  <span class="chip" id="chipEstacao"><span class="ponto"></span> Aguardando a estação</span>
+  <span class="relogio" id="relogio"></span>
+</header>
+
+<main>
+  <!-- ======================= sensores -->
+  <aside class="col">
+    <section class="card">
+      <h2>Sensores</h2>
+      <div class="todos">
+        <span>Todos:</span>
+        <button class="bt peq" data-todos="iniciar" title="Iniciar todos os sensores">▶</button>
+        <button class="bt peq" data-todos="pausar" title="Pausar todos os sensores">❚❚</button>
+        <button class="bt peq" data-todos="reiniciar" title="Voltar todos aos valores iniciais">↻ Reiniciar</button>
+      </div>
+      <div id="lista"><p class="vazio">Carregando...</p></div>
+    </section>
+  </aside>
+
+  <!-- ======================= detalhe -->
+  <div class="col">
+    <section class="card">
+      <div class="cabeca">
+        <div class="icone-g" id="dIcone"></div>
+        <div style="flex:1;min-width:200px">
+          <h1 id="dCodigo">—</h1>
+          <p id="dNome">—</p>
+        </div>
+        <span class="etq parado" id="dEtiqueta">—</span>
+      </div>
+
+      <div class="numeros">
+        <div class="grande"><span id="dValor">--</span><small id="dUnidade"></small></div>
+        <div class="stats">
+          <div class="stat"><span>Mínimo (sessão)</span><b id="dMin">--</b></div>
+          <div class="stat"><span>Máximo (sessão)</span><b id="dMax">--</b></div>
+          <div class="stat"><span>Média (sessão)</span><b id="dMed">--</b></div>
+          <div class="stat"><span>Última leitura</span><b id="dHora">--</b></div>
+        </div>
+      </div>
+      <div class="limites" id="dLimites"></div>
+      <div class="grafico" id="caixaGrafico">
+        <svg id="grafico"></svg>
+        <div class="dica" id="dica"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="controles">
+        <div class="bloco">
+          <h2>Execução</h2>
+          <div class="botoes">
+            <button class="bt verde" data-acao="iniciar">▶ Iniciar</button>
+            <button class="bt" data-acao="pausar">❚❚ Pausar</button>
+            <button class="bt" data-acao="reiniciar">↻ Reiniciar</button>
+          </div>
+          <h2 style="margin-top:16px">Simular falha</h2>
+          <div class="botoes">
+            <button class="bt perigo" data-falha="sem-resposta" title="O sensor para de medir">⚠ Sem resposta</button>
+            <button class="bt perigo" data-falha="valor-impossivel" title="A cada 3 leituras manda -5">⚠ Valor impossível</button>
+            <button class="bt" data-falha="" id="btCorrigir">✔ Corrigir</button>
+          </div>
+          <p class="vazio" id="explicaFalha" style="margin:10px 0 0"></p>
+        </div>
+
+        <div class="bloco">
+          <h2>Modo</h2>
+          <div class="seg"><button id="mAuto" data-modo="auto">Automático</button><button id="mManual" data-modo="manual">Manual</button></div>
+          <div class="campo"><label for="cValor">Valor manual</label>
+            <span class="entrada"><input id="cValor" type="number" step="any"><span class="unid" id="uValor"></span><button class="bt peq" id="btValor">Aplicar</button></span></div>
+          <div class="botoes" id="presets" style="margin-top:10px"></div>
+        </div>
+
+        <div class="bloco">
+          <h2>Configuração</h2>
+          <div class="campo" id="linhaFaixa"><label>Faixa</label>
+            <span class="entrada"><input id="cMin" type="number" step="any" style="width:72px"> a <input id="cMax" type="number" step="any" style="width:72px"></span></div>
+          <div class="campo"><label for="cVar" id="lVar">Variação por leitura (±)</label><input id="cVar" type="number" step="any" min="0"></div>
+          <div class="campo"><label for="cInt">Intervalo</label>
+            <select id="cInt"><option value="1">1 s</option><option value="5">5 s</option><option value="10">10 s</option><option value="30">30 s</option><option value="60">60 s</option></select></div>
+          <div class="botoes" style="margin-top:12px"><button class="bt" id="btConfig">Aplicar configuração</button></div>
+        </div>
+      </div>
+      <div class="msg" id="msg"></div>
+    </section>
+  </div>
+
+  <!-- ======================= estação e log -->
+  <aside class="col direita">
+    <section class="card">
+      <h2>Comunicação com a estação</h2>
+      <div class="linha-i"><span>Situação</span><b id="cEstado">Aguardando</b></div>
+      <div class="linha-i"><span>Última consulta</span><b id="cUltima">—</b></div>
+      <div class="linha-i"><span>Consultas recebidas</span><b id="cConsultas">0</b></div>
+      <div class="linha-i"><span>Este sensor</span><b id="cSensor">—</b></div>
+      <div class="linha-i"><span>Sensores</span><b id="cOrigem">—</b></div>
+      <div class="botoes" style="margin-top:10px"><button class="bt peq" id="btSincronizar" title="Lê de novo o cadastro de equipamentos e os últimos valores do banco">⟳ Sincronizar com o sistema</button></div>
+      <p style="margin:12px 0 6px;color:var(--suave);font-size:12.5px">A estação busca as leituras em</p>
+      <code>GET http://localhost:8100/api/leituras?apos=N</code>
+      <p class="vazio" style="margin:10px 0 0">O simulador só gera e disponibiliza os dados. Quem envia para a API e o banco é a estação.</p>
+    </section>
+
+    <section class="card">
+      <h2>Fluxo</h2>
+      <ol class="fluxo">
+        <li class="aqui"><span class="n">1</span><span><b>Sensor</b> mede a cada intervalo</span></li>
+        <li><span class="n">2</span><span><b>Estação</b> consulta, guarda e envia</span></li>
+        <li><span class="n">3</span><span><b>API</b> valida a leitura</span></li>
+        <li><span class="n">4</span><span><b>Banco</b> guarda o histórico</span></li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Log</h2>
+      <div class="log" id="log"><p class="vazio">Sem eventos.</p></div>
+    </section>
+  </aside>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------ utilitários */
+  var $ = function (id) { return document.getElementById(id); };
+  var TIPOS = {
+    level:         { cor: '#22d3ee', fundo: '#083344', svg: '<path d="M3 15c2 0 2-1.5 4.5-1.5S10 15 12 15s2.5-1.5 4.5-1.5S19 15 21 15M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19M12 3v8m-3-3 3 3 3-3"/>' },
+    inflow:        { cor: '#60a5fa', fundo: '#0c2a4d', svg: '<path d="M4 12h12m-4-4 4 4-4 4M20 5v14"/>' },
+    outflow:       { cor: '#a78bfa', fundo: '#24184a', svg: '<path d="M4 5v14M8 12h12m-4-4 4 4-4 4"/>' },
+    ph:            { cor: '#4ade80', fundo: '#0b3320', svg: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3M7.5 15h9"/>' },
+    water_temp:    { cor: '#fb923c', fundo: '#3a1d08', svg: '<path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0zM12 9v7"/>' },
+    precipitation: { cor: '#7dd3fc', fundo: '#0b2c40', svg: '<path d="M7 15a4 4 0 0 1-.5-8A6 6 0 0 1 18 8a3.5 3.5 0 0 1 0 7M8 18l-1 2m5-2-1 2m5-2-1 2"/>' }
+  };
+  function icone(tipo, tam) {
+    var t = TIPOS[tipo] || TIPOS.level;
+    return '<svg viewBox="0 0 24 24" width="' + tam + '" height="' + tam + '" fill="none" stroke="' + t.cor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + t.svg + '</svg>';
+  }
+  function num(v, casas) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }); }
+  function hora(ts) { return new Date(ts * 1000).toLocaleTimeString('pt-BR'); }
+  function duracao(s) { return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s'; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function lerLocal(k, padrao) { try { return localStorage.getItem(k) || padrao; } catch (e) { return padrao; } }
+  function gravarLocal(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento: tudo bem */ } }
+
+  var ESTADO_TXT = { ok: 'Ativo', pausado: 'Pausado', falha: 'Sem resposta', defeito: 'Valor impossível' };
+  var EXPLICA = {
+    '': 'Sem resposta: o sensor para de medir; depois de 2 min o sistema abre o alerta "Equipamento sem leituras". '
+      + 'Valor impossível: a cada 3 leituras o sensor manda -5; a API recusa e o valor não chega ao banco.',
+    'sem-resposta': 'O sensor parou de medir. A estação mostra "sem leitura" e, depois de 2 min, o sistema abre o alerta '
+      + '"Equipamento sem leituras" e marca o equipamento como "Sem comunicação". Clique em Corrigir para ele voltar.',
+    'valor-impossivel': 'A cada 3 leituras o sensor manda -5 (ponto vermelho no gráfico). A estação envia, a API recusa '
+      + '(VALUE_OUT_OF_RANGE) e o valor não entra no banco: a recusa aparece na janela da estação.'
+  };
+  var CLASSE_TXT = { normal: 'Normal', attention: 'Atenção', critical: 'Crítico' };
+
+  /* ------------------------------------------------------------ estado da tela */
+  var selecionado = lerLocal('sensorSelecionado', 'SEN-NIV-01');
+  var preencher = true;         // preenche os campos de configuração só ao trocar de sensor ou depois de um comando
+  var ultimo = null;            // última resposta de /api/estado
+  var foco = null;              // índice do ponto sob o mouse no gráfico
+
+  /* ------------------------------------------------------------ servidor */
+  function atualizar() {
+    fetch('/api/estado?sensor=' + encodeURIComponent(selecionado), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (e) { ultimo = e; desenhar(e); })
+      .catch(function () {
+        var c = $('chipResumo'); c.className = 'chip erro'; c.textContent = 'Servidor do simulador desligado';
+      });
+  }
+
+  function comando(corpo) {
+    var msg = $('msg');
+    msg.className = 'msg'; msg.textContent = 'Enviando...';
+    return fetch('/api/comando', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        msg.className = 'msg ' + (r.ok ? 'ok' : 'erro');
+        msg.textContent = r.ok ? r.mensagem : r.erro;
+        if (r.ok) { preencher = true; atualizar(); }
+      })
+      .catch(function () { msg.className = 'msg erro'; msg.textContent = 'O servidor do simulador não respondeu.'; });
+  }
+
+  /* ------------------------------------------------------------ desenho */
+  function desenhar(e) {
+    $('relogio').textContent = new Date(e.agora * 1000).toLocaleString('pt-BR');
+
+    // resumo no topo
+    var r = e.resumo, chip = $('chipResumo'), comFalha = r.falha + r.defeito;
+    chip.className = 'chip ' + (comFalha > 0 ? 'erro' : (r.pausado > 0 ? 'warn' : 'ok'));
+    chip.innerHTML = '<span class="ponto ' + (comFalha > 0 ? 'falha' : (r.pausado > 0 ? 'pausado' : 'ok vivo')) + '"></span>' +
+      r.ok + ' de ' + r.total + ' normais' + (r.pausado ? ' · ' + r.pausado + ' pausado(s)' : '') + (comFalha ? ' · ' + comFalha + ' com falha' : '');
+
+    var o = $('cOrigem');
+    o.textContent = e.origem.tipo === 'sistema' ? 'do cadastro do sistema' : 'lista padrão (sistema desligado)';
+    o.style.color = e.origem.tipo === 'sistema' ? '#86efac' : '#fde68a';
+    o.title = e.origem.sistema;
+
+    desenharLista(e.sensores);
+    desenharComunicacao(e.comunicacao);
+    desenharLog(e.log);
+    if (e.detalhe) { desenharDetalhe(e.detalhe); }
+  }
+
+  function desenharLista(sensores) {
+    var grupos = {}, ordem = [];
+    sensores.forEach(function (s) {
+      if (!grupos[s.represa]) { grupos[s.represa] = []; ordem.push(s.represa); }
+      grupos[s.represa].push(s);
+    });
+    var html = '';
+    ordem.forEach(function (nome) {
+      html += '<div class="grupo"><h3>' + esc(nome.replace(/^Represa /, '')) + '</h3>';
+      grupos[nome].forEach(function (s) {
+        var t = TIPOS[s.type] || TIPOS.level, l = s.leitura;
+        var valor = l ? num(l.value, s.casas) + ' <small>' + esc(s.unit) + '</small>' : '--';
+        var ponto = s.estado === 'defeito' ? 'falha' : (s.estado !== 'ok' ? s.estado : (l && l.classificacao === 'critical' ? 'erro' : (l && l.classificacao === 'attention' ? 'warn' : 'ok')));
+        var st = s.estado !== 'ok' ? ESTADO_TXT[s.estado] : (l ? CLASSE_TXT[l.classificacao] : '') + (s.modo === 'manual' ? ' · manual' : '');
+        html += '<button class="item' + (s.code === selecionado ? ' sel' : '') + '" data-sensor="' + esc(s.code) + '">' +
+          '<span class="ic" style="background:' + t.fundo + '">' + icone(s.type, 18) + '</span>' +
+          '<span><span class="nm">' + esc(s.name) + '</span><br><span class="cd">' + esc(s.code) + '</span></span>' +
+          '<span><span class="vl">' + valor + '</span><span class="st"><span class="ponto ' + ponto + '"></span>' + esc(st) + '</span></span>' +
+          '</button>';
+      });
+      html += '</div>';
+    });
+    $('lista').innerHTML = html;
+  }
+
+  function desenharDetalhe(d) {
+    var t = TIPOS[d.type] || TIPOS.level, l = d.leitura;
+    $('dIcone').style.background = t.fundo;
+    $('dIcone').innerHTML = icone(d.type, 30);
+    $('dCodigo').textContent = d.code;
+    $('dNome').textContent = d.name + ' · ' + d.equip + ' · ' + d.represa;
+    $('dValor').textContent = l ? num(l.value, d.casas) : '--';
+    $('dValor').parentNode.classList.toggle('apagado', d.estado !== 'ok');   // parado ou em falha: é a última leitura, não a atual
+    $('dUnidade').textContent = d.unit;
+    $('dMin').textContent = d.sessao.min === null ? '--' : num(d.sessao.min, d.casas);
+    $('dMax').textContent = d.sessao.max === null ? '--' : num(d.sessao.max, d.casas);
+    $('dMed').textContent = d.sessao.media === null ? '--' : num(d.sessao.media, d.casas);
+    $('dHora').textContent = l ? hora(l.ts) + ' · #' + l.seq : '--';
+    $('dLimites').textContent = d.limites;
+
+    var et = $('dEtiqueta');
+    if (d.estado === 'falha') { et.className = 'etq critical'; et.textContent = '⚠ Sem resposta'; }
+    else if (d.estado === 'defeito') { et.className = 'etq critical'; et.textContent = '⚠ Valor impossível'; }
+    else if (d.estado === 'pausado') { et.className = 'etq parado'; et.textContent = '❚❚ Pausado'; }
+    else if (l) { et.className = 'etq ' + l.classificacao; et.textContent = CLASSE_TXT[l.classificacao]; }
+
+    // botões e modo
+    document.querySelector('[data-acao="iniciar"]').disabled = d.estado !== 'pausado';
+    document.querySelector('[data-acao="pausar"]').disabled = d.estado === 'pausado';
+    document.querySelectorAll('[data-falha]').forEach(function (b) {
+      var tipo = b.getAttribute('data-falha');
+      b.classList.toggle('ligado', tipo !== '' && tipo === d.falha);
+    });
+    $('btCorrigir').disabled = d.falha === '';
+    $('explicaFalha').textContent = EXPLICA[d.falha] || EXPLICA[''];
+    $('mAuto').classList.toggle('on', d.modo === 'auto');
+    $('mManual').classList.toggle('on', d.modo === 'manual');
+    $('uValor').textContent = d.unit;
+
+    if (preencher) {
+      $('cValor').value = Number(Number(d.valor).toFixed(d.casas));
+      $('cValor').min = d.abs_min; $('cValor').max = d.abs_max;
+      $('cMin').value = d.config.faixa_min; $('cMax').value = d.config.faixa_max;
+      $('cVar').value = d.config.variacao; $('cVar').max = d.var_max;
+      $('cInt').value = String(d.config.intervalo);
+      $('lVar').textContent = d.rotulo_var;
+      $('linhaFaixa').style.display = d.type === 'precipitation' ? 'none' : '';
+      $('presets').innerHTML = d.presets.map(function (p) {
+        return '<button class="bt peq" data-preset="' + p.v + '">' + esc(num(p.v, d.casas) + ' ' + d.unit) + ' · ' + esc(p.r) + '</button>';
+      }).join('');
+      preencher = false;
+    }
+
+    desenharGrafico(d);
+  }
+
+  function desenharComunicacao(c) {
+    var ha = c.ultima_consulta_ha, ligada = ha !== null && ha <= 15;
+    var chip = $('chipEstacao');
+    chip.className = 'chip ' + (ligada ? 'ok' : (ha === null ? '' : 'warn'));
+    chip.innerHTML = '<span class="ponto ' + (ligada ? 'ok vivo' : (ha === null ? '' : 'pausado')) + '"></span>' +
+      (ligada ? 'Estação conectada' : (ha === null ? 'Aguardando a estação' : 'Estação sem consultar'));
+    $('cEstado').textContent = ligada ? 'Conectada' : (ha === null ? 'Aguardando' : 'Sem consultas recentes');
+    $('cUltima').textContent = ha === null ? '—' : 'há ' + duracao(ha);
+    $('cConsultas').textContent = c.consultas;
+    var d = ultimo && ultimo.detalhe;
+    $('cSensor').textContent = !d ? '—' : ({ ok: 'Disponível', defeito: 'Disponível, com valores impossíveis',
+      falha: 'Indisponível (sem resposta)', pausado: 'Indisponível (pausado)' }[d.estado]);
+  }
+
+  function desenharLog(log) {
+    if (!log.length) { return; }
+    $('log').innerHTML = log.slice().reverse().map(function (x) {
+      return '<div><span class="ponto ' + esc(x.tipo) + '"></span><time>' + esc(x.t) + '</time><span>' + esc(x.msg) + '</span></div>';
+    }).join('');
+  }
+
+  /* ------------------------------------------------------------ gráfico */
+  function desenharGrafico(d) {
+    var svg = $('grafico'), caixa = $('caixaGrafico');
+    var W = Math.max(300, caixa.clientWidth), H = caixa.clientHeight;
+    var ml = 54, mr = 14, mt = 12, mb = 28;
+    var h = d.historico, cor = (TIPOS[d.type] || TIPOS.level).cor;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    if (h.length < 2) {
+      svg.innerHTML = '<text x="' + W / 2 + '" y="' + H / 2 + '" fill="#5f819b" text-anchor="middle" font-size="13">Aguardando leituras...</text>';
+      $('dica').style.display = 'none';
+      return;
+    }
+
+    var vs = h.map(function (p) { return p[1]; });
+    var min = Math.min.apply(null, vs), max = Math.max.apply(null, vs);
+    var span = Math.max(max - min, d.type === 'ph' ? 0.2 : (d.type === 'precipitation' ? 1 : 1));
+    var meio = (max + min) / 2;
+    var temImpossivel = vs.some(function (v) { return v < d.abs_min || v > d.abs_max; });
+    min = meio - span * 0.6; max = meio + span * 0.6;
+    if (!temImpossivel) { min = Math.max(d.abs_min, min); }      // sem valor impossível, o eixo não desce abaixo do mínimo físico
+    var t0 = h[0][0], t1 = h[h.length - 1][0], dt = Math.max(1, t1 - t0);
+    var X = function (t) { return ml + (t - t0) / dt * (W - ml - mr); };
+    var Y = function (v) { return mt + (1 - (v - min) / (max - min)) * (H - mt - mb); };
+
+    var p = [];
+    p.push('<defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + cor + '" stop-opacity=".35"/><stop offset="1" stop-color="' + cor + '" stop-opacity="0"/></linearGradient></defs>');
+    for (var i = 0; i <= 4; i++) {
+      var v = min + (max - min) * i / 4;
+      p.push('<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="#17405f"/>');
+      p.push('<text x="' + (ml - 8) + '" y="' + (Y(v) + 4) + '" fill="#6f92ad" font-size="11" text-anchor="end">' + num(v, d.casas) + '</text>');
+    }
+    var limites = d.type === 'level' ? [[80, '#facc15', 'atenção'], [90, '#f05252', 'crítico']] : (d.type === 'ph' ? [[6.5, '#facc15', 'mín. ideal'], [8.5, '#facc15', 'máx. ideal']] : []);
+    limites.forEach(function (lm) {
+      if (lm[0] > min && lm[0] < max) {
+        p.push('<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + Y(lm[0]) + '" y2="' + Y(lm[0]) + '" stroke="' + lm[1] + '" stroke-dasharray="6 5" stroke-opacity=".8"/>');
+        p.push('<text x="' + (W - mr - 4) + '" y="' + (Y(lm[0]) - 5) + '" fill="' + lm[1] + '" font-size="11" text-anchor="end">' + lm[2] + '</text>');
+      }
+    });
+    var pts = h.map(function (q) { return X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1); });
+    p.push('<polygon points="' + X(t0) + ',' + (H - mb) + ' ' + pts.join(' ') + ' ' + X(t1) + ',' + (H - mb) + '" fill="url(#area)"/>');
+    p.push('<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + cor + '" stroke-width="2.2" stroke-linejoin="round"/>');
+    h.forEach(function (q) {                                       // valores impossíveis em vermelho
+      if (q[1] < d.abs_min || q[1] > d.abs_max) {
+        p.push('<circle cx="' + X(q[0]) + '" cy="' + Y(q[1]) + '" r="5" fill="#f05252" stroke="#061524" stroke-width="2"/>');
+      }
+    });
+    var u = h[h.length - 1];
+    p.push('<circle cx="' + X(u[0]) + '" cy="' + Y(u[1]) + '" r="4.5" fill="' + cor + '" stroke="#061524" stroke-width="2"/>');
+    for (var k = 0; k <= 3; k++) {
+      var tk = t0 + dt * k / 3;
+      p.push('<text x="' + X(tk) + '" y="' + (H - 8) + '" fill="#6f92ad" font-size="11" text-anchor="' + (k === 0 ? 'start' : (k === 3 ? 'end' : 'middle')) + '">' + hora(Math.round(tk)) + '</text>');
+    }
+
+    var dica = $('dica');
+    if (foco !== null && foco < h.length) {
+      var f = h[foco];
+      p.push('<line x1="' + X(f[0]) + '" x2="' + X(f[0]) + '" y1="' + mt + '" y2="' + (H - mb) + '" stroke="#8eb0c9" stroke-dasharray="3 4"/>');
+      p.push('<circle cx="' + X(f[0]) + '" cy="' + Y(f[1]) + '" r="5" fill="#fff" stroke="' + cor + '" stroke-width="2"/>');
+      dica.style.display = 'block';
+      dica.style.left = X(f[0]) + 'px';
+      dica.style.top = Y(f[1]) + 'px';
+      dica.textContent = num(f[1], d.casas) + ' ' + d.unit + ' · ' + hora(f[0]);
+    } else {
+      dica.style.display = 'none';
+    }
+    svg.innerHTML = p.join('');
+    svg._escala = { X: X, ml: ml, mr: mr, W: W, h: h };
+  }
+
+  $('caixaGrafico').addEventListener('mousemove', function (ev) {
+    var esc_ = $('grafico')._escala;
+    if (!esc_ || !ultimo || !ultimo.detalhe) { return; }
+    var x = ev.clientX - this.getBoundingClientRect().left, melhor = 0, dist = Infinity;
+    esc_.h.forEach(function (q, i) { var dd = Math.abs(esc_.X(q[0]) - x); if (dd < dist) { dist = dd; melhor = i; } });
+    foco = melhor;
+    desenharGrafico(ultimo.detalhe);
+  });
+  $('caixaGrafico').addEventListener('mouseleave', function () {
+    foco = null;
+    if (ultimo && ultimo.detalhe) { desenharGrafico(ultimo.detalhe); }
+  });
+  window.addEventListener('resize', function () { if (ultimo && ultimo.detalhe) { desenharGrafico(ultimo.detalhe); } });
+
+  /* ------------------------------------------------------------ eventos */
+  $('lista').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-sensor]');
+    if (!b) { return; }
+    selecionado = b.getAttribute('data-sensor');
+    gravarLocal('sensorSelecionado', selecionado);
+    preencher = true; foco = null;
+    $('msg').textContent = '';
+    atualizar();
+  });
+  document.querySelectorAll('[data-todos]').forEach(function (b) {
+    b.addEventListener('click', function () { comando({ sensor: 'todos', acao: b.getAttribute('data-todos') }); });
+  });
+  document.querySelectorAll('[data-acao]').forEach(function (b) {
+    b.addEventListener('click', function () { comando({ sensor: selecionado, acao: b.getAttribute('data-acao') }); });
+  });
+  document.querySelectorAll('[data-falha]').forEach(function (b) {
+    b.addEventListener('click', function () { comando({ sensor: selecionado, acao: 'falha', tipo: b.getAttribute('data-falha') }); });
+  });
+  document.querySelectorAll('[data-modo]').forEach(function (b) {
+    b.addEventListener('click', function () { comando({ sensor: selecionado, acao: 'modo', modo: b.getAttribute('data-modo') }); });
+  });
+  $('presets').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-preset]');
+    if (b) { comando({ sensor: selecionado, acao: 'valor', valor: Number(b.getAttribute('data-preset')) }); }
+  });
+  $('btSincronizar').addEventListener('click', function () { comando({ sensor: 'todos', acao: 'sincronizar' }); });
+  $('btValor').addEventListener('click', function () { comando({ sensor: selecionado, acao: 'valor', valor: $('cValor').value }); });
+  $('cValor').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { $('btValor').click(); } });
+  $('btConfig').addEventListener('click', function () {
+    var c = { sensor: selecionado, acao: 'config', variacao: $('cVar').value, intervalo: $('cInt').value };
+    if ($('linhaFaixa').style.display !== 'none') { c.faixa_min = $('cMin').value; c.faixa_max = $('cMax').value; }
+    comando(c);
+  });
+
+  atualizar();
+  setInterval(atualizar, 1000);
+})();
+</script>
+</body>
+</html>

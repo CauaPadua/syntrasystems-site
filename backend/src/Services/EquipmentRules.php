@@ -20,9 +20,11 @@ final class EquipmentRules
 {
     /**
      * Um equipamento ativo é considerado online enquanto a última leitura dele
-     * tiver chegado dentro desta janela (em segundos).
+     * tiver chegado dentro desta janela (em segundos). Os sensores medem a cada
+     * 5 s; 2 min sem nenhuma leitura aceita indica falha, e abre o alerta
+     * "Equipamento sem leituras" (AlertService::checkCommunication).
      */
-    public const ONLINE_WINDOW = 300;
+    public const ONLINE_WINDOW = 120;
 
     /**
      * Grandezas aceitas. min/max delimitam valores fisicamente possíveis: a API

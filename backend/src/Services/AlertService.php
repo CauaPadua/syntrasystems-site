@@ -7,6 +7,11 @@
  * aberto para aquela grandeza na represa, um alerta é criado; se já há, ele é
  * atualizado (e agravado, quando o valor passa de atenção para crítico).
  *
+ * Há também o alerta de COMUNICAÇÃO: um equipamento ativo que já transmitiu e
+ * ficou mais de EquipmentRules::ONLINE_WINDOW sem nenhuma leitura aceita
+ * (sensor com defeito, cabo rompido, sem energia) ganha o alerta "Equipamento
+ * sem leituras". Quando ele volta a transmitir, isso entra na linha do tempo.
+ *
  * O tratamento é feito por pessoas, pela tela de alertas: "assumir" e
  * "resolver" gravam o novo status e uma etapa na linha do tempo.
  */
@@ -23,6 +28,12 @@ use PDO;
 final class AlertService
 {
     public const SEM_RESPONSAVEL = 'Não atribuído';
+
+    /** Grandeza usada nos alertas de equipamento sem leituras. */
+    public const COMUNICACAO = 'communication';
+
+    private const VOLTOU = 'Equipamento voltou a transmitir';
+    private const PAROU = 'Equipamento parou de transmitir';
 
     private PDO $pdo;
 
@@ -76,6 +87,107 @@ final class AlertService
         }
 
         return ['classification' => $classificacao, 'alert_id' => (string) $aberto['id']];
+    }
+
+    /**
+     * Abre o alerta "Equipamento sem leituras" para cada equipamento que a estação
+     * lê e que está há mais de EquipmentRules::ONLINE_WINDOW sem nenhuma leitura
+     * aceita, contados a partir de quando a estação ligou. Roda a cada pacote que a
+     * estação envia (api/v1/ingest/batch.php), inclusive o aviso de "estou ligada"
+     * que ela manda quando não tem leituras novas.
+     *
+     * Contar a partir da ligação da estação evita alarme falso: logo depois de ligar,
+     * ainda não chegou leitura de todos os sensores, e a última gravada no banco pode
+     * ser de horas antes.
+     *
+     * @param list<string> $codigos equipamentos que a estação lê
+     * @return list<array{alert_id:string,equipment_id:string}> alertas abertos agora
+     */
+    public function checkCommunication(DateTimeImmutable $agora, array $codigos, DateTimeImmutable $estacaoLigadaEm): array
+    {
+        if ($codigos === []) {
+            return [];
+        }
+
+        $marcadores = implode(', ', array_fill(0, count($codigos), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT s.id, s.name, s.reservoir_id,
+                    (SELECT MAX(l.recorded_at) FROM readings l WHERE l.sensor_id = s.id) AS ultima
+               FROM sensors s
+              WHERE s.status = 'active' AND s.id IN ({$marcadores})"
+        );
+        $stmt->execute(array_values($codigos));
+        $abertos = [];
+
+        foreach ($stmt->fetchAll() as $e) {
+            $ultima = $e['ultima'] === null ? null : new DateTimeImmutable((string) $e['ultima'], Clock::timezone());
+
+            // Esperando desde a última leitura, ou desde que a estação ligou (o que for mais recente).
+            $desde = ($ultima === null || $ultima < $estacaoLigadaEm) ? $estacaoLigadaEm : $ultima;
+            if ($agora->getTimestamp() - $desde->getTimestamp() <= EquipmentRules::ONLINE_WINDOW) {
+                continue;                                         // transmitindo normalmente (ou estação acabou de ligar)
+            }
+
+            $sensor = (string) $e['id'];
+            $parado = $ultima === null ? 'nenhuma leitura recebida' : 'sem leitura desde ' . $ultima->format('H:i:s');
+            $aberto = $this->alertaDeComunicacao($sensor);
+
+            if ($aberto !== null) {
+                // Já existe alerta. Se ele tinha voltado e parou de novo, registra.
+                if (strpos($this->ultimaEtapa($aberto), self::VOLTOU) === 0) {
+                    $this->pdo->prepare('UPDATE alerts SET current_value = :v WHERE id = :id')->execute(['v' => $parado, 'id' => $aberto]);
+                    $this->etapa($aberto, self::PAROU . ' de novo (' . $parado . ').', $agora);
+                }
+                continue;
+            }
+
+            $id = $this->proximoId();
+            $minutos = intdiv(EquipmentRules::ONLINE_WINDOW, 60);
+            $stmt2 = $this->pdo->prepare(
+                'INSERT INTO alerts (id, reservoir_id, sensor_id, severity, metric, status, title, metric_label,
+                                     detected_at, owner, current_value, threshold, detail, threshold_detail)
+                 VALUES (:id, :rid, :sid, :sev, :metric, :status, :titulo, :rotulo,
+                         :quando, :owner, :valor, :limite, :detalhe, :detalhe_limite)'
+            );
+            $stmt2->execute([
+                'id'             => $id,
+                'rid'            => (string) $e['reservoir_id'],
+                'sid'            => $sensor,
+                'sev'            => 'attention',
+                'metric'         => self::COMUNICACAO,
+                'status'         => 'new',
+                'titulo'         => 'Equipamento sem leituras',
+                'rotulo'         => 'Comunicação',
+                'quando'         => Clock::sql($agora),
+                'owner'          => self::SEM_RESPONSAVEL,
+                'valor'          => $parado,
+                'limite'         => "{$minutos} min sem leitura",
+                'detalhe'        => "Equipamento {$sensor} ({$e['name']})",
+                'detalhe_limite' => 'Janela de comunicação',
+            ]);
+            $this->etapa($id, self::PAROU . ": {$sensor} {$parado} (mais de {$minutos} min com a estação ligada). Verificar o sensor em campo.", $agora);
+
+            $abertos[] = ['alert_id' => $id, 'equipment_id' => $sensor];
+        }
+
+        return $abertos;
+    }
+
+    /**
+     * Uma leitura do equipamento foi aceita: se ele tinha alerta de comunicação
+     * aberto, registra na linha do tempo que voltou a transmitir. O alerta
+     * continua aberto até o operador resolvê-lo.
+     */
+    public function communicationRestored(string $sensorId, DateTimeImmutable $quando): void
+    {
+        $aberto = $this->alertaDeComunicacao($sensorId);
+        if ($aberto === null || strpos($this->ultimaEtapa($aberto), self::VOLTOU) === 0) {
+            return;
+        }
+
+        $this->pdo->prepare('UPDATE alerts SET current_value = :v WHERE id = :id')
+            ->execute(['v' => 'voltou às ' . $quando->format('H:i:s'), 'id' => $aberto]);
+        $this->etapa($aberto, self::VOLTOU . ' (leitura das ' . $quando->format('H:i:s') . '). Resolva o alerta depois de conferir.', $quando);
     }
 
     /**
@@ -155,13 +267,35 @@ final class AlertService
         return $linha === false ? null : $linha;
     }
 
-    private function abrir(string $reservoirId, ?string $sensorId, string $metric, float $value, string $classificacao, DateTimeImmutable $when): string
+    /** Alerta de comunicação ainda não resolvido do equipamento, se houver. */
+    private function alertaDeComunicacao(string $sensorId): ?string
     {
-        // Código sequencial no formato ALT-1001: pega o maior número já usado e soma 1.
-        $numero = (int) $this->pdo->query(
+        $stmt = $this->pdo->prepare(
+            "SELECT id FROM alerts WHERE sensor_id = :s AND metric = :m AND status <> 'resolved' ORDER BY detected_at DESC LIMIT 1"
+        );
+        $stmt->execute(['s' => $sensorId, 'm' => self::COMUNICACAO]);
+        $id = $stmt->fetchColumn();
+        return $id === false ? null : (string) $id;
+    }
+
+    private function ultimaEtapa(string $alertId): string
+    {
+        $stmt = $this->pdo->prepare('SELECT description FROM alert_timeline WHERE alert_id = :id ORDER BY step_order DESC LIMIT 1');
+        $stmt->execute(['id' => $alertId]);
+        return (string) $stmt->fetchColumn();
+    }
+
+    /** Código sequencial no formato ALT-1001: pega o maior número já usado e soma 1. */
+    private function proximoId(): string
+    {
+        return 'ALT-' . (int) $this->pdo->query(
             "SELECT COALESCE(MAX(CAST(SUBSTRING(id, 5) AS UNSIGNED)), 1000) + 1 FROM alerts WHERE id LIKE 'ALT-%'"
         )->fetchColumn();
-        $id = 'ALT-' . $numero;
+    }
+
+    private function abrir(string $reservoirId, ?string $sensorId, string $metric, float $value, string $classificacao, DateTimeImmutable $when): string
+    {
+        $id = $this->proximoId();
 
         $valor = $this->formatar($metric, $value);
         $limite = StatusRules::thresholdText($metric, $classificacao);

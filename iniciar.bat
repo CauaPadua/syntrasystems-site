@@ -1,8 +1,11 @@
 @echo off
-rem Aquapulse - prepara e liga o projeto com um duplo clique (XAMPP em C:\xampp).
+rem Aquapulse - liga o projeto inteiro com um duplo clique (XAMPP em C:\xampp).
 rem   1. cria backend\.env se nao existir
 rem   2. cria o banco aquapulse_dev, as tabelas e os dados de exemplo se ainda nao existirem
-rem   3. liga o site em http://localhost:8000 e abre o login
+rem   3. completa o historico ate agora, se o projeto ficou dias desligado
+rem   4. abre o simulador de sensores    (janela "Simulador de sensores", tela em http://localhost:8100)
+rem   5. abre a estacao de telemetria    (janela "Estacao de telemetria": envia as leituras ao banco)
+rem   6. liga o site em http://localhost:8000 (nesta janela) e abre o login
 rem Antes: ligue o MySQL no painel do XAMPP.
 
 cd /d "%~dp0"
@@ -38,8 +41,17 @@ if errorlevel 1 (
   )
 )
 
+rem Se o projeto ficou dias desligado, o historico parou: completa ate agora (nao apaga nada).
+"%PHP%" backend\database\migrate.php completar
+
+rem Sensores e estacao, cada um na sua janela. O simulador espera o site subir para ler o cadastro.
+start "Simulador de sensores" /d "%~dp0simulador-sensor" cmd /c abrir-sensor.bat
+start "Estacao de telemetria" cmd /k "%PHP%" estacao\estacao.php --url=http://localhost:%PORT%
+
 echo.
-echo Site no ar: http://localhost:%PORT%/login.php   ^(feche esta janela para desligar^)
+echo Site no ar: http://localhost:%PORT%/login.php   ^(feche esta janela para desligar o site^)
 echo Contas: demo@aquapulse.local ^(administrador^), operador@aquapulse.local, suspenso@aquapulse.local
+echo Sensores: janela "Simulador de sensores", tela em http://localhost:8100
+echo Estacao:  janela "Estacao de telemetria" ^(so pode haver uma ligada^)
 start "" http://localhost:%PORT%/login.php
 "%PHP%" -S localhost:%PORT% -t .
