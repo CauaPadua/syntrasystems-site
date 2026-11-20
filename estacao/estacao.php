@@ -314,7 +314,7 @@ $leitor = new LeitorDeSensores((string) $op['sensores']);
 /* ------------------------------------------------------------ apresentação */
 $total = array_sum(array_map(static fn (Estacao $e): int => count($e->equipamentos), $estacoes));
 
-echo PHP_EOL, 'AQUAPULSE · ESTAÇÕES DE TELEMETRIA', PHP_EOL;
+echo PHP_EOL, 'AQUAPULSE · ESTAÇÕES DE TELEMETRIA  (DEIXE ESTA JANELA ABERTA: fechar = parar de gravar leituras)', PHP_EOL;
 echo "servidor {$op['url']} · sensores {$op['sensores']} · ciclo a cada ", numero($intervalo, 0), ' s · Ctrl+C encerra', PHP_EOL;
 if ($op['queda-rede']) {
     echo 'simulação de queda de rede: sem sinal do ciclo ', SEM_SINAL[0], ' ao ', SEM_SINAL[1], '; a estação guarda tudo e envia quando o sinal volta', PHP_EOL;

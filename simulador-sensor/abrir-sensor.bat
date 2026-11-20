@@ -1,6 +1,7 @@
 @echo off
-rem Liga o simulador de sensores e abre a tela no navegador.
+rem Liga o simulador de sensores (http://localhost:8100) e abre a tela no navegador.
 rem O iniciar.bat ja chama este arquivo; ele tambem funciona sozinho.
+title Simulador de sensores - NAO FECHE
 cd /d "%~dp0"
 set PHP=C:\xampp\php\php.exe
 if "%SENSOR_PORT%"=="" set SENSOR_PORT=8100
@@ -22,19 +23,24 @@ if not errorlevel 1 (
   exit /b 0
 )
 
-rem Os sensores leem o cadastro e os ultimos valores do sistema: espera o site (ate 10 s).
+rem Os sensores leem o cadastro e os ultimos valores do sistema: espera o site responder (ate 15 s).
+rem "localhost" (e nao 127.0.0.1): o servidor do PHP pode escutar so no endereco IPv6.
 echo Aguardando o site em %AQUAPULSE_URL% ...
-"%PHP%" -r "for ($i = 0; $i < 40 && !@fsockopen('127.0.0.1', %PORT%, $n, $m, 1); $i++) usleep(250000);"
+"%PHP%" -r "$fim = time() + 15; while (time() < $fim && !@fsockopen('localhost', %PORT%, $n, $m, 1)) usleep(300000);"
 
-rem Cada vez que o simulador e ligado, os sensores comecam do zero, com os ultimos valores do banco.
+rem Cada vez que o simulador e ligado, os sensores recomecam dos ultimos valores do banco.
 if exist dados\estado.json del dados\estado.json
 
 echo.
-echo Simulador de sensores no ar: http://localhost:%SENSOR_PORT%/
-echo A estacao consulta:          http://localhost:%SENSOR_PORT%/api/leituras
-echo Feche esta janela para desligar os sensores.
+echo ============================================================
+echo  SIMULADOR DE SENSORES - DEIXE ESTA JANELA ABERTA
+echo  Tela:            http://localhost:%SENSOR_PORT%/
+echo  A estacao busca: http://localhost:%SENSOR_PORT%/api/leituras
+echo  Fechar esta janela desliga os sensores.
+echo ============================================================
 echo.
 
-start "" http://localhost:%SENSOR_PORT%/
+rem Abre a tela assim que o servidor abaixo estiver no ar (antes disso o navegador daria erro).
+start "" /b "%PHP%" -r "$fim = time() + 15; while (time() < $fim && !@fsockopen('localhost', %SENSOR_PORT%, $n, $m, 1)) usleep(300000); exec('explorer http://localhost:%SENSOR_PORT%/');"
 "%PHP%" -S localhost:%SENSOR_PORT% router.php
 pause

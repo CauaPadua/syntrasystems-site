@@ -30,15 +30,26 @@ Peça por peça: [simulador-sensor/README.md](simulador-sensor/README.md) e
 
 ## Como rodar (XAMPP)
 
-1. No painel do XAMPP, clique em **Start** no **MySQL** (o Apache não é usado).
+1. No painel do XAMPP, clique em **Start** no **MySQL** (e no **Apache**, só se for abrir o
+   phpMyAdmin).
 2. Dê dois cliques em **`iniciar.bat`**. Ele:
    - cria o `backend/.env` e o banco `aquapulse_dev` na primeira vez;
    - completa o histórico até agora, se o projeto ficou dias desligado;
-   - abre a janela **"Simulador de sensores"** (tela em <http://localhost:8100>);
+   - abre a janela **"Simulador de sensores"** e a tela dele no navegador;
    - abre a janela **"Estação de telemetria"**;
-   - liga o site e abre o login em <http://localhost:8000/login.php>.
+   - liga o site nesta janela e abre o login no navegador.
 
-Deixe as janelas abertas. Para desligar, feche-as.
+Deixe as três janelas abertas. Para desligar, feche-as.
+
+| O quê | Endereço | Pasta | Janela |
+| --- | --- | --- | --- |
+| Site e login | <http://localhost:8000/login.php> | raiz do projeto | "Aquapulse - site" |
+| Painel | <http://localhost:8000/dashboard/> | `dashboard/` | (a mesma) |
+| API que recebe as leituras | <http://localhost:8000/api/v1/ingest/batch.php> | `api/v1/ingest/` | (a mesma) |
+| Simulador de sensores | <http://localhost:8100> | `simulador-sensor/` | "Simulador de sensores" |
+| Estação de telemetria | não tem tela: lê de 8100 e envia para 8000 | `estacao/` | "Estação de telemetria" |
+| Banco de dados | MySQL na porta 3306, banco `aquapulse_dev` | `backend/database/` | XAMPP |
+| phpMyAdmin | <http://localhost/phpmyadmin> (precisa do Apache) | — | XAMPP |
 
 ### Contas de acesso
 
