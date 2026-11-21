@@ -6,7 +6,7 @@ rem   3. completa o historico ate agora, se o projeto ficou dias desligado
 rem   4. escolhe as portas: 8000 (site) e 8100 (sensores). Se uma estiver ocupada por outro
 rem      programa, usa a proxima livre; se o Aquapulse ja estiver ligado, so abre as telas.
 rem   5. abre a janela "Simulador de sensores" e a janela "Estacao de telemetria"
-rem   6. liga o site nesta janela e abre o login e o simulador no navegador
+rem   6. liga o site nesta janela e abre a pagina inicial e o simulador no navegador
 rem Antes: ligue o MySQL no painel do XAMPP (o Apache so e preciso para o phpMyAdmin).
 
 title Aquapulse - site (NAO FECHE)
@@ -58,7 +58,8 @@ if "%LIGAR_ESTACAO%"=="1" start "Estacao de telemetria" /d "%~dp0" cmd /k "%PHP%
 echo.
 echo ================================================================
 echo  AQUAPULSE - DEIXE AS TRES JANELAS ABERTAS
-echo   Site e painel:   http://localhost:%PORT%/login.php   (esta janela)
+echo   Site:            http://localhost:%PORT%/            (esta janela)
+echo   Login e painel:  http://localhost:%PORT%/login.php
 echo   Sensores:        http://localhost:%SENSOR_PORT%               (janela "Simulador de sensores")
 echo   Estacao:         janela "Estacao de telemetria"
 echo   Banco:           MySQL, banco aquapulse_dev  (phpMyAdmin: http://localhost/phpmyadmin)
@@ -66,15 +67,15 @@ echo  Contas: demo@aquapulse.local ^(administrador^), operador@aquapulse.local
 echo  Fechar esta janela desliga o site.
 echo ================================================================
 
-rem O site ja estava ligado em outra janela: so abre o login.
+rem O site ja estava ligado em outra janela: so abre a pagina inicial.
 if "%LIGAR_SITE%"=="0" (
-  start "" http://localhost:%PORT%/login.php
+  start "" http://localhost:%PORT%/
   echo.
   echo O Aquapulse ja estava ligado: abri as telas. Esta janela fecha sozinha.
   timeout /t 10 >nul
   exit /b 0
 )
 
-rem Abre o login assim que o site abaixo estiver no ar.
-start "" /b "%PHP%" -r "$fim = time() + 15; while (time() < $fim && !@fsockopen('localhost', %PORT%, $n, $m, 1)) usleep(300000); exec('explorer http://localhost:%PORT%/login.php');"
+rem Abre a pagina inicial assim que o site abaixo estiver no ar.
+start "" /b "%PHP%" -r "$fim = time() + 15; while (time() < $fim && !@fsockopen('localhost', %PORT%, $n, $m, 1)) usleep(300000); exec('explorer http://localhost:%PORT%/');"
 "%PHP%" -S localhost:%PORT% -t .

@@ -37,14 +37,14 @@ Peça por peça: [simulador-sensor/README.md](simulador-sensor/README.md) e
    - completa o histórico até agora, se o projeto ficou dias desligado;
    - abre a janela **"Simulador de sensores"** e a tela dele no navegador;
    - abre a janela **"Estação de telemetria"**;
-   - liga o site nesta janela e abre o login no navegador.
+   - liga o site nesta janela e abre a página inicial no navegador (o login fica no botão "Entrar").
 
 Deixe as três janelas abertas. Para desligar, feche-as.
 
 **Portas ocupadas:** o `iniciar.bat` confere as portas antes de ligar (`backend/portas.php`) e
 nunca encerra nada do computador. Porta livre: usa. O Aquapulse já está ligado nela (janelas
 abertas antes): não liga de novo, só abre as telas. Ocupada por outro programa: usa a próxima
-livre (8001, 8002… / 8101, 8102…) e mostra o endereço na janela. Nos três casos, o login e o
+livre (8001, 8002… / 8101, 8102…) e mostra o endereço na janela. Nos três casos, a página inicial e o
 simulador abrem no navegador.
 
 | O quê | Endereço | Pasta | Janela |
