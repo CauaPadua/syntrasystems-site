@@ -273,6 +273,8 @@ if ($trava === false || !flock($trava, LOCK_EX | LOCK_NB)) {
     parar('Já existe uma estação de telemetria ligada (janela "Estação de telemetria" aberta pelo iniciar.bat, ou outro terminal).'
         . PHP_EOL . 'Feche-a antes de ligar outra. Para só testar um valor, use --equipamento=... --valor=..., que funciona com ela ligada.');
 }
+// Endereços que esta estação usa: o iniciar.bat confere antes de reaproveitá-la.
+@file_put_contents(__DIR__ . '/estacao.info', json_encode(['url' => rtrim((string) $op['url'], '/'), 'sensores' => rtrim((string) $op['sensores'], '/')]));
 
 /* --------------------------- 4. monta uma estação para cada represa */
 $escolhidos = $op['equipamento'] === ''

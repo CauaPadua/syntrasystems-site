@@ -41,12 +41,18 @@ Peça por peça: [simulador-sensor/README.md](simulador-sensor/README.md) e
 
 Deixe as três janelas abertas. Para desligar, feche-as.
 
+**Portas ocupadas:** o `iniciar.bat` confere as portas antes de ligar (`backend/portas.php`) e
+nunca encerra nada do computador. Porta livre: usa. O Aquapulse já está ligado nela (janelas
+abertas antes): não liga de novo, só abre as telas. Ocupada por outro programa: usa a próxima
+livre (8001, 8002… / 8101, 8102…) e mostra o endereço na janela. Nos três casos, o login e o
+simulador abrem no navegador.
+
 | O quê | Endereço | Pasta | Janela |
 | --- | --- | --- | --- |
-| Site e login | <http://localhost:8000/login.php> | raiz do projeto | "Aquapulse - site" |
+| Site e login (8000 ou a próxima livre) | <http://localhost:8000/login.php> | raiz do projeto | "Aquapulse - site" |
 | Painel | <http://localhost:8000/dashboard/> | `dashboard/` | (a mesma) |
 | API que recebe as leituras | <http://localhost:8000/api/v1/ingest/batch.php> | `api/v1/ingest/` | (a mesma) |
-| Simulador de sensores | <http://localhost:8100> | `simulador-sensor/` | "Simulador de sensores" |
+| Simulador de sensores (8100 ou a próxima livre) | <http://localhost:8100> | `simulador-sensor/` | "Simulador de sensores" |
 | Estação de telemetria | não tem tela: lê de 8100 e envia para 8000 | `estacao/` | "Estação de telemetria" |
 | Banco de dados | MySQL na porta 3306, banco `aquapulse_dev` | `backend/database/` | XAMPP |
 | phpMyAdmin | <http://localhost/phpmyadmin> (precisa do Apache) | — | XAMPP |

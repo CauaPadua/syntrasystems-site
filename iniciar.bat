@@ -3,16 +3,16 @@ rem Aquapulse - liga o projeto inteiro com um duplo clique (XAMPP em C:\xampp).
 rem   1. cria backend\.env se nao existir
 rem   2. cria o banco aquapulse_dev, as tabelas e os dados de exemplo se ainda nao existirem
 rem   3. completa o historico ate agora, se o projeto ficou dias desligado
-rem   4. abre a janela "Simulador de sensores"  (tela em http://localhost:8100)
-rem   5. abre a janela "Estacao de telemetria"  (envia as leituras ao banco)
-rem   6. liga o site nesta janela (http://localhost:8000) e abre o login
+rem   4. escolhe as portas: 8000 (site) e 8100 (sensores). Se uma estiver ocupada por outro
+rem      programa, usa a proxima livre; se o Aquapulse ja estiver ligado, so abre as telas.
+rem   5. abre a janela "Simulador de sensores" e a janela "Estacao de telemetria"
+rem   6. liga o site nesta janela e abre o login e o simulador no navegador
 rem Antes: ligue o MySQL no painel do XAMPP (o Apache so e preciso para o phpMyAdmin).
 
 title Aquapulse - site (NAO FECHE)
 cd /d "%~dp0"
 set PHP=C:\xampp\php\php.exe
 set MYSQL=C:\xampp\mysql\bin\mysql.exe
-if "%PORT%"=="" set PORT=8000
 
 if not exist "%PHP%" (
   echo XAMPP nao encontrado em C:\xampp. Ajuste PHP e MYSQL no inicio deste arquivo.
@@ -45,20 +45,35 @@ if errorlevel 1 (
 rem Se o projeto ficou dias desligado, o historico parou: completa ate agora (nao apaga nada).
 "%PHP%" backend\database\migrate.php completar
 
+rem Escolhe as portas (nada que ja esta rodando no computador e encerrado).
+"%PHP%" backend\portas.php "%TEMP%\aquapulse-portas.bat"
+if errorlevel 1 ( pause & exit /b 1 )
+call "%TEMP%\aquapulse-portas.bat"
+
 rem Sensores e estacao, cada um na sua janela ("call" + caminho completo: funciona em qualquer pasta).
-start "Simulador de sensores" /d "%~dp0simulador-sensor" cmd /c call "%~dp0simulador-sensor\abrir-sensor.bat"
-start "Estacao de telemetria" /d "%~dp0" cmd /k "%PHP%" estacao\estacao.php --url=http://localhost:%PORT%
+if "%LIGAR_SENSORES%"=="1" start "Simulador de sensores" /d "%~dp0simulador-sensor" cmd /c call "%~dp0simulador-sensor\abrir-sensor.bat"
+if "%LIGAR_SENSORES%"=="0" start "" http://localhost:%SENSOR_PORT%/
+if "%LIGAR_ESTACAO%"=="1" start "Estacao de telemetria" /d "%~dp0" cmd /k "%PHP%" estacao\estacao.php --url=http://localhost:%PORT% --sensores=http://localhost:%SENSOR_PORT%
 
 echo.
 echo ================================================================
 echo  AQUAPULSE - DEIXE AS TRES JANELAS ABERTAS
 echo   Site e painel:   http://localhost:%PORT%/login.php   (esta janela)
-echo   Sensores:        http://localhost:8100               (janela "Simulador de sensores")
+echo   Sensores:        http://localhost:%SENSOR_PORT%               (janela "Simulador de sensores")
 echo   Estacao:         janela "Estacao de telemetria"
 echo   Banco:           MySQL, banco aquapulse_dev  (phpMyAdmin: http://localhost/phpmyadmin)
 echo  Contas: demo@aquapulse.local ^(administrador^), operador@aquapulse.local
 echo  Fechar esta janela desliga o site.
 echo ================================================================
+
+rem O site ja estava ligado em outra janela: so abre o login.
+if "%LIGAR_SITE%"=="0" (
+  start "" http://localhost:%PORT%/login.php
+  echo.
+  echo O Aquapulse ja estava ligado: abri as telas. Esta janela fecha sozinha.
+  timeout /t 10 >nul
+  exit /b 0
+)
 
 rem Abre o login assim que o site abaixo estiver no ar.
 start "" /b "%PHP%" -r "$fim = time() + 15; while (time() < $fim && !@fsockopen('localhost', %PORT%, $n, $m, 1)) usleep(300000); exec('explorer http://localhost:%PORT%/login.php');"

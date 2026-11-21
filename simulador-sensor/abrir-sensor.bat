@@ -1,12 +1,10 @@
 @echo off
-rem Liga o simulador de sensores (http://localhost:8100) e abre a tela no navegador.
+rem Liga o simulador de sensores (porta 8100, ou a proxima livre) e abre a tela no navegador.
 rem O iniciar.bat ja chama este arquivo; ele tambem funciona sozinho.
 title Simulador de sensores - NAO FECHE
 cd /d "%~dp0"
 set PHP=C:\xampp\php\php.exe
-if "%SENSOR_PORT%"=="" set SENSOR_PORT=8100
 if "%PORT%"=="" set PORT=8000
-if "%AQUAPULSE_URL%"=="" set AQUAPULSE_URL=http://localhost:%PORT%
 
 if not exist "%PHP%" (
   echo XAMPP nao encontrado em C:\xampp. Ajuste a linha PHP no inicio deste arquivo.
@@ -14,12 +12,19 @@ if not exist "%PHP%" (
   exit /b 1
 )
 
-rem Se ja estiver ligado em outra janela, so abre a tela.
-netstat -ano | findstr /R /C:":%SENSOR_PORT% .*LISTENING" >nul
-if not errorlevel 1 (
-  echo O simulador de sensores ja esta ligado. Abrindo a tela...
+rem Aberto sozinho (sem o iniciar.bat): escolhe a porta. Livre: usa. Ja e o simulador: so abre
+rem a tela. Ocupada por outro programa: usa a proxima livre. Nada e encerrado.
+if "%LIGAR_SENSORES%"=="" (
+  "%PHP%" "%~dp0..\backend\portas.php" "%TEMP%\aquapulse-sensores.bat" sensores
+  if errorlevel 1 ( pause & exit /b 1 )
+  call "%TEMP%\aquapulse-sensores.bat"
+)
+if "%AQUAPULSE_URL%"=="" set AQUAPULSE_URL=http://localhost:%PORT%
+
+if "%LIGAR_SENSORES%"=="0" (
+  echo O simulador de sensores ja esta ligado. Abrindo a tela: http://localhost:%SENSOR_PORT%/
   start "" http://localhost:%SENSOR_PORT%/
-  timeout /t 3 >nul
+  timeout /t 5 >nul
   exit /b 0
 )
 

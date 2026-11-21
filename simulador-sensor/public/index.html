@@ -236,7 +236,7 @@
       <div class="linha-i"><span>Sensores</span><b id="cOrigem">—</b></div>
       <div class="botoes" style="margin-top:10px"><button class="bt peq" id="btSincronizar" title="Lê de novo o cadastro de equipamentos e os últimos valores do banco">⟳ Sincronizar com o sistema</button></div>
       <p style="margin:12px 0 6px;color:var(--suave);font-size:12.5px">A estação busca as leituras em</p>
-      <code>GET http://localhost:8100/api/leituras?apos=N</code>
+      <code id="endpoint">GET http://localhost:8100/api/leituras?apos=N</code>
       <p class="vazio" style="margin:10px 0 0">O simulador só gera e disponibiliza os dados. Quem envia para a API e o banco é a estação.</p>
     </section>
 
@@ -559,6 +559,7 @@
     comando(c);
   });
 
+  $('endpoint').textContent = 'GET ' + location.origin + '/api/leituras?apos=N';   // a porta pode não ser 8100
   atualizar();
   setInterval(atualizar, 1000);
 })();

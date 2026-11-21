@@ -8,3 +8,4 @@ simulador-sensor/dados/
 
 # Trava que impede duas estacoes de telemetria ligadas ao mesmo tempo
 estacao/estacao.lock
+estacao/estacao.info
