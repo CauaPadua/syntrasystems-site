@@ -47,8 +47,8 @@ final class OverviewService
             return [];
         }
 
-        $status = StatusRules::fromLevel((float) $r['level_pct']);
-        $phStatus = StatusRules::fromPh((float) $r['ph']);
+        $status = StatusRules::fromLevel($r['level_pct']);
+        $phStatus = StatusRules::fromPh($r['ph']);
 
         $cota = $this->repo->series($reservoirId, 'cota', $period);
         $entrada = $this->repo->series($reservoirId, 'inflow', $period);
@@ -72,11 +72,10 @@ final class OverviewService
                 'level'   => ['value' => $r['level_pct'], 'unit' => '%', 'cota' => $r['cota_m'], 'status' => StatusRules::describe($status)],
                 'storage' => ['value' => $r['volume_hm3'], 'unit' => 'hm³', 'capacity' => $r['capacity_hm3'], 'occupancy' => $r['level_pct']],
                 'flow'    => ['value' => $r['inflow_m3s'], 'unit' => 'm³/s',
-                              'trend' => $this->trend((float) $r['inflow_m3s'], (float) $r['inflow_24h_ago_m3s']), 'trend_label' => 'vs 24 h atrás'],
-                'ph'      => ['value' => $r['ph'], 'unit' => '', 'status' => StatusRules::describe($phStatus),
-                              'note' => $phStatus === 'normal' ? 'Dentro da faixa ideal' : 'Fora da faixa ideal'],
+                              'trend' => $this->trend($r['inflow_m3s'], $r['inflow_24h_ago_m3s']), 'trend_label' => 'vs 24 h atrás'],
+                'ph'      => ['value' => $r['ph'], 'unit' => '', 'status' => StatusRules::describe($phStatus), 'note' => StatusRules::phNote($phStatus)],
                 'rain'    => ['value' => $r['rain_24h_mm'], 'unit' => 'mm',
-                              'trend' => $this->trend((float) $r['rain_24h_mm'], (float) $r['rain_prev_24h_mm']), 'trend_label' => 'vs 24 h anteriores', 'note' => 'Acumulado de 24 h'],
+                              'trend' => $this->trend($r['rain_24h_mm'], $r['rain_prev_24h_mm']), 'trend_label' => 'vs 24 h anteriores', 'note' => 'Acumulado de 24 h'],
                 'duration' => ['value' => ReservoirCurve::durationDays($r), 'unit' => 'dias', 'note' => 'Volume acima da reserva ÷ consumo médio'],
                 'operation' => ['status' => StatusRules::describe($status), 'note' => StatusRules::levelNote($status)],
             ],
@@ -113,27 +112,25 @@ final class OverviewService
         $count = count($list);
         $totalVolume = 0.0;
         $totalCap = 0.0;
-        $totalFlow = 0.0;
-        $sumLevel = 0.0;
-        $sumPh = 0.0;
-        $byStatus = ['normal' => 0, 'attention' => 0, 'critical' => 0];
+        $byStatus = ['normal' => 0, 'attention' => 0, 'critical' => 0, StatusRules::NO_DATA => 0];
         $online = 0;
 
         foreach ($list as $r) {
-            $totalVolume += (float) $r['volume_hm3'];
-            $totalCap += (float) $r['capacity_hm3'];
-            $totalFlow += (float) $r['inflow_m3s'];
-            $sumLevel += (float) $r['level_pct'];
-            $sumPh += (float) $r['ph'];
-            $byStatus[StatusRules::fromLevel((float) $r['level_pct'])]++;
+            $byStatus[StatusRules::fromLevel($r['level_pct'])]++;
             if ((int) $r['sensors_online'] > 0) {
                 $online++;
             }
+            // A ocupação compara volume com capacidade: a represa sem leitura de volume fica fora das duas somas.
+            if ($r['volume_hm3'] !== null) {
+                $totalVolume += (float) $r['volume_hm3'];
+                $totalCap += (float) $r['capacity_hm3'];
+            }
         }
 
-        $avgLevel = round($sumLevel / $count, 1);
-        $avgPh = round($sumPh / $count, 1);
+        $avgLevel = $this->average($list, 'level_pct');
+        $avgPh = $this->average($list, 'ph');
         $avgPhStatus = StatusRules::fromPh($avgPh);
+        $flows = $this->known($list, 'inflow_m3s');
 
         // Afluência somada das represas, dia a dia, nos últimos 7 dias.
         $flowTotals = [];
@@ -157,11 +154,11 @@ final class OverviewService
             'mode' => 'all',
             'kpis' => [
                 'reservoirs' => ['value' => $count, 'online' => $online, 'label' => 'Represas monitoradas'],
-                'storage'    => ['value' => round($totalVolume), 'unit' => 'hm³', 'capacity' => round($totalCap), 'pct' => round($totalVolume / $totalCap * 100, 1)],
+                'storage'    => ['value' => $totalCap > 0 ? round($totalVolume) : null, 'unit' => 'hm³', 'capacity' => round($totalCap),
+                                 'pct' => $totalCap > 0 ? round($totalVolume / $totalCap * 100, 1) : null],
                 'level'      => ['value' => $avgLevel, 'unit' => '%'],
-                'flow'       => ['value' => round($totalFlow, 1), 'unit' => 'm³/s'],
-                'ph'         => ['value' => $avgPh, 'unit' => '', 'status' => StatusRules::describe($avgPhStatus),
-                                 'note' => $avgPhStatus === 'normal' ? 'Dentro da faixa ideal' : 'Fora da faixa ideal'],
+                'flow'       => ['value' => $flows === [] ? null : round(array_sum($flows), 1), 'unit' => 'm³/s'],
+                'ph'         => ['value' => $avgPh, 'unit' => '', 'status' => StatusRules::describe($avgPhStatus), 'note' => StatusRules::phNote($avgPhStatus)],
                 'operation'  => $byStatus,
             ],
             'comparison' => array_map(static function (array $r): array {
@@ -169,7 +166,7 @@ final class OverviewService
                     'id'     => $r['id'],
                     'name'   => $r['name'],
                     'level'  => $r['level_pct'],
-                    'status' => StatusRules::describe(StatusRules::fromLevel((float) $r['level_pct'])),
+                    'status' => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),
                 ];
             }, $list),
             'flow_chart' => [
@@ -192,7 +189,7 @@ final class OverviewService
                     'lat'      => $r['lat'],
                     'lng'      => $r['lng'],
                     'city'     => $r['city'],
-                    'status'   => StatusRules::describe(StatusRules::fromLevel((float) $r['level_pct'])),
+                    'status'   => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),
                 ];
             }, $list),
             'priority_alerts' => array_map([$this, 'alertRow'], array_slice($open, 0, 3)),
@@ -202,9 +199,28 @@ final class OverviewService
     /* ---------------------------------------------------------- auxiliares */
 
     /** Variação percentual entre dois valores; null quando não há base de comparação. */
-    private function trend(float $now, float $before): ?float
+    private function trend(?float $now, ?float $before): ?float
     {
-        return $before > 0 ? round(($now - $before) / $before * 100, 1) : null;
+        return $now !== null && $before > 0 ? round(($now - $before) / $before * 100, 1) : null;
+    }
+
+    /**
+     * Valores medidos de uma grandeza, sem as represas que ainda não têm leitura dela.
+     *
+     * @param array<int,array<string,mixed>> $list
+     * @return array<int,int|float>
+     */
+    private function known(array $list, string $key): array
+    {
+        return array_filter(array_column($list, $key), static fn ($v): bool => $v !== null);
+    }
+
+    /** Média entre as represas com leitura; null quando nenhuma tem. @param array<int,array<string,mixed>> $list */
+    private function average(array $list, string $key): ?float
+    {
+        $values = $this->known($list, $key);
+
+        return $values === [] ? null : round(array_sum($values) / count($values), 1);
     }
 
     private function lastReading(array $r): string

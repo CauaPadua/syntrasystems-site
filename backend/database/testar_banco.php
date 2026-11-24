@@ -10,7 +10,8 @@
  *   5. views       as duas views devolvem uma linha por equipamento / represa;
  *   6. ingestão    uma leitura válida é gravada e gera o alerta esperado;
  *   7. comunicação equipamento parado abre o alerta "Equipamento sem leituras"
- *                  e a volta dele fica registrada.
+ *                  e a volta dele fica registrada;
+ *   8. acesso      cargos, represas de cada conta e pedidos de acesso.
  *
  * Tudo que é escrito roda dentro de uma transação desfeita no final (rollback):
  * o banco termina exatamente como estava.
@@ -27,7 +28,10 @@ if (PHP_SAPI !== 'cli') {
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+use Aquapulse\Repositories\AccountRepository;
 use Aquapulse\Repositories\PdoMonitoringRepository;
+use Aquapulse\Repositories\PdoUserRepository;
+use Aquapulse\Repositories\RequestRepository;
 use Aquapulse\Services\AlertService;
 use Aquapulse\Services\IngestService;
 use Aquapulse\Services\StatusRules;
@@ -85,8 +89,8 @@ foreach ($pdo->query('SHOW FULL TABLES')->fetchAll(PDO::FETCH_NUM) as [$nome, $t
     $objetos[$nome] = $tipo;
 }
 
-$tabelas = ['users', 'companies', 'user_company_access', 'reservoirs', 'sensors', 'readings',
-            'alerts', 'alert_timeline', 'reports', 'maintenances', 'operational_limits'];
+$tabelas = ['users', 'companies', 'user_reservoir_access', 'reservoirs', 'sensors', 'readings',
+            'alerts', 'alert_timeline', 'reports', 'maintenances', 'operational_limits', 'requests'];
 
 foreach ($tabelas as $t) {
     teste("tabela {$t}", static fn () => ($objetos[$t] ?? '') === 'BASE TABLE');
@@ -96,10 +100,10 @@ foreach (['vw_ultimas_medicoes', 'vw_resumo_represas'] as $v) {
 }
 
 /* ==================================================================== 2. dados */
-foreach (['companies' => 2, 'reservoirs' => 3, 'sensors' => 19, 'users' => 3, 'operational_limits' => 5] as $t => $n) {
-    teste("{$t} com {$n} registros", static function () use ($pdo, $t, $n) {
+foreach (['companies' => 2, 'reservoirs' => 3, 'sensors' => 18, 'users' => 4, 'operational_limits' => 5] as $t => $n) {
+    teste("{$t}: pelo menos {$n} registros", static function () use ($pdo, $t, $n) {   // o sistema cadastra novos
         $qtd = contar($pdo, "SELECT COUNT(*) FROM `{$t}`");
-        return $qtd === $n ? true : "encontrado {$qtd}";
+        return $qtd >= $n ? "{$qtd}" : false;
     });
 }
 teste('histórico de leituras carregado', static function () use ($pdo) {
@@ -107,7 +111,7 @@ teste('histórico de leituras carregado', static function () use ($pdo) {
     return $qtd > 10000 ? "{$qtd} leituras" : false;
 });
 
-/* ===================================================== 3 a 6. escrita (rollback) */
+/* ===================================================== 3 a 8. escrita (rollback) */
 $pdo->beginTransaction();
 
 teste('CRUD — INSERT de equipamento', static fn () => $pdo->exec(
@@ -150,8 +154,12 @@ teste('SET NULL: excluir equipamento mantém as leituras', static function () us
 teste('view vw_ultimas_medicoes: uma linha por equipamento', static fn () =>
     contar($pdo, 'SELECT COUNT(*) FROM vw_ultimas_medicoes') === contar($pdo, 'SELECT COUNT(*) FROM sensors'));
 
-teste('view vw_resumo_represas: uma linha por represa, com nível', static fn () =>
-    contar($pdo, 'SELECT COUNT(*) FROM vw_resumo_represas WHERE level_pct IS NOT NULL') === 3);
+teste('view vw_resumo_represas: uma linha por represa', static fn () =>
+    contar($pdo, 'SELECT COUNT(*) FROM vw_resumo_represas') === contar($pdo, 'SELECT COUNT(*) FROM reservoirs'));
+
+teste('view vw_resumo_represas: represas de exemplo com nível', static fn () =>
+    contar($pdo, "SELECT COUNT(*) FROM vw_resumo_represas
+                   WHERE reservoir_id IN ('santa-clara', 'rio-verde', 'serra-azul') AND level_pct IS NOT NULL") === 3);
 
 StatusRules::configure((new PdoMonitoringRepository($pdo))->limits());
 $ingestao = new IngestService($pdo, new AlertService($pdo));
@@ -213,11 +221,78 @@ teste('comunicação: leitura nova registra que o equipamento voltou', static fu
     return strpos((string) $etapa, 'voltou a transmitir') !== false ? (string) $etapa : false;
 });
 
+/* --- 8. acesso: cargos, represas de cada conta e pedidos */
+teste('CHECK: cargo fora da lista é recusado', static fn () => recusado($pdo,
+    "INSERT INTO users (name, email, role, password_hash) VALUES ('X', 'x@teste.local', 'root', 'x')"));
+
+teste('FK: conta ligada a represa inexistente é recusada', static fn () => recusado($pdo,
+    "INSERT INTO user_reservoir_access (user_id, reservoir_id) VALUES (1, 'nao-existe')"));
+
+$represasDe = static fn (?array $alcance): array => array_column((new PdoMonitoringRepository($pdo, $alcance))->reservoirs(), 'id');
+
+teste('alcance: quem tem uma represa vê só ela e a empresa dela', static function () use ($pdo, $represasDe) {
+    $empresas = array_column((new PdoMonitoringRepository($pdo, ['serra-azul']))->companies(), 'id');
+    $dona = $pdo->query("SELECT company_id FROM reservoirs WHERE id = 'serra-azul'")->fetchColumn();
+    return $represasDe(['serra-azul']) === ['serra-azul'] && $empresas === [$dona] ? 'serra-azul' : false;
+});
+
+teste('alcance: conta sem represa não vê nenhuma; administrador vê todas', static fn () =>
+    $represasDe([]) === [] && count($represasDe(null)) === contar($pdo, 'SELECT COUNT(*) FROM reservoirs'));
+
+$contaDeTeste = (new AccountRepository($pdo))->insert([
+    'name' => 'Conta de teste', 'email' => 'conta@teste.local', 'role' => 'manager', 'status' => 'active',
+    'reservoirs' => ['rio-verde', 'santa-clara'],
+], password_hash('senha-de-teste', PASSWORD_DEFAULT));
+
+teste('conta: uma pessoa pode ter mais de uma represa', static fn () =>
+    (new PdoUserRepository($pdo))->reservoirIds($contaDeTeste) === ['rio-verde', 'santa-clara']);
+
+teste('CASCADE: apagar a conta apaga os vínculos dela', static function () use ($pdo, $contaDeTeste) {
+    $pdo->exec("DELETE FROM users WHERE id = {$contaDeTeste}");
+    return contar($pdo, "SELECT COUNT(*) FROM user_reservoir_access WHERE user_id = {$contaDeTeste}") === 0;
+});
+
+$pedidosAntes = contar($pdo, 'SELECT COUNT(*) FROM requests');
+$pdo->exec('DELETE FROM requests');                            // para o limite de pedidos por hora não interferir (o rollback devolve todos)
+$pedidos = new RequestRepository($pdo);
+$pedido = ['name' => 'Pessoa de teste', 'email' => 'pedido@teste.local', 'registration' => 'T-01', 'company_name' => 'Hidrovale',
+           'reservoir_name' => 'Santa Clara', 'manager_name' => 'Gestor de teste', 'message' => 'Pedido criado pelo teste do banco.',
+           'password' => 'senha-do-pedido', 'password_confirm' => 'senha-do-pedido'];
+
+teste('pedido: é gravado "em análise", com a senha só em hash', static function () use ($pdo, $pedidos, $pedido) {
+    $id = $pedidos->create('access', $pedido);
+    $l = $pdo->query("SELECT status, password_hash FROM requests WHERE id = {$id}")->fetch();
+    return $l['status'] === 'pending' && password_verify('senha-do-pedido', $l['password_hash']);
+});
+
+teste('pedido: o mesmo e-mail não pede duas vezes', static function () use ($pedidos, $pedido) {
+    try {
+        $pedidos->create('access', $pedido);
+        return false;
+    } catch (ApiException $e) {
+        return $e->errorCode() === 'REQUEST_PENDING';
+    }
+});
+
+teste('pedido: o login avisa que está em análise, só para quem tem a senha', static fn () =>
+    ($pedidos->loginNotice('pedido@teste.local', 'senha-do-pedido')['code'] ?? '') === 'REQUEST_PENDING'
+    && $pedidos->loginNotice('pedido@teste.local', 'outra senha') === null);
+
+teste('represa nova, sem leituras: não vira zero nem "normal"', static function () use ($pdo) {
+    $pdo->exec("INSERT INTO reservoirs (id, company_id, code, name, city, basin, lat, lng, coordinates_label, capacity_hm3, useful_volume_hm3,
+                                        technical_reserve_hm3, daily_consumption_hm3, cota_min_m, cota_max_m, cota_alert_m, cota_spill_m)
+                VALUES ('teste', 'hidrovale', 'TST-999', 'Represa de teste', 'X', 'X', 0, 0, 'X', 100, 80, 10, 1, 0, 10, 5, 8)");
+    $r = (new PdoMonitoringRepository($pdo))->reservoir('teste');
+    return $r['level_pct'] === null && $r['ph'] === null && StatusRules::fromLevel($r['level_pct']) === StatusRules::NO_DATA;
+});
+
 $pdo->rollBack();
 
 teste('rollback: o banco voltou ao estado anterior', static fn () =>
     contar($pdo, "SELECT COUNT(*) FROM sensors WHERE id = 'SEN-PH-01'") === 1
-    && contar($pdo, "SELECT COUNT(*) FROM sensors WHERE id = 'SEN-TESTE-COM'") === 0);
+    && contar($pdo, "SELECT COUNT(*) FROM sensors WHERE id = 'SEN-TESTE-COM'") === 0
+    && contar($pdo, 'SELECT COUNT(*) FROM requests') === $pedidosAntes
+    && contar($pdo, "SELECT COUNT(*) FROM reservoirs WHERE id = 'teste'") === 0);
 
 /* ===================================================================== resumo */
 echo str_repeat('-', 64), "\n";

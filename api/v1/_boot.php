@@ -5,7 +5,7 @@
  * Todo endpoint usado pelas telas inclui este arquivo. Ele garante, em um só lugar:
  *   - método HTTP permitido;
  *   - sessão válida de uma conta ativa — sem ela, 401 em JSON;
- *   - repositório já restrito às empresas que o usuário pode consultar.
+ *   - repositório já restrito às represas que o usuário pode ver.
  *
  * O nome começa com "_" para indicar que não é um endpoint.
  */
@@ -35,7 +35,7 @@ function aq_api_boot(array $allowedMethods = ['GET']): array
 
     $user = Guard::requireApiSession();
 
-    return [Container::monitoring(Guard::companyScope($user)), $user];
+    return [Container::monitoring(Guard::reservoirScope($user)), $user];
 }
 
 /**

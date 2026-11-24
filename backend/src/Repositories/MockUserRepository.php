@@ -3,7 +3,7 @@
  * Aquapulse — usuários do modo demonstração (sem banco).
  *
  * Lê backend/storage/mock/users.php. É somente leitura: não há cadastro,
- * vínculo com empresa nem registro de login.
+ * vínculo com represa nem registro de login.
  */
 
 declare(strict_types=1);
@@ -43,7 +43,7 @@ final class MockUserRepository implements UserRepositoryInterface
     }
 
     /** Sem banco não há vínculos: o usuário de demonstração é administrador e vê tudo. */
-    public function companyIds(int $userId): array
+    public function reservoirIds(int $userId): array
     {
         return [];
     }
@@ -62,6 +62,7 @@ final class MockUserRepository implements UserRepositoryInterface
             'role'          => $u['role'],
             'status'        => $u['status'],
             'last_login_at' => null,
+            'reservoir_ids' => [],
         ], $this->carregar());
     }
 

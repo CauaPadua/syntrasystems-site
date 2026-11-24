@@ -33,14 +33,14 @@ final class Container
     /**
      * Repositório de monitoramento (empresas, represas, séries, alertas...).
      *
-     * @param array<int,string>|null $companies empresas que o usuário pode ver;
-     *        null = todas. Vale o escopo informado na primeira chamada da requisição.
+     * @param array<int,string>|null $reservoirs represas que o usuário pode ver;
+     *        null = todas. Vale o alcance informado na primeira chamada da requisição.
      */
-    public static function monitoring(?array $companies = null): MonitoringRepositoryInterface
+    public static function monitoring(?array $reservoirs = null): MonitoringRepositoryInterface
     {
         if (self::$monitoring === null) {
             self::$monitoring = Database::configurado()
-                ? new PdoMonitoringRepository(Database::conexao(), $companies)
+                ? new PdoMonitoringRepository(Database::conexao(), $reservoirs)
                 : new MockMonitoringRepository();
 
             // Os limites cadastrados passam a valer para toda a classificação.

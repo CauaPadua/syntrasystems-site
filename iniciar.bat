@@ -2,7 +2,8 @@
 rem Aquapulse - liga o projeto inteiro com um duplo clique (XAMPP em C:\xampp).
 rem   1. cria backend\.env se nao existir
 rem   2. cria o banco aquapulse_dev, as tabelas e os dados de exemplo se ainda nao existirem
-rem   3. completa o historico ate agora, se o projeto ficou dias desligado
+rem   3. atualiza as tabelas, se esta versao do projeto trouxe novas, e completa o historico
+rem      ate agora, se o projeto ficou dias desligado
 rem   4. escolhe as portas: 8000 (site) e 8100 (sensores). Se uma estiver ocupada por outro
 rem      programa, usa a proxima livre; se o Aquapulse ja estiver ligado, so abre as telas.
 rem   5. abre a janela "Simulador de sensores" e a janela "Estacao de telemetria"
@@ -42,6 +43,14 @@ if errorlevel 1 (
   )
 )
 
+rem Banco criado por uma versao anterior do projeto: aplica so as tabelas que faltam.
+"%PHP%" backend\database\migrate.php migrate
+if errorlevel 1 (
+  echo.
+  echo Nao foi possivel atualizar as tabelas do banco. Copie a mensagem acima.
+  pause & exit /b 1
+)
+
 rem Se o projeto ficou dias desligado, o historico parou: completa ate agora (nao apaga nada).
 "%PHP%" backend\database\migrate.php completar
 
@@ -63,7 +72,7 @@ echo   Login e painel:  http://localhost:%PORT%/login.php
 echo   Sensores:        http://localhost:%SENSOR_PORT%               (janela "Simulador de sensores")
 echo   Estacao:         janela "Estacao de telemetria"
 echo   Banco:           MySQL, banco aquapulse_dev  (phpMyAdmin: http://localhost/phpmyadmin)
-echo  Contas: demo@aquapulse.local ^(administrador^), operador@aquapulse.local
+echo  Contas: demo@aquapulse.local ^(administrador^), gestor@aquapulse.local, operador@aquapulse.local
 echo  Fechar esta janela desliga o site.
 echo ================================================================
 

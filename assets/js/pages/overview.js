@@ -31,7 +31,7 @@
     var icone = document.querySelector('[data-kpi="' + kpiId + '"] .aq-kpi__icon');
     if (!icone) return;
 
-    var tom = { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'success'; // traduz status em variação de cor
+    var tom = { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey]; // traduz status em variação de cor; sem leituras não colore
     ['success', 'warning', 'danger'].forEach(function (t) {
       icone.classList.toggle('aq-kpi__icon--' + t, t === tom);        // liga só a classe do tom certo e desliga as outras
     });
@@ -47,7 +47,7 @@
 
   /** Variável de cor do CSS para um status. */
   function tom(statusKey) {
-    return { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'success';
+    return { normal: 'success', attention: 'warning', critical: 'danger' }[statusKey] || 'text-secondary';
   }
 
   /* ------------------------------------------------------------ filtros */
@@ -106,6 +106,7 @@
         + '<span style="color:var(--aq-success);font-weight:800">' + k.operation.normal + ' normais</span> · '
         + '<span style="color:var(--aq-warning);font-weight:800">' + k.operation.attention + ' atenção</span>'
         + (k.operation.critical ? ' · <span style="color:var(--aq-danger);font-weight:800">' + k.operation.critical + ' crítico</span>' : '')
+        + (k.operation.neutral ? ' · <span style="color:var(--aq-text-secondary);font-weight:800">' + k.operation.neutral + ' sem leituras</span>' : '')
         + '</span>' },
       'all.alerts.total': d.alert_counts.total
     });
@@ -115,10 +116,10 @@
     bars.innerHTML = d.comparison.map(function (c) {                  // uma barra por represa; a largura é o próprio nível em %
       return '<div class="aq-bar" style="margin-bottom:16px">'
         + '<div class="aq-bar__head"><span style="font-weight:600">' + S.esc(c.name) + '</span>'
-        + '<strong style="color:var(--aq-' + (c.status.key === 'normal' ? 'success' : c.status.key === 'attention' ? 'warning' : 'danger') + ')">'
+        + '<strong style="color:var(--aq-' + tom(c.status.key) + ')">'
         + F.pct(c.level) + '</strong></div>'
         + '<div class="aq-bar__track"><div class="aq-bar__fill aq-bar__fill--' + c.status.key
-        + '" style="width:' + c.level + '%"></div></div>'
+        + '" style="width:' + (c.level || 0) + '%"></div></div>'
         + '<span class="aq-visually-hidden">Situação: ' + c.status.label + '</span>' // o status também é lido por leitores de tela
         + '</div>';
     }).join('');
@@ -145,13 +146,12 @@
       plugins: [G.valueLabels({ decimals: 1, color: '#09245a' })]     // escreve o valor acima de cada ponto
     });
     G.describe('grafico-vazao-consolidada', fc.values, 'm³/s', 1);   // resumo textual para leitores de tela
-    S.setState('flow-all', 'ready');
 
     // donut da situação
     G.donut('grafico-situacao', {
-      labels: ['Normal', 'Atenção', 'Crítico'],
-      values: [d.donut.normal, d.donut.attention, d.donut.critical],
-      colors: [G.colors.success, G.colors.warning, G.colors.danger],
+      labels: ['Normal', 'Atenção', 'Crítico', 'Sem leituras'],
+      values: [d.donut.normal, d.donut.attention, d.donut.critical, d.donut.neutral],
+      colors: [G.colors.success, G.colors.warning, G.colors.danger, '#cbd5e1'],
       cutout: '70%',
       center: [                                                       // texto no centro: total de represas
         { text: String(d.donut.total), size: 30 },
@@ -163,14 +163,16 @@
     document.querySelector('[data-donut-legend]').innerHTML = [
       { label: 'Normal', value: d.donut.normal, key: 'normal' },
       { label: 'Atenção', value: d.donut.attention, key: 'attention' },
-      { label: 'Crítico', value: d.donut.critical, key: 'critical' }
-    ].map(function (i) {                                              // legenda com quantidade e porcentagem de cada faixa
+      { label: 'Crítico', value: d.donut.critical, key: 'critical' },
+      { label: 'Sem leituras', value: d.donut.neutral, key: 'neutral' }
+    ].filter(function (i) {
+      return i.key !== 'neutral' || i.value > 0;                      // "sem leituras" só aparece quando existe
+    }).map(function (i) {                                             // legenda com quantidade e porcentagem de cada faixa
       return '<li style="display:flex;align-items:center;gap:9px">'
         + '<span class="aq-dot aq-dot--' + i.key + '"></span>'
         + '<span style="flex:1 1 auto">' + i.label + '</span>'
         + '<strong>' + i.value + ' (' + F.pct(i.value / total * 100) + ')</strong></li>';
     }).join('');
-    S.setState('donut', 'ready');
 
     // contagem de alertas
     document.querySelector('[data-alert-counts]').innerHTML = [
@@ -191,11 +193,11 @@
           + '<path d="M3.5 20.5V7l8.5-3.5L20.5 7v13.5"/><path d="M3.5 11h17"/><path d="M3.5 15.5h17"/></svg>'
           + '</span><span class="is-nowrap">' + S.esc(r.name) + '</span></span></td>'
         + '<td class="is-num" style="font-weight:700;color:var(--aq-' + tom(r.status.key) + ')">' + F.pct(r.level) + '</td>'
-        + '<td class="is-num is-nowrap">' + F.int(r.volume) + ' hm³</td>'
-        + '<td class="is-num is-nowrap">' + F.num(r.flow, 1) + ' m³/s</td>'
+        + '<td class="is-num is-nowrap">' + F.unit(r.volume, 'hm³', 0) + '</td>'
+        + '<td class="is-num is-nowrap">' + F.unit(r.flow, 'm³/s', 1) + '</td>'
         + '<td class="is-num">' + F.num(r.ph, 1) + '</td>'
-        + '<td class="is-num is-nowrap">' + F.num(r.rain, 1) + ' mm</td>'
-        + '<td class="is-num is-nowrap">' + r.duration + ' dias</td>'
+        + '<td class="is-num is-nowrap">' + F.unit(r.rain, 'mm', 1) + '</td>'
+        + '<td class="is-num is-nowrap">' + F.unit(r.duration, 'dias', 0) + '</td>'
         + '<td>' + S.badge(r.status.label, r.status.key) + '</td>'
         + '</tr>';
     }).join('');
@@ -288,7 +290,6 @@
       }
     });
     G.describe('grafico-nivel', lc.observed, 'm', 1);
-    S.setState('level-chart', 'ready');
 
     // comparativo de vazão
     var fc = d.flow_chart;
@@ -311,7 +312,6 @@
       }
     });
     G.describe('grafico-vazao-comparativo', fc.inflow, 'm³/s', 1);
-    S.setState('flow-chart', 'ready');
 
     // mapa da represa
     if (window.AqMap && d.reservoir) {

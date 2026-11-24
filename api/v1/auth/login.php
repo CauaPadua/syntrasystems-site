@@ -13,6 +13,7 @@
  *   400 INVALID_CONTENT_TYPE / INVALID_JSON  -> requisição mal formada
  *   401 INVALID_CREDENTIALS                  -> e-mail ou senha incorretos
  *   403 ACCOUNT_SUSPENDED                    -> senha correta, mas a conta está suspensa
+ *   403 REQUEST_PENDING / REQUEST_REJECTED   -> senha de um pedido de acesso ainda não aprovado
  *   405 METHOD_NOT_ALLOWED                   -> método diferente de POST
  *   422 VALIDATION_ERROR (+ details por campo) -> campos vazios ou e-mail inválido
  */
@@ -24,7 +25,9 @@ require dirname(__DIR__, 3) . '/backend/bootstrap.php';                  // sobe
 use Aquapulse\Auth\AuthService;
 use Aquapulse\Http\JsonResponse;
 use Aquapulse\Http\Request;
+use Aquapulse\Repositories\RequestRepository;
 use Aquapulse\Support\Container;
+use Aquapulse\Support\Database;
 
 if (!Request::isMethod('POST')) {                                         // login só por POST: credenciais nunca devem ir na URL (GET fica em histórico e logs)
     JsonResponse::methodNotAllowed(['POST']);
@@ -76,6 +79,12 @@ $auth = new AuthService(Container::users());
 $user = $auth->attempt($email, $password);                                // confere e-mail e senha; null se não conferirem
 
 if ($user === null) {
+    // Quem pediu acesso e digitou a senha do próprio pedido fica sabendo em que pé ele está.
+    $aviso = Database::configurado() ? (new RequestRepository(Database::conexao()))->loginNotice($email, $password) : null;
+    if ($aviso !== null) {
+        JsonResponse::error($aviso['code'], $aviso['message'], 403);
+    }
+
     // Mensagem genérica: não revela se o e-mail existe.
     JsonResponse::error('INVALID_CREDENTIALS', 'E-mail ou senha inválidos.', 401);
 }

@@ -66,7 +66,7 @@
 
       /* ------------------------------------ coluna de capacidade e faixas */
       var fill = document.querySelector('[data-capacity-fill]');
-      if (fill) fill.style.height = d.capacity.level + '%';
+      if (fill) fill.style.height = (d.capacity.level || 0) + '%';
 
       document.querySelector('[data-capacity-bands]').innerHTML = d.capacity.bands.map(function (b) {
         var color = COLOR[b.status] || 'success';

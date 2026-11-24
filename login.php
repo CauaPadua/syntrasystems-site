@@ -165,8 +165,8 @@ $aq_api_base = 'api/v1/auth';                                             // cam
                       aria-describedby="aviso-senha">Esqueci minha senha</button>
             </div>
 
-            <p class="login-note" id="aviso-senha" role="status" hidden> <?php /* aviso de "recurso futuro", exibido por 5 s ao clicar no link acima */ ?>
-              Recuperação de senha será disponibilizada em uma etapa futura.
+            <p class="login-note" id="aviso-senha" role="status" hidden> <?php /* exibido por 5 s ao clicar no link acima; quem troca é o administrador, em Configurações › Usuários */ ?>
+              Peça ao administrador para criar uma nova senha para a sua conta.
             </p>
 
             <p class="login-alert" id="login-alert" role="alert" hidden> <?php /* role="alert": o leitor de tela anuncia o erro assim que aparece */ ?>
@@ -185,7 +185,7 @@ $aq_api_base = 'api/v1/auth';                                             // cam
 
           <p class="login-divider" aria-hidden="true"><span>ou</span></p>
 
-          <a class="btn btn--outline btn--block" href="index.php#solicitar-demonstracao"> <?php /* leva ao formulário de demonstração da landing */ ?>
+          <a class="btn btn--outline btn--block" href="solicitar.php?tipo=acesso"> <?php /* formulário para quem trabalha em uma represa já monitorada */ ?>
             <?php aq_the_icon('user'); ?>
             <span>Solicitar acesso</span>
           </a>

@@ -35,7 +35,7 @@ interface MonitoringRepositoryInterface
      *   cadastro    id, code, name, company_id, city, basin, lat, lng, coordinates_label,
      *               capacity_hm3, useful_volume_hm3, technical_reserve_hm3,
      *               daily_consumption_hm3, cota_spill_m, cota_alert_m, cota_min_m, cota_max_m
-     *   atuais      level_pct, cota_m, volume_hm3, inflow_m3s, outflow_m3s, ph, water_temp_c
+     *   atuais      level_pct, cota_m, volume_hm3, inflow_m3s, outflow_m3s, ph, water_temp_c (null = sem leitura)
      *   calculados  ph_min, ph_max (24 h), rain_24h_mm, rain_7d_mm, rain_month_mm,
      *               cota_variation_m (24 h), inflow_24h_ago_m3s, rain_prev_24h_mm
      *   situação    sensors_online, sensors_total, open_alerts, last_reading_at (ISO ou null)

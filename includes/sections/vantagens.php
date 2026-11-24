@@ -9,11 +9,10 @@
  *
  * Duas âncoras precisam continuar existindo aqui:
  *   - `#vantagens`, usada pelo rodapé e pelo botão da seção "Por que monitorar";
- *   - `#solicitar-demonstracao`, usada pelo item "Contato" do menu e pelo botão
- *     "Solicitar acesso" da tela de login.
+ *   - `#solicitar-demonstracao`, usada pelo item "Contato" do menu.
  *
- * O botão de demonstração mantém o comportamento que já existia no projeto:
- * revela um aviso de canal em preparação, tratado por assets/js/main.js.
+ * O botão "Solicitar demonstração" abre solicitar.php, onde o dono de uma
+ * represa deixa o contato.
  */
 
 /** @var array<int, array{titulo:string, texto:string}> */
@@ -66,16 +65,10 @@ $aq_vantagens = [                                                         // os 
     </ul>
 
     <div class="aq-benefits__acao" id="solicitar-demonstracao"> <?php /* âncora do item "Contato" do menu */ ?>
-      <?php /* data-demo-trigger: main.js mostra o aviso abaixo ao clicar; aria-describedby liga o botão ao aviso */ ?>
-      <button class="aq-benefits__cta" type="button"
-              data-demo-trigger aria-describedby="aviso-demo">
+      <a class="aq-benefits__cta" href="solicitar.php?tipo=demonstracao">
         <span>Solicitar demonstração</span>
         <?php aq_the_icon('arrow-right'); ?>
-      </button>
-
-      <p class="aq-benefits__aviso" id="aviso-demo" role="status" hidden> <?php /* role="status": o leitor de tela anuncia quando aparece */ ?>
-        Canal de contato em preparação. Em breve disponível.
-      </p>
+      </a>
     </div>
 
   </div>

@@ -25,12 +25,13 @@
         'occupancy.total': 'Capacidade total: ' + F.int(d.occupancy.capacity) + ' hm³',
         'distribution.total': F.int(k.capacity.value) + ' hm³  ·  100%',
         'insight.value': F.signed(d.insight.value, 0),
-        'insight.badge': { html: S.badge(F.signed(d.insight.pct, 1) + '%', d.insight.value >= 0 ? 'normal' : 'attention') }
+        'insight.badge': { html: d.insight.value === null ? S.badge('Sem leituras', 'neutral')
+          : S.badge(F.signed(d.insight.pct, 1) + '%', d.insight.value >= 0 ? 'normal' : 'attention') }
       });
 
       // ganho em verde; perda sem destaque
       var destaque = document.querySelector('[data-insight-value]');
-      if (destaque) destaque.classList.toggle('aq-kpi__value--success', d.insight.value >= 0);
+      if (destaque) destaque.classList.toggle('aq-kpi__value--success', d.insight.value !== null && d.insight.value >= 0);
 
       /* ------------------- evolução com a linha de capacidade máxima */
       var e = d.evolution;
@@ -78,7 +79,7 @@
         return '<li style="display:flex;align-items:center;gap:10px;font-size:.87rem">'
           + '<span style="width:11px;height:11px;border-radius:50%;background:' + i.color + '"></span>'
           + '<span style="flex:1 1 auto">' + i.label + '</span>'
-          + '<strong>' + F.int(i.v) + ' hm³</strong>'
+          + '<strong>' + F.unit(i.v, 'hm³', 0) + '</strong>'
           + '<span style="color:var(--aq-text-secondary);min-width:52px;text-align:right">' + F.pct(i.p) + '</span></li>';
       }).join('');
 
@@ -115,7 +116,7 @@
           + '<div class="aq-list__body"><p class="aq-list__title">' + S.esc(i.label) + '</p>'
           + '<p class="aq-list__meta">' + S.esc(i.note) + '</p></div>'
           + '<div class="aq-list__side" style="flex-direction:column;align-items:flex-end;gap:2px">'
-          + '<strong style="color:var(--aq-text)">' + F.int(i.value) + ' hm³</strong>'
+          + '<strong style="color:var(--aq-text)">' + F.unit(i.value, 'hm³', 0) + '</strong>'
           + '<span>' + F.pct(i.pct) + '</span></div></div>';
       }).join('');
 

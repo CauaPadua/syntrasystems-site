@@ -318,7 +318,7 @@ window.AqShell = (function () {
     if (circle) {
       circle.style.strokeDashoffset = String(circumference * (1 - Math.min(100, pct) / 100)); // quanto menor o offset, maior o arco pintado; limita em 100%
     }
-    if (text) text.textContent = Math.round(pct) + '%';
+    if (text) text.textContent = pct === null ? '—' : Math.round(pct) + '%';
   }
 
   /** Badge HTML reutilizável (status sempre com texto, nunca só cor). */

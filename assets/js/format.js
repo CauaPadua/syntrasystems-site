@@ -31,12 +31,13 @@ window.AqFormat = (function () {
   /** Número seguido de unidade: (56.2, "m³/s") -> "56,2 m³/s" */
   function unit(value, u, decimals) {
     var n = num(value, decimals);
-    return u ? n + ' ' + u : n;                                       // sem unidade, devolve só o número
+    return u && n !== '—' ? n + ' ' + u : n;                          // sem unidade (ou sem valor), devolve só o número
   }
 
   /** Percentual: 82.4 -> "82,4%" */
   function pct(value, decimals) {
-    return num(value, decimals === undefined ? 1 : decimals) + '%';
+    var n = num(value, decimals === undefined ? 1 : decimals);
+    return n === '—' ? n : n + '%';                                   // valor ausente fica só o travessão
   }
 
   /** Valor com sinal explícito: 6.4 -> "+6,4" */

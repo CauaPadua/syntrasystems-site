@@ -6,8 +6,8 @@
  * assets/js/pages/equipment.js.
  *
  * Consultar é permitido a qualquer usuário logado. Cadastrar, editar e excluir
- * são só para administradores: os botões só são gerados para esse perfil, e a
- * API confere o perfil de novo a cada gravação.
+ * são do administrador e do gestor da represa: os botões só são gerados para
+ * esses cargos, e a API confere o cargo e a represa de novo a cada gravação.
  */
 
 declare(strict_types=1);
@@ -17,7 +17,7 @@ require __DIR__ . '/includes/page.php';
 
 use Aquapulse\Support\Guard;
 
-$podeEditar = Guard::isAdmin($AQ_USER);
+$podeEditar = Guard::can($AQ_USER, 'equipment.edit');
 
 aq_page_start([
     'route'    => 'equipment',
@@ -80,7 +80,7 @@ aq_page_start([
   <span><strong>Cadastro e comunicação.</strong> "Cadastro" é a situação definida aqui (ativo, em manutenção ou desativado).
   "Comunicação" é calculada: um equipamento ativo fica online enquanto envia leituras e passa a "sem comunicação"
   depois de <span data-field="online.window">alguns</span> minutos sem enviar.
-  <?php if (!$podeEditar): ?>Seu perfil permite apenas consultar.<?php endif; ?></span>
+  <?php if (!$podeEditar): ?>Seu cargo permite apenas consultar.<?php endif; ?></span>
 </div>
 
 <?php if ($podeEditar): ?>

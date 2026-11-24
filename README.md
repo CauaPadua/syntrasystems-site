@@ -34,6 +34,7 @@ Peça por peça: [simulador-sensor/README.md](simulador-sensor/README.md) e
    phpMyAdmin).
 2. Dê dois cliques em **`iniciar.bat`**. Ele:
    - cria o `backend/.env` e o banco `aquapulse_dev` na primeira vez;
+   - se o banco é de uma versão anterior do projeto, cria só as tabelas que faltam;
    - completa o histórico até agora, se o projeto ficou dias desligado;
    - abre a janela **"Simulador de sensores"** e a tela dele no navegador;
    - abre a janela **"Estação de telemetria"**;
@@ -61,11 +62,49 @@ simulador abrem no navegador.
 
 Todas usam a senha do usuário de demonstração.
 
-| E-mail | Perfil | O que pode |
+| E-mail | Cargo | Represas |
 | --- | --- | --- |
-| `demo@aquapulse.local` | Administrador | vê todas as empresas e cadastra equipamentos |
-| `operador@aquapulse.local` | Operador | vê só a Hidrovale; trata alertas e abre chamados |
+| `demo@aquapulse.local` | Administrador | todas |
+| `gestor@aquapulse.local` | Gestor da represa | Serra Azul |
+| `operador@aquapulse.local` | Operador | Santa Clara e Rio Verde |
 | `suspenso@aquapulse.local` | Operador suspenso | não consegue entrar |
+
+O **cargo** diz o que a pessoa pode fazer; as **represas** dizem o que ela pode ver. Uma conta
+pode ter mais de uma represa. O servidor confere os dois em toda requisição (`Support/Guard.php`).
+
+| | Administrador | Gestor | Operador |
+| --- | :---: | :---: | :---: |
+| Represas que vê | todas | as dele | as dele |
+| Painel, gráficos, mapas, baixar relatórios | sim | sim | sim |
+| Assumir e resolver alertas, abrir chamados | sim | sim | sim |
+| Gerar relatórios | sim | sim | — |
+| Cadastrar equipamentos | sim | só nas dele | — |
+| Responder solicitações | sim | — | — |
+| Cadastrar empresas, represas e contas | sim | — | — |
+
+### Como alguém entra no sistema
+
+- **Colaborador de uma represa já monitorada:** tela de login → **Solicitar acesso**. Informa
+  matrícula, empresa, represa, gestor direto, o motivo e cria a própria senha. O administrador
+  confere com a empresa e responde em **Solicitações**: aprovar cria a conta com o cargo e as
+  represas marcadas; recusar exige um motivo. Antes da resposta, o login avisa "em análise".
+- **Dono de uma represa nova:** página inicial → **Solicitar demonstração** (nome, e-mail,
+  telefone, empresa, represa, cidade). O administrador entra em contato e depois cadastra, em
+  **Configurações**, a empresa, a represa e a conta de gestor. A represa aparece como **"Sem
+  leituras"** até o primeiro sensor transmitir: cadastre os sensores em **Equipamentos**, feche as
+  janelas do simulador e da estação e abra o `iniciar.bat` de novo, para lerem o cadastro.
+
+O e-mail de um pedido não é verificado: por isso quem aprova é o administrador, depois de confirmar
+por telefone. O formulário público aceita um pedido em análise por e-mail e até 50 por hora.
+
+Criar uma conta direto no banco (a senha é a da conta de demonstração):
+
+```sql
+INSERT INTO users (name, email, role, status, password_hash)
+SELECT 'Maria Souza', 'maria.souza@aquapulse.local', 'operator', 'active', password_hash
+  FROM users WHERE email = 'demo@aquapulse.local';
+INSERT INTO user_reservoir_access (user_id, reservoir_id) VALUES (LAST_INSERT_ID(), 'santa-clara');
+```
 
 ### Comandos da estação
 
@@ -85,18 +124,24 @@ Para testar a validação sem fechar a estação:
 
 ```
 index.php, login.php        site institucional e tela de login
+solicitar.php               pedido de acesso e de demonstração (público)
 includes/                   partes do site institucional (cabeçalho, seções, ícones)
 
 dashboard/                  telas do painel
   index.php                 visão geral
   equipamentos.php          CRUD de equipamentos (mostra quem está "Sem comunicação")
-  alertas.php  relatorios.php  niveis.php  mapas.php  configuracoes.php
+  alertas.php  relatorios.php  niveis.php  mapas.php
+  configuracoes.php         empresas, represas, limites e contas (cadastro só do administrador)
+  solicitacoes.php          pedidos recebidos (só administrador)
   monitoramento/            vazão, nível, pH, volume, precipitação, operação, comparativo
   includes/                 layout comum (menu, topo) e componentes
 
 api/v1/                     endpoints (respondem JSON)
   ingest/                   usados pela estação: equipment.php (cadastro) e batch.php (pacote de leituras)
+  public/request.php        recebe os pedidos de solicitar.php (único que grava sem login)
+  requests.php              responder pedidos
   equipment.php             CRUD de equipamentos
+  companies.php  reservoirs.php  users.php   cadastro de empresas, represas e contas
   alerts.php  reports.php   tratar alertas e gerar relatórios
   monitoring/               dados de cada tela de monitoramento
 
@@ -120,11 +165,12 @@ assets/                     CSS, JavaScript das telas, imagens e bibliotecas (Ch
 
 ## Banco de dados
 
-11 tabelas e 2 views:
+12 tabelas e 2 views:
 
 | Tabela | Para quê |
 | --- | --- |
-| `users`, `user_company_access` | contas e quais empresas cada uma pode ver |
+| `users`, `user_reservoir_access` | contas (cargo) e quais represas cada uma pode ver |
+| `requests` | pedidos de acesso e de demonstração |
 | `companies`, `reservoirs` | empresas e represas |
 | `sensors` | equipamentos (tabela do CRUD; o simulador de sensores lê daqui) |
 | `readings` | leituras enviadas pela estação |
@@ -141,7 +187,7 @@ Comandos úteis (na pasta do projeto):
 
 ```powershell
 & C:\xampp\php\php.exe backend/database/migrate.php status         # tabelas, views e quantidade de linhas
-& C:\xampp\php\php.exe backend/database/testar_banco.php           # 37 testes: estrutura, CRUD, chaves, views, ingestão, comunicação
+& C:\xampp\php\php.exe backend/database/testar_banco.php           # 50 testes: estrutura, CRUD, chaves, views, ingestão, comunicação, acesso
 & C:\xampp\php\php.exe backend/database/migrate.php completar      # completa o histórico até agora, sem apagar nada
 & C:\xampp\php\php.exe backend/database/migrate.php reset --force  # apaga o banco (depois rode install)
 ```
@@ -168,8 +214,13 @@ Comandos úteis (na pasta do projeto):
 7. **CRUD:** em *Equipamentos*, cadastrar, editar, colocar em manutenção e excluir um
    equipamento (`--equipamento=SEN-VAZ-03 --valor=40` mostra a API recusando um
    equipamento em manutenção).
-8. **Permissões:** entrar como operador (só vê a Hidrovale e não edita equipamentos) e
-   tentar entrar com a conta suspensa.
+8. **Cargos:** entrar como gestor (só vê a Serra Azul e cadastra equipamentos nela) e como
+   operador (só vê Santa Clara e Rio Verde, não cadastra nem gera relatório); tentar entrar com
+   a conta suspensa.
+9. **Pedido de acesso:** no login, **Solicitar acesso** e enviar; tentar entrar ("em análise").
+   Como administrador, em *Solicitações*, aprovar escolhendo cargo e represa; entrar com a conta nova.
+10. **Represa nova:** em *Configurações*, cadastrar empresa, represa e conta de gestor; mostrar a
+    represa "Sem leituras" na visão geral e no mapa.
 
 ## Publicação
 
@@ -177,3 +228,7 @@ Cada envio para o branch `main` publica o site na InfinityFree pelo GitHub Actio
 (`.github/workflows/deploy.yml`). O simulador de sensores, a estação e o `iniciar.bat`
 não são publicados: rodam só no computador. O arquivo `backend/.env` não vai para o
 repositório; no servidor ele precisa ser criado à parte.
+
+A publicação envia só os arquivos: **as tabelas novas não são criadas sozinhas no banco do
+servidor**. Se o site publicado usa banco, importe pelo phpMyAdmin da hospedagem, nesta ordem,
+`backend/database/migrations/012_hierarquia.sql` e `013_solicitacoes.sql`.

@@ -6,8 +6,8 @@
  *      POST api/v1/equipment.php { action: 'update' } editar
  *      POST api/v1/equipment.php { action: 'delete' } excluir
  *
- * Os botões de cadastro só existem na página para administradores; a API
- * confere o perfil de novo a cada gravação.
+ * Os botões de cadastro só existem na página para administradores e gestores;
+ * a API confere o cargo e a represa de novo a cada gravação.
  */
 (function () {
   'use strict';
@@ -19,10 +19,10 @@
 
   var selReservoir = document.getElementById('filtro-represa');
   var search = document.getElementById('busca-equipamento');
-  var form = document.getElementById('form-equipamento');       // null para quem não é administrador
+  var form = document.getElementById('form-equipamento');       // null para quem não pode editar
 
   var rows = [];          // equipamentos recebidos da API
-  var canEdit = false;    // informado pela API (perfil de administrador)
+  var canEdit = false;    // informado pela API (administrador ou gestor)
   var editingId = null;   // código em edição; null = novo cadastro
   var deletingId = null;  // código aguardando confirmação de exclusão
 

@@ -25,6 +25,7 @@ require_once dirname(__DIR__, 2) . '/backend/bootstrap.php';        // sessão, 
 require_once dirname(__DIR__, 2) . '/includes/icons.php';             // aq_icon() e aq_the_icon(): ícones SVG compartilhados com a landing
 require_once __DIR__ . '/components.php';                            // cards, gráficos, selects e estados reutilizáveis
 
+use Aquapulse\Repositories\RequestRepository;
 use Aquapulse\Support\Clock;
 use Aquapulse\Support\Container;
 use Aquapulse\Support\Database;
@@ -102,8 +103,8 @@ function aq_dash(): string
 
 $AQ_USER = Guard::requirePageSession(aq_base() . 'login.php');       // PROTEÇÃO: sem sessão, redireciona ao login e o script para aqui
 
-// Repositório já restrito às empresas que o usuário pode ver (mesma regra da API).
-$AQ_REPO = Container::monitoring(Guard::companyScope($AQ_USER));
+// Repositório já restrito às represas que o usuário pode ver (mesma regra da API).
+$AQ_REPO = Container::monitoring(Guard::reservoirScope($AQ_USER));
 
 /* ------------------------------------------------------- menu do sistema */
 /**
@@ -112,13 +113,14 @@ $AQ_REPO = Container::monitoring(Guard::companyScope($AQ_USER));
  *
  * Cada item: route (identificador), label (texto), icon (nome do ícone),
  * href (caminho relativo a dashboard/). Um item com "children" vira submenu.
- * O contador de "Alertas" é a quantidade de alertas ainda não resolvidos.
+ * Um contador (badge) mostra o que espera atenção: alertas não resolvidos e,
+ * para o administrador, pedidos ainda não respondidos.
  */
 function aq_nav(): array
 {
-    global $AQ_REPO;
+    global $AQ_REPO, $AQ_USER;
 
-    return [
+    $menu = [
         ['route' => 'overview',   'label' => 'Visão geral', 'icon' => 'home', 'href' => 'index.php'],
         [
             'route'    => 'monitoring',
@@ -138,9 +140,18 @@ function aq_nav(): array
         ['route' => 'reports',  'label' => 'Relatórios',    'icon' => 'file-text',    'href' => 'relatorios.php'],
         ['route' => 'levels',   'label' => 'Níveis',        'icon' => 'layers-list',  'href' => 'niveis.php'],
         ['route' => 'maps',     'label' => 'Mapas',         'icon' => 'map',          'href' => 'mapas.php'],
-        ['route' => 'alerts',   'label' => 'Alertas',       'icon' => 'bell',         'href' => 'alertas.php', 'badge' => $AQ_REPO->openAlertCount()],
-        ['route' => 'settings', 'label' => 'Configurações', 'icon' => 'gear',         'href' => 'configuracoes.php'],
+        ['route' => 'alerts',   'label' => 'Alertas',       'icon' => 'bell',         'href' => 'alertas.php',
+         'badge' => $AQ_REPO->openAlertCount(), 'badge_label' => 'alertas ativos'],
     ];
+
+    if (Guard::can($AQ_USER, 'requests.manage') && Database::configurado()) {
+        $menu[] = ['route' => 'requests', 'label' => 'Solicitações', 'icon' => 'inbox', 'href' => 'solicitacoes.php',
+                   'badge' => (new RequestRepository(Database::conexao()))->pendingCount(), 'badge_label' => 'esperando resposta'];
+    }
+
+    $menu[] = ['route' => 'settings', 'label' => 'Configurações', 'icon' => 'gear', 'href' => 'configuracoes.php'];
+
+    return $menu;
 }
 
 /**
@@ -214,8 +225,8 @@ function aq_page_start(array $o): void
                  <?php echo $route === $item['route'] ? 'aria-current="page"' : ''; ?>>
                 <?php aq_the_icon($item['icon']); ?>
                 <span class="aq-nav__label"><?php aq_e($item['label']); ?></span>
-                <?php if (!empty($item['badge'])): // só o item Alertas tem contador ?>
-                  <span class="aq-nav__badge"><?php aq_e((string) $item['badge']); ?><span class="aq-visually-hidden"> alertas ativos</span></span>
+                <?php if (isset($item['badge'])): // Alertas e Solicitações têm contador; zerado, fica oculto ?>
+                  <span class="aq-nav__badge" data-nav-badge="<?php aq_e($item['route']); ?>"<?php echo $item['badge'] === 0 ? ' hidden' : ''; ?>><span data-nav-count><?php aq_e((string) $item['badge']); ?></span><span class="aq-visually-hidden"> <?php aq_e($item['badge_label']); ?></span></span>
                 <?php endif; ?>
               </a>
             </li>
@@ -295,7 +306,7 @@ function aq_page_start(array $o): void
           <span class="aq-user__avatar" aria-hidden="true"><?php aq_e(Guard::initials($AQ_USER['name'])); // iniciais, ex.: "AS" ?></span>
           <span class="aq-user__info">
             <span class="aq-user__name"><?php aq_e($AQ_USER['name']); ?></span>
-            <span class="aq-user__role"><?php aq_e(Guard::roleLabel($AQ_USER['role'])); // "Administrador" ou "Operador" ?></span>
+            <span class="aq-user__role"><?php aq_e(Guard::roleLabel($AQ_USER['role'])); // nome do cargo ?></span>
           </span>
           <?php aq_the_icon('chevron-down'); ?>
         </button>

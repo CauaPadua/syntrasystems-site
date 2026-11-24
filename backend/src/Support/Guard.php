@@ -3,14 +3,18 @@
  * Aquapulse — controle de acesso das páginas e endpoints do sistema.
  *
  * Três verificações, sempre feitas no servidor:
- *   1. sessão      há um usuário logado e a conta está ativa?
- *   2. perfil      a ação exige administrador?
- *   3. empresa     quais empresas o usuário pode consultar?
+ *   1. sessão   há um usuário logado e a conta está ativa?
+ *   2. cargo    o cargo dele pode fazer esta ação?  (can / requireCan)
+ *   3. alcance  quais represas ele pode ver?        (reservoirScope)
  *
- * Perfis (coluna users.role):
- *   admin     vê todas as empresas e pode cadastrar equipamentos e alterar limites;
- *   operator  vê só as empresas vinculadas a ele (user_company_access), trata
- *             alertas e abre chamados, mas não altera cadastros.
+ * Cargos (coluna users.role):
+ *   admin     administrador: vê todas as represas; aprova pedidos e cadastra
+ *             empresas, represas, contas e equipamentos;
+ *   manager   gestor da represa: só as represas vinculadas a ele; cadastra os
+ *             equipamentos delas e gera relatórios;
+ *   operator  operador: só as represas vinculadas a ele; acompanha, trata
+ *             alertas, abre chamados e consulta relatórios.
+ * O vínculo entre conta e represa fica na tabela user_reservoir_access.
  *
  * Páginas sem sessão redirecionam para o login; a API responde 401 em JSON.
  */
@@ -23,6 +27,21 @@ use Aquapulse\Auth\AuthService;
 
 final class Guard
 {
+    /** Cargos, do maior para o menor, e o nome exibido na tela. */
+    public const ROLES = [
+        'admin'    => 'Administrador',
+        'manager'  => 'Gestor da represa',
+        'operator' => 'Operador',
+    ];
+
+    /** Quais cargos podem fazer cada ação. O que não está aqui é livre para quem está logado. */
+    private const PERMISSIONS = [
+        'equipment.edit'  => ['admin', 'manager'],   // cadastrar, editar e excluir equipamentos
+        'reports.create'  => ['admin', 'manager'],   // gerar relatórios
+        'requests.manage' => ['admin'],              // aprovar ou recusar pedidos
+        'registry.edit'   => ['admin'],              // cadastrar empresas, represas e contas
+    ];
+
     /**
      * Exige sessão válida em um endpoint da API (401 em JSON se não houver).
      *
@@ -69,32 +88,38 @@ final class Guard
         return ($user['role'] ?? '') === 'admin';
     }
 
-    /** Exige perfil de administrador em um endpoint (403 em JSON se não for). */
-    public static function requireAdmin(array $user): void
+    /** O cargo do usuário permite esta ação? (chaves de PERMISSIONS) */
+    public static function can(array $user, string $action): bool
     {
-        if (!self::isAdmin($user)) {
-            ApiResponse::error('FORBIDDEN', 'Seu perfil não tem permissão para esta ação.', 403);
+        return in_array($user['role'] ?? '', self::PERMISSIONS[$action] ?? [], true);
+    }
+
+    /** Exige que o cargo permita a ação em um endpoint (403 em JSON se não permitir). */
+    public static function requireCan(array $user, string $action): void
+    {
+        if (!self::can($user, $action)) {
+            ApiResponse::error('FORBIDDEN', 'Seu cargo não tem permissão para esta ação.', 403);
         }
     }
 
     /**
-     * Empresas que o usuário pode consultar.
+     * Represas que o usuário pode ver.
      *
-     * @return array<int,string>|null null = todas (administrador)
+     * @return array<int,string>|null null = todas (administrador); [] = nenhuma
      */
-    public static function companyScope(array $user): ?array
+    public static function reservoirScope(array $user): ?array
     {
         if (self::isAdmin($user)) {
             return null;
         }
 
-        return Container::users()->companyIds((int) $user['id']);
+        return Container::users()->reservoirIds((int) $user['id']);
     }
 
-    /** Nome do perfil para exibição. */
+    /** Nome do cargo para exibição. */
     public static function roleLabel(string $role): string
     {
-        return $role === 'admin' ? 'Administrador' : 'Operador';
+        return self::ROLES[$role] ?? 'Operador';
     }
 
     /** Iniciais para o avatar da topbar (ex.: "Ana Silva" -> "AS"). */

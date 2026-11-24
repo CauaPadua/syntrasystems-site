@@ -55,7 +55,7 @@ final class MonitoringService
             $rotulo = 'Equipamentos online';
         } elseif ($online === 0) {
             $telemetria = 'offline';
-            $rotulo = 'Equipamentos sem comunicação';
+            $rotulo = $sensors === [] ? 'Nenhum equipamento cadastrado' : 'Equipamentos sem comunicação';
         } else {
             $telemetria = 'partial';
             $rotulo = $online . ' de ' . $esperados . ' equipamentos online';
@@ -107,11 +107,17 @@ final class MonitoringService
         return array_values(array_filter($sensors, static fn (array $s): bool => in_array($s['type'], $tipos, true)));
     }
 
-    /** Média dos valores não nulos; 0 quando não há nenhum. */
-    private function media(array $valores): float
+    /** Média dos valores não nulos, com uma casa; null quando não há nenhum. */
+    private function media(array $valores): ?float
     {
         $validos = array_filter($valores, static fn ($v): bool => $v !== null);
-        return $validos === [] ? 0.0 : array_sum($validos) / count($validos);
+        return $validos === [] ? null : round(array_sum($validos) / count($validos), 1);
+    }
+
+    /** Diferença entre dois valores; null se faltar algum. */
+    private function diferenca(?float $a, ?float $b, int $casas = 1): ?float
+    {
+        return $a === null || $b === null ? null : round($a - $b, $casas);
     }
 
     private function numero(float $valor, int $casas = 1): string
@@ -140,11 +146,14 @@ final class MonitoringService
         // Médias das últimas 24 h, calculadas sobre a série horária.
         $entrada24 = $this->repo->series($reservoirId, 'inflow', '24h');
         $saida24 = $this->repo->series($reservoirId, 'outflow', '24h');
-        $mediaEntrada = round($this->media($entrada24['values']), 1);
-        $mediaSaida = round($this->media($saida24['values']), 1);
-        $balanco = round($mediaEntrada - $mediaSaida, 1);
+        $mediaEntrada = $this->media($entrada24['values']);
+        $mediaSaida = $this->media($saida24['values']);
+        $balanco = $this->diferenca($mediaEntrada, $mediaSaida);
 
-        if ($balanco > 0.05) {
+        if ($balanco === null) {
+            $texto = 'Sem leituras de vazão nas últimas 24 h.';
+            $selo = 'Sem leituras';
+        } elseif ($balanco > 0.05) {
             $texto = 'Entra mais água do que sai: o reservatório tende a subir.';
             $selo = 'Acumulando';
         } elseif ($balanco < -0.05) {
@@ -165,7 +174,7 @@ final class MonitoringService
                 'flow'    => ['value' => $r['inflow_m3s'], 'unit' => 'm³/s', 'note' => $this->ultimaLeitura($r)],
                 'inflow'  => ['value' => $mediaEntrada, 'unit' => 'm³/s', 'note' => 'Média das últimas 24 h'],
                 'outflow' => ['value' => $mediaSaida, 'unit' => 'm³/s', 'note' => 'Média das últimas 24 h'],
-                'balance' => ['value' => $balanco, 'unit' => 'm³/s', 'note' => 'Afluência menos defluência (24 h)', 'positive' => $balanco >= 0],
+                'balance' => ['value' => $balanco, 'unit' => 'm³/s', 'note' => 'Afluência menos defluência (24 h)', 'positive' => ($balanco ?? 0) >= 0],
             ],
             'realtime' => [
                 'labels'  => $entrada['labels'],
@@ -176,7 +185,7 @@ final class MonitoringService
             'condition' => [
                 'label' => $selo,
                 'text'  => $texto,
-                'range' => 'No período: ' . $this->numero($minimo) . ' a ' . $this->numero($maximo) . ' m³/s',
+                'range' => $entrada['values'] === [] ? '' : 'No período: ' . $this->numero($minimo) . ' a ' . $this->numero($maximo) . ' m³/s',
                 'min'   => $minimo,
                 'max'   => $maximo,
                 'value' => $r['inflow_m3s'],
@@ -203,7 +212,7 @@ final class MonitoringService
         }
 
         $serie = $this->repo->series($reservoirId, 'level', $period);
-        $status = StatusRules::fromLevel((float) $r['level_pct']);
+        $status = StatusRules::fromLevel($r['level_pct']);
 
         $atencao = StatusRules::levelAttention();
         $critico = StatusRules::levelCritical();
@@ -227,8 +236,8 @@ final class MonitoringService
             'kpis' => [
                 'level'     => ['value' => $r['level_pct'], 'unit' => '%', 'note' => $this->ultimaLeitura($r), 'status' => StatusRules::describe($status)],
                 'cota'      => ['value' => $r['cota_m'], 'unit' => 'm', 'note' => 'Metros acima do nível do mar'],
-                'variation' => ['value' => $r['cota_variation_m'], 'unit' => 'm', 'note' => 'Variação nas últimas 24 h', 'positive' => (float) $r['cota_variation_m'] >= 0],
-                'available' => ['value' => round(100 - (float) $r['level_pct'], 1), 'unit' => '%', 'note' => 'Espaço livre no reservatório'],
+                'variation' => ['value' => $r['cota_variation_m'], 'unit' => 'm', 'note' => 'Variação nas últimas 24 h', 'positive' => ($r['cota_variation_m'] ?? 0) >= 0],
+                'available' => ['value' => $this->diferenca(100, $r['level_pct']), 'unit' => '%', 'note' => 'Espaço livre no reservatório'],
             ],
             'history' => [
                 'labels'          => $serie['labels'],
@@ -242,7 +251,7 @@ final class MonitoringService
 
                 // a mesma série em metros, para a tela Níveis
                 'cota'           => array_map(static fn (float $v): float => ReservoirCurve::cota($r, $v), $serie['values']),
-                'cota_current'   => (float) $r['cota_m'],
+                'cota_current'   => $r['cota_m'],
                 'cota_attention' => $cotaAtencao,
                 'cota_critical'  => $cotaCritica,
                 'cota_spill'     => (float) $r['cota_spill_m'],
@@ -303,11 +312,11 @@ final class MonitoringService
         $serie = $this->repo->series($reservoirId, 'ph', $period);
         $diaria = $this->repo->series($reservoirId, 'ph', '7d');
 
-        $status = StatusRules::fromPh((float) $r['ph']);
+        $status = StatusRules::fromPh($r['ph']);
         $minimo = StatusRules::phMin();
         $maximo = StatusRules::phMax();
         $faixa = $this->numero($minimo) . ' – ' . $this->numero($maximo);
-        $rotulo = $status === 'normal' ? 'Ideal' : 'Atenção';
+        $rotulo = ['normal' => 'Ideal', StatusRules::NO_DATA => 'Sem leituras'][$status] ?? 'Atenção';
 
         return [
             'reservoir' => $this->head($r, $sensors),
@@ -318,7 +327,7 @@ final class MonitoringService
                 'condition' => [
                     'status' => StatusRules::describe($status),
                     'label'  => $rotulo,
-                    'note'   => $status === 'normal' ? 'Dentro da faixa ideal' : 'Fora da faixa ideal (' . $faixa . ')',
+                    'note'   => StatusRules::phNote($status) . ($status === 'attention' ? ' (' . $faixa . ')' : ''),
                 ],
             ],
             'variation' => [
@@ -362,8 +371,8 @@ final class MonitoringService
 
         $serie = $this->repo->series($reservoirId, 'storage', $period);
         $capacidade = (float) $r['capacity_hm3'];
-        $volume = (float) $r['volume_hm3'];
-        $livre = round($capacidade - $volume, 0);
+        $volume = $r['volume_hm3'];
+        $livre = $this->diferenca($capacidade, $volume, 0);
 
         // Balanço hídrico: a vazão média do dia (m³/s) vira volume diário (hm³).
         // 1 m³/s durante um dia = 86.400 m³ = 0,0864 hm³.
@@ -371,7 +380,7 @@ final class MonitoringService
         $saida = $this->alinhar($this->repo->series($reservoirId, 'outflow', '30d'), $entrada['labels']);
 
         $inicio = $serie['values'][0] ?? $volume;             // volume no começo do período
-        $ganho = round($volume - $inicio, 0);
+        $ganho = $this->diferenca($volume, $inicio, 0);
 
         return [
             'reservoir' => $this->head($r, $this->repo->sensors($reservoirId)),
@@ -392,7 +401,7 @@ final class MonitoringService
                 'pct'           => $r['level_pct'],
                 'stored'        => $r['volume_hm3'],
                 'available'     => $livre,
-                'available_pct' => round(100 - (float) $r['level_pct'], 1),
+                'available_pct' => $this->diferenca(100, $r['level_pct']),
                 'capacity'      => $r['capacity_hm3'],
             ],
             'balance' => [
@@ -407,7 +416,7 @@ final class MonitoringService
                 ['label' => 'Reserva técnica', 'note' => 'Segurança operacional', 'value' => $r['technical_reserve_hm3'],
                  'pct' => round((float) $r['technical_reserve_hm3'] / $capacidade * 100, 1), 'status' => 'attention'],
                 ['label' => 'Espaço livre', 'note' => 'Capacidade ainda não ocupada', 'value' => $livre,
-                 'pct' => round($livre / $capacidade * 100, 1), 'status' => 'info'],
+                 'pct' => $livre === null ? null : round($livre / $capacidade * 100, 1), 'status' => 'info'],
             ],
             'history' => array_map(static function (array $linha): array {
                 $linha['status'] = StatusRules::describe($linha['status']);
@@ -416,7 +425,7 @@ final class MonitoringService
             'insight' => [
                 'value' => $ganho,
                 'unit'  => 'hm³',
-                'pct'   => $inicio > 0 ? round($ganho / $inicio * 100, 1) : 0,
+                'pct'   => $ganho === null ? null : ($inicio > 0 ? round($ganho / $inicio * 100, 1) : 0),
                 'text'  => 'Diferença entre o primeiro dia do período selecionado e o volume atual.',
             ],
         ];
@@ -443,10 +452,12 @@ final class MonitoringService
 
         $chuva = (float) $r['rain_24h_mm'];
         $atencao = StatusRules::rainAttention();
-        $status = StatusRules::classify('precipitation', $chuva);
+        $status = $r['rain_24h_mm'] === null ? StatusRules::NO_DATA : StatusRules::classify('precipitation', $chuva);
 
         // A intensidade é descrita pelos mesmos limites que abrem os alertas.
-        if ($status === 'critical') {
+        if ($status === StatusRules::NO_DATA) {
+            $intensidade = 'Sem leituras';
+        } elseif ($status === 'critical') {
             $intensidade = 'Crítica';
         } elseif ($status === 'attention') {
             $intensidade = 'Alta';
@@ -472,13 +483,13 @@ final class MonitoringService
             ],
             'current' => [
                 'value'  => $r['rain_24h_mm'],
-                'label'  => 'Chuva ' . mb_strtolower($intensidade, 'UTF-8'),
+                'label'  => $status === StatusRules::NO_DATA ? $intensidade : 'Chuva ' . mb_strtolower($intensidade, 'UTF-8'),
                 'last'   => $this->ultimaLeitura($r),
                 'status' => $status,
             ],
             'sensors'  => $this->equipamentosDe($sensors, ['precipitation']),
             'warning'  => [
-                'active' => $status !== 'normal',
+                'active' => $status === 'attention' || $status === 'critical',
                 'title'  => $status === 'critical' ? 'Chuva acumulada em nível crítico' : 'Chuva acumulada em atenção',
                 'text'   => 'Foram registrados ' . $this->numero($chuva) . ' mm nas últimas 24 h. Limite de atenção: '
                           . StatusRules::number($atencao) . ' mm; crítico: ' . StatusRules::number(StatusRules::rainCritical()) . ' mm.',
@@ -517,7 +528,10 @@ final class MonitoringService
         }
 
         // Situação geral: alerta crítico pesa mais que equipamento fora do ar.
-        if (isset($porGravidade['critical'])) {
+        if ($sensors === [] && $alertas === []) {
+            $geral = StatusRules::NO_DATA;
+            $notaGeral = 'Nenhum equipamento cadastrado nesta represa.';
+        } elseif (isset($porGravidade['critical'])) {
             $geral = 'critical';
             $notaGeral = 'Há alerta crítico em aberto.';
         } elseif ($semComunicacao > 0 || $alertas !== []) {
@@ -553,7 +567,7 @@ final class MonitoringService
                     'total'  => count($esperados),
                     'note'   => count($sensors) - count($esperados) > 0
                         ? (count($sensors) - count($esperados)) . ' fora de operação (manutenção ou desativado).'
-                        : 'Todos os equipamentos cadastrados estão em operação.',
+                        : ($sensors === [] ? 'Nenhum equipamento cadastrado.' : 'Todos os equipamentos cadastrados estão em operação.'),
                 ],
                 'last'   => ['value' => $r['last_reading_at'] === null ? '—' : Clock::relative(Clock::parse((string) $r['last_reading_at'])),
                              'note' => $r['last_reading_at'] === null ? 'Nenhuma leitura registrada' : Clock::parse((string) $r['last_reading_at'])->format('d/m/Y H:i:s')],
@@ -653,10 +667,10 @@ final class MonitoringService
         $valoresAnteriores = $this->semana($reservoirId, 'inflow', $anterior['from']);
         $saidas = $this->semana($reservoirId, 'outflow', $atual['from']);
 
-        $mediaAtual = round($this->media($valoresAtuais), 1);
-        $mediaAnterior = round($this->media($valoresAnteriores), 1);
-        $delta = round($mediaAtual - $mediaAnterior, 1);
-        $pct = $mediaAnterior > 0 ? round($delta / $mediaAnterior * 100, 1) : 0.0;
+        $mediaAtual = $this->media($valoresAtuais);
+        $mediaAnterior = $this->media($valoresAnteriores);
+        $delta = $this->diferenca($mediaAtual, $mediaAnterior);
+        $pct = $delta !== null && $mediaAnterior > 0 ? round($delta / $mediaAnterior * 100, 1) : null;
 
         $diasDaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
         $labels = [];
@@ -707,8 +721,8 @@ final class MonitoringService
             'kpis' => [
                 'current'   => ['value' => $mediaAtual, 'unit' => 'm³/s', 'note' => 'Semana de ' . $atual['label']],
                 'previous'  => ['value' => $mediaAnterior, 'unit' => 'm³/s', 'note' => 'Semana de ' . $anterior['label']],
-                'variation' => ['value' => $pct, 'unit' => '%', 'note' => ($delta >= 0 ? '+' : '') . $this->numero($delta) . ' m³/s', 'positive' => $delta >= 0],
-                'max_diff'  => ['value' => $maiorDiferenca['value'] ?? 0, 'unit' => 'm³/s',
+                'variation' => ['value' => $pct, 'unit' => '%', 'note' => $delta === null ? 'Sem dados para comparar' : ($delta >= 0 ? '+' : '') . $this->numero($delta) . ' m³/s', 'positive' => ($delta ?? 0) >= 0],
+                'max_diff'  => ['value' => $maiorDiferenca['value'] ?? null, 'unit' => 'm³/s',
                                 'note' => $maiorDiferenca === null ? 'Sem dados para comparar' : 'Em ' . $maiorDiferenca['day'],
                                 'positive' => ($maiorDiferenca['value'] ?? 0) >= 0],
             ],
@@ -729,14 +743,16 @@ final class MonitoringService
                 'best'    => ['label' => 'Maior vazão', 'day' => $melhor['day'] ?? '—', 'value' => $melhor['value'] ?? null, 'unit' => 'm³/s'],
                 'worst'   => ['label' => 'Menor vazão', 'day' => $pior['day'] ?? '—', 'value' => $pior['value'] ?? null, 'unit' => 'm³/s'],
                 'average' => ['label' => 'Média semanal', 'current' => $mediaAtual, 'previous' => $mediaAnterior, 'unit' => 'm³/s'],
-                'trend'   => ['label' => 'Tendência', 'value' => $delta >= 0 ? 'Alta' : 'Baixa',
-                              'note' => 'Vazão ' . ($delta >= 0 ? 'acima' : 'abaixo') . ' da semana de comparação'],
+                'trend'   => ['label' => 'Tendência', 'value' => $delta === null ? '—' : ($delta >= 0 ? 'Alta' : 'Baixa'),
+                              'note' => $delta === null ? 'Sem dados para comparar' : 'Vazão ' . ($delta >= 0 ? 'acima' : 'abaixo') . ' da semana de comparação'],
             ],
             'rows' => $linhas,
             'insight' => [
                 'delta' => $delta,
-                'text'  => 'A afluência média ' . ($delta >= 0 ? 'aumentou' : 'diminuiu') . ' ' . $this->numero(abs($delta))
-                         . ' m³/s em relação à semana de ' . $anterior['label'] . '.',
+                'text'  => $delta === null
+                    ? 'Não há leituras suficientes para comparar as duas semanas.'
+                    : 'A afluência média ' . ($delta >= 0 ? 'aumentou' : 'diminuiu') . ' ' . $this->numero(abs($delta))
+                      . ' m³/s em relação à semana de ' . $anterior['label'] . '.',
             ],
         ];
     }

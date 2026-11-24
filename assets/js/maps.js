@@ -23,7 +23,8 @@ window.AqMap = (function () {
     var icons = {                                                     // desenho SVG de cada status: check, triângulo de alerta, círculo de exclamação
       normal: '<path d="M20.5 11.3V12a8.5 8.5 0 1 1-5-7.77"/><path d="m8.6 11.6 3 3 8.9-9"/>',
       attention: '<path d="M12 4 2.8 19.5h18.4L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
-      critical: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.7"/><path d="M12 16.2h.01"/>'
+      critical: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.7"/><path d="M12 16.2h.01"/>',
+      neutral: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12h7"/>'   // ainda sem leituras
     };
     var svg = '<svg class="aq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
       + ' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'

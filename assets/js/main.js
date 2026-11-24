@@ -8,7 +8,7 @@
  *
  * Carregado por index.php. Os elementos são encontrados pelos atributos data-*
  * definidos em includes/header.php e nas seções (data-header, data-nav,
- * data-words-stagger, data-demo-trigger...).
+ * data-words-stagger...).
  */
 (function () {                                                        // IIFE: variáveis ficam privadas, nada vaza para o escopo global
   'use strict';
@@ -225,33 +225,6 @@
     if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1'); // tabindex -1: pode receber foco via código, sem entrar na ordem do Tab
     target.focus({ preventScroll: true });                            // foca sem rolar de novo (a rolagem suave já está acontecendo)
   });
-
-  /* --------------------------------------- botoes ainda sem destino definitivo */
-  // "Entrar" e "Solicitar demonstracao" ficam preparados visualmente. Nesta etapa
-  // eles apenas informam que o recurso ainda nao esta disponivel.
-  // (Hoje só o "Solicitar demonstração" usa este aviso: "Entrar" já leva ao login.php.)
-  /**
-   * Liga um botão a um aviso: ao clicar, o aviso aparece por 4 segundos.
-   * @param {string} triggerSelector seletor do botão
-   * @param {string} noteId          id do parágrafo de aviso
-   */
-  function bindPlaceholder(triggerSelector, noteId) {
-    var trigger = document.querySelector(triggerSelector);
-    var note = document.getElementById(noteId);
-    if (!trigger || !note) return;
-
-    var timer = null;
-
-    trigger.addEventListener('click', function () {
-      note.hidden = false;
-      window.clearTimeout(timer);                                     // cliques repetidos reiniciam os 4 segundos
-      timer = window.setTimeout(function () {
-        note.hidden = true;
-      }, 4000);
-    });
-  }
-
-  bindPlaceholder('[data-demo-trigger]', 'aviso-demo');               // botão da seção Vantagens (includes/sections/vantagens.php)
 
   /* ------------------------------------------- areas com rolagem lateral propria */
   // O quadro do mockup so vira uma regiao focavel quando realmente transborda,

@@ -3,7 +3,8 @@
 /*
  * Exportação das leituras em CSV. A lista mostra os relatórios já gerados
  * (tabela reports); "Gerar relatório" registra um novo e o arquivo é montado
- * no servidor, a partir das leituras gravadas, a cada download.
+ * no servidor, a partir das leituras gravadas, a cada download. O operador só
+ * consulta e baixa (a API confere o cargo de novo).
  *
  * Lógica em assets/js/pages/reports.js, que usa api/v1/reports.php.
  */
@@ -12,6 +13,10 @@ declare(strict_types=1);
 
 define('AQ_DEPTH', 1);
 require __DIR__ . '/includes/page.php';
+
+use Aquapulse\Support\Guard;
+
+$podeGerar = Guard::can($AQ_USER, 'reports.create');
 
 aq_page_start([
     'route'    => 'reports',
@@ -48,10 +53,12 @@ aq_page_start([
       'all' => 'Todos', 'operational' => 'Operacional', 'hydrological' => 'Hidrológico', 'quality' => 'Qualidade',
   ]]);
   ?>
+  <?php if ($podeGerar): ?>
   <span class="aq-context__spacer"></span>
   <button class="aq-btn aq-btn--primary" type="button" style="align-self:flex-end" data-modal-open="modal-relatorio">
     <?php aq_the_icon('plus'); ?><span>Gerar relatório</span>
   </button>
+  <?php endif; ?>
 </section>
 
 <article class="aq-card">
@@ -84,6 +91,7 @@ aq_page_start([
   grandeza (para a chuva, o total do dia). Formato CSV com ponto e vírgula, pronto para abrir no Excel.</span>
 </div>
 
+<?php if ($podeGerar): ?>
 <!-- ----------------------------------------------- modal de geração -->
 <div class="aq-modal" id="modal-relatorio" role="dialog" aria-modal="true" aria-labelledby="modal-relatorio-titulo" hidden>
   <div class="aq-modal__box">
@@ -130,5 +138,6 @@ aq_page_start([
     </form>
   </div>
 </div>
+<?php endif; ?>
 
 <?php aq_page_end(['scripts' => ['pages/reports.js']]);

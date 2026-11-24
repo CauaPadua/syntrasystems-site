@@ -15,7 +15,7 @@
 
   /** Cores por situação de comunicação e por status geral. */
   var DOT = { online: 'normal', offline: 'offline', maintenance: 'attention', inactive: 'offline' };
-  var TONE = { normal: 'success', attention: 'warning', critical: 'danger' };
+  var TONE = { normal: 'success', attention: 'warning', critical: 'danger', neutral: 'text-secondary' };
 
   var page = window.AqMonitorPage({
     scopes: ['availability'],

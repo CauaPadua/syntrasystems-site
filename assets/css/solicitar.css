@@ -1,0 +1,58 @@
+/* =========================================================================
+   Aquapulse - página de solicitação (solicitar.php)
+   Complementa login.css, que traz o cartão, os campos e os botões.
+   ========================================================================= */
+
+.request-grid {                                                    /* dois campos por linha */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 14px;
+}
+.request-grid .field + .field { margin-top: 0; }                   /* a distância já vem do gap da grade */
+.request-grid__full { grid-column: 1 / -1; }
+
+.request-textarea {
+  height: auto;
+  min-height: 92px;
+  padding: 13px 16px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.request-trap {                                                    /* campo-armadilha para robôs: fora da tela */
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.request-note {
+  margin-top: 12px;
+  font-size: .84rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.request-switch {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #edf2fa;
+  font-size: .9rem;
+  color: var(--ink-soft);
+}
+.request-switch a { color: var(--login-cta); font-weight: 700; }
+.request-switch a:hover { text-decoration: underline; }
+
+[data-view="done"]:focus { outline: none; }                        /* recebe o foco só para o leitor de tela anunciar */
+
+.request-done {
+  margin: 20px 0 26px;
+  font-size: .97rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 600px) {                                        /* celular: um campo por linha */
+  .request-grid { grid-template-columns: minmax(0, 1fr); }
+}

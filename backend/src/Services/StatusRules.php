@@ -22,6 +22,9 @@ namespace Aquapulse\Services;
 
 final class StatusRules
 {
+    /** Represa (ou grandeza) sem nenhuma leitura: não é normal, nem atenção, nem crítico. */
+    public const NO_DATA = 'neutral';
+
     /** @var array<string,array<string,array{min:?float,max:?float}>> */
     private static array $limits = [
         'level' => [
@@ -83,14 +86,14 @@ final class StatusRules
         return 'normal';
     }
 
-    public static function fromLevel(float $levelPct): string
+    public static function fromLevel(?float $levelPct): string
     {
-        return self::classify('level', $levelPct);
+        return $levelPct === null ? self::NO_DATA : self::classify('level', $levelPct);
     }
 
-    public static function fromPh(float $ph): string
+    public static function fromPh(?float $ph): string
     {
-        return self::classify('ph', $ph);
+        return $ph === null ? self::NO_DATA : self::classify('ph', $ph);
     }
 
     /* ------------------------------------------------ limites em vigor */
@@ -162,6 +165,8 @@ final class StatusRules
                 return ['key' => 'info', 'label' => 'Informação', 'icon' => 'info'];
             case 'offline':
                 return ['key' => 'offline', 'label' => 'Sem comunicação', 'icon' => 'wifi-off'];
+            case self::NO_DATA:
+                return ['key' => self::NO_DATA, 'label' => 'Sem leituras', 'icon' => 'info'];
             default:
                 return ['key' => 'normal', 'label' => 'Normal', 'icon' => 'check-circle'];
         }
@@ -175,9 +180,20 @@ final class StatusRules
                 return 'Nível a partir de ' . self::pct(self::levelCritical()) . '; ação imediata recomendada';
             case 'attention':
                 return 'Nível a partir de ' . self::pct(self::levelAttention()) . '; acompanhamento recomendado';
+            case self::NO_DATA:
+                return 'Aguardando a primeira leitura';
             default:
                 return 'Nível abaixo de ' . self::pct(self::levelAttention());
         }
+    }
+
+    /** Frase que acompanha o status do pH. */
+    public static function phNote(string $status): string
+    {
+        if ($status === self::NO_DATA) {
+            return 'Aguardando a primeira leitura';
+        }
+        return $status === 'normal' ? 'Dentro da faixa ideal' : 'Fora da faixa ideal';
     }
 
     public static function severityLabel(string $severity): string

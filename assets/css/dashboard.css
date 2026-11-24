@@ -184,6 +184,7 @@ body.aq-app {                                                      /* <body clas
   font-size: 0.74rem;
   font-weight: 800;
 }
+.aq-nav__badge[hidden] { display: none; }                          /* contador zerado não aparece */
 
 .aq-nav__caret { transition: transform var(--aq-transition); }
 .aq-nav__link[aria-expanded="true"] .aq-nav__caret { transform: rotate(180deg); } /* submenu aberto: a seta gira 180° */
@@ -642,7 +643,7 @@ body.aq-app {                                                      /* <body clas
 .aq-dot--attention { background: var(--aq-warning); }
 .aq-dot--critical { background: var(--aq-danger); }
 .aq-dot--info { background: var(--aq-info); }
-.aq-dot--offline { background: var(--aq-text-muted); }
+.aq-dot--offline, .aq-dot--neutral { background: var(--aq-text-muted); }
 
 .aq-status-text { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
 
@@ -767,6 +768,7 @@ body.aq-app {                                                      /* <body clas
 .aq-table--bordered tr.is-normal { border-left-color: var(--aq-success); }
 .aq-table--bordered tr.is-attention { border-left-color: var(--aq-warning); }
 .aq-table--bordered tr.is-critical { border-left-color: var(--aq-danger); }
+.aq-table--bordered tr.is-neutral { border-left-color: var(--aq-text-muted); } /* represa ainda sem leituras */
 
 /* paginação */
 .aq-pagination {
@@ -811,6 +813,7 @@ body.aq-app {                                                      /* <body clas
 .aq-list__icon--attention { background: var(--aq-warning-soft); color: var(--aq-warning); }
 .aq-list__icon--critical { background: var(--aq-danger-soft); color: var(--aq-danger); }
 .aq-list__icon--info { background: var(--aq-info-soft); color: var(--aq-info); }
+.aq-list__icon--neutral { background: var(--aq-bg); color: var(--aq-text-secondary); }
 .aq-list__body { flex: 1 1 auto; min-width: 0; }
 .aq-list__title { font-size: 0.9rem; font-weight: 700; }
 .aq-list__meta { font-size: 0.81rem; color: var(--aq-text-secondary); margin-top: 2px; }
@@ -898,6 +901,7 @@ body.aq-app {                                                      /* <body clas
 .aq-marker--normal { background: var(--aq-success); }
 .aq-marker--attention { background: var(--aq-warning); }
 .aq-marker--critical { background: var(--aq-danger); }
+.aq-marker--neutral { background: var(--aq-text-muted); }
 
 /* rótulo permanente ao lado do marcador (Visão geral de uma represa) */
 .aq-map .aq-map-tip {                                              /* className do tooltip permanente em maps.js */
@@ -994,6 +998,24 @@ body.aq-app {                                                      /* <body clas
 }
 .aq-form-row:last-child { border-bottom: 0; }
 
+.aq-form-stack { display: flex; flex-direction: column; gap: 14px; }  /* campos de formulário um abaixo do outro */
+
+.aq-checklist { margin: 0; padding: 0; border: 0; min-width: 0; }  /* lista de caixas de seleção (represas de uma conta) */
+.aq-checklist legend { margin-bottom: 8px; padding: 0; }
+.aq-checklist__item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--aq-border);
+  border-radius: var(--aq-radius-control);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.aq-checklist__item + .aq-checklist__item { margin-top: 7px; }
+.aq-checklist__item:hover { border-color: #cfdcee; }
+.aq-checklist__item input { width: 17px; height: 17px; flex: none; accent-color: var(--aq-primary); }
+.aq-field[hidden], .aq-btn[hidden], .aq-note[hidden] { display: none; } /* o atributo hidden vence o display definido nessas classes */
+.aq-checklist__item small { display: block; font-size: 0.78rem; color: var(--aq-text-secondary); }
+
 /* ------------------------------------------------- 15. modal e feedback */
 .aq-modal {                                                        /* janela modal com fundo escurecido cobrindo a tela */
   position: fixed; inset: 0; z-index: 200;
@@ -1011,6 +1033,7 @@ body.aq-app {                                                      /* <body clas
   background: var(--aq-surface);
   box-shadow: 0 24px 60px rgba(8, 37, 86, 0.24);
 }
+.aq-modal__box--wide { width: min(680px, 100%); }                  /* formulários maiores (represa, solicitação) */
 .aq-modal__head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .aq-modal__head h2 { font-size: 1.15rem; flex: 1 1 auto; }
 .aq-modal__foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
@@ -1199,6 +1222,7 @@ body.aq-app {                                                      /* <body clas
 .aq-status--normal    { color: var(--aq-success); }                /* classes montadas no JS (levels.js, overview.js) com a chave do status */
 .aq-status--attention { color: var(--aq-warning); }
 .aq-status--critical  { color: var(--aq-danger); }
+.aq-status--neutral   { color: var(--aq-text-secondary); }
 
 /* cartões da faixa de sete: menos respiro lateral e ícone menor */
 .aq-grid--7 .aq-kpi { padding: 18px 16px; }

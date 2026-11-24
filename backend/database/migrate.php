@@ -246,7 +246,8 @@ function comandoMigrate(): void
 }
 
 /**
- * Cria as contas de acesso e os vínculos com as empresas.
+ * Cria as contas de acesso e os vínculos com as represas. A conta é reconhecida
+ * pelo e-mail: as contas criadas depois pelo sistema nunca são alteradas aqui.
  *
  * O hash da senha é copiado de backend/storage/mock/users.php — a senha em
  * texto puro não existe em lugar nenhum do código, e este script não a imprime.
@@ -264,28 +265,26 @@ function semearUsuarios(PDO $pdo): int
     $usuarios = valoresIniciais()['users'];
 
     $conta = $pdo->prepare(
-        'INSERT INTO users (id, name, email, role, status, password_hash)
-         VALUES (:id, :name, :email, :role, :status, :hash)
-         ON DUPLICATE KEY UPDATE name = VALUES(name), email = VALUES(email), role = VALUES(role),
+        'INSERT INTO users (name, email, role, status, password_hash)
+         VALUES (:name, :email, :role, :status, :hash)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role),
                                  status = VALUES(status), password_hash = VALUES(password_hash)'
     );
-    $limpar = $pdo->prepare('DELETE FROM user_company_access WHERE user_id = :user');
-    $vinculo = $pdo->prepare('INSERT INTO user_company_access (user_id, company_id) VALUES (:user, :company)');
+    $busca = $pdo->prepare('SELECT id FROM users WHERE email = :email');
+    $limpar = $pdo->prepare('DELETE FROM user_reservoir_access WHERE user_id = :user');
+    $vinculo = $pdo->prepare('INSERT INTO user_reservoir_access (user_id, reservoir_id) VALUES (:user, :reservoir)');
 
     foreach ($usuarios as $u) {
-        $conta->execute([
-            'id'     => $u['id'],
-            'name'   => $u['name'],
-            'email'  => mb_strtolower(trim($u['email']), 'UTF-8'),   // mesma normalização do login
-            'role'   => $u['role'],
-            'status' => $u['status'],
-            'hash'   => $hash,
-        ]);
+        $email = mb_strtolower(trim($u['email']), 'UTF-8');          // mesma normalização do login
+        $conta->execute(['name' => $u['name'], 'email' => $email, 'role' => $u['role'], 'status' => $u['status'], 'hash' => $hash]);
+
+        $busca->execute(['email' => $email]);
+        $id = (int) $busca->fetchColumn();
 
         // A carga define exatamente os vínculos listados para a conta.
-        $limpar->execute(['user' => $u['id']]);
-        foreach ($u['companies'] as $empresa) {
-            $vinculo->execute(['user' => $u['id'], 'company' => $empresa]);
+        $limpar->execute(['user' => $id]);
+        foreach ($u['reservoirs'] as $represa) {
+            $vinculo->execute(['user' => $id, 'reservoir' => $represa]);
         }
     }
 

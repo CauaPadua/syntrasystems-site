@@ -2,7 +2,7 @@
 /*
  * Página: dashboard/relatorios.php
  * API: GET api/v1/reports.php            lista os relatórios gerados
- *      POST api/v1/reports.php           registra um novo relatório
+ *      POST api/v1/reports.php           registra um novo relatório (administrador e gestor)
  *      GET api/v1/reports.php?download=  baixa o CSV montado no servidor
  */
 (function () {
@@ -17,7 +17,7 @@
   var selReservoir = document.getElementById('filtro-represa');
   var selType = document.getElementById('filtro-tipo');
   var search = document.getElementById('busca-relatorio');
-  var form = document.getElementById('form-relatorio');
+  var form = document.getElementById('form-relatorio');   // null para quem só consulta (operador)
 
   var currentRows = [];     // relatórios recebidos (base para a busca por texto)
 
@@ -109,12 +109,14 @@
       renderRows();
 
       // período padrão do formulário: os últimos 7 dias, até hoje (data do servidor)
-      if (!form.elements.to.value) {
-        form.elements.to.value = d.today;
-        form.elements.from.value = isoDate(d.today, -6);
+      if (form) {
+        if (!form.elements.to.value) {
+          form.elements.to.value = d.today;
+          form.elements.from.value = isoDate(d.today, -6);
+        }
+        form.elements.to.max = d.today;
+        form.elements.from.max = d.today;
       }
-      form.elements.to.max = d.today;
-      form.elements.from.max = d.today;
 
       S.setUpdated(r.meta);
     }).catch(function (err) {
@@ -128,6 +130,8 @@
     return Api.reservoirs(Ctx.get().company_id).then(function (r) {
       selReservoir.innerHTML = options(r.data.reservoirs, 'Todas as represas');
       selReservoir.value = Ctx.reconcile(r.data.reservoirs).reservoir_id;
+      if (!form) return;
+
       form.elements.reservoir_id.innerHTML = options(r.data.reservoirs);
 
       var atual = Ctx.get().reservoir_id;
@@ -144,7 +148,7 @@
 
   selReservoir.addEventListener('change', function () {
     Ctx.set({ reservoir_id: selReservoir.value });
-    if (selReservoir.value !== 'all') form.elements.reservoir_id.value = selReservoir.value;
+    if (form && selReservoir.value !== 'all') form.elements.reservoir_id.value = selReservoir.value;
     load();
   });
 
@@ -152,7 +156,7 @@
   search.addEventListener('input', renderRows);
 
   // gerar: registra o relatório no banco e inicia o download do CSV
-  form.addEventListener('submit', function (e) {
+  if (form) form.addEventListener('submit', function (e) {
     e.preventDefault();
     S.showErrors(form, {});
 

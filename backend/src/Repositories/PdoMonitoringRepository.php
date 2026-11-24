@@ -15,8 +15,8 @@
  * grandezas são médias.
  *
  * PERMISSÃO
- * O repositório recebe as empresas que o usuário pode consultar e aplica esse
- * filtro em todas as consultas — nenhuma tela precisa lembrar de filtrar.
+ * O repositório recebe as represas que o usuário pode ver e aplica esse filtro
+ * em todas as consultas — nenhuma tela precisa lembrar de filtrar.
  *
  * SEGURANÇA
  * Todo valor vindo da requisição entra por parâmetro em consulta preparada,
@@ -39,19 +39,19 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
 {
     private PDO $pdo;
 
-    /** @var array<int,string>|null empresas permitidas; null = todas */
-    private ?array $empresas;
+    /** @var array<int,string>|null represas permitidas; null = todas */
+    private ?array $represas;
 
     /** @var array<string,array<string,array{min:?float,max:?float}>>|null */
     private ?array $limites = null;
 
     /**
-     * @param array<int,string>|null $empresas IDs das empresas que o usuário pode ver; null = todas
+     * @param array<int,string>|null $represas IDs das represas que o usuário pode ver; null = todas
      */
-    public function __construct(PDO $pdo, ?array $empresas = null)
+    public function __construct(PDO $pdo, ?array $represas = null)
     {
         $this->pdo = $pdo;
-        $this->empresas = $empresas;
+        $this->represas = $represas;
     }
 
     /* ====================================================== apoio interno */
@@ -66,6 +66,18 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
     {
         $f = (float) $valor;
         return floor($f) === $f ? (int) $f : round($f, 3);
+    }
+
+    /**
+     * O mesmo, para valores medidos: sem leitura continua null (a tela mostra "—"),
+     * porque 0 seria um valor medido.
+     *
+     * @param mixed $valor
+     * @return int|float|null
+     */
+    private function medido($valor)
+    {
+        return $valor === null ? null : $this->numero($valor);
     }
 
     /**
@@ -89,20 +101,20 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
     }
 
     /**
-     * Condição que limita uma coluna de empresa às empresas do usuário.
+     * Condição que limita uma coluna de represa às represas do usuário.
      *
      * @return array{sql:string,valores:array<string,string>}
      */
     private function escopo(string $coluna): array
     {
-        if ($this->empresas === null) {
+        if ($this->represas === null) {
             return ['sql' => '', 'valores' => []];            // administrador: sem restrição
         }
-        if ($this->empresas === []) {
+        if ($this->represas === []) {
             return ['sql' => ' AND 1 = 0', 'valores' => []];  // usuário sem nenhum vínculo: não vê nada
         }
 
-        $m = $this->marcadores($this->empresas, 'emp');
+        $m = $this->marcadores($this->represas, 'alc');
         return ['sql' => " AND {$coluna} IN ({$m['sql']})", 'valores' => $m['valores']];
     }
 
@@ -110,12 +122,14 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
 
     public function companies(): array
     {
-        $e = $this->escopo('id');
+        // Quem não é administrador vê as empresas donas das represas dele.
+        $e = $this->escopo('r.id');
+        $filtro = $e['sql'] === '' ? '' : " AND id IN (SELECT r.company_id FROM reservoirs r WHERE 1 = 1{$e['sql']})";
 
         $stmt = $this->pdo->prepare(
             "SELECT id, code, name, manager, status, status_label
                FROM companies
-              WHERE 1 = 1{$e['sql']}
+              WHERE 1 = 1{$filtro}
               ORDER BY sort_order, name"
         );
         $stmt->execute($e['valores']);
@@ -143,7 +157,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
     private function montarRepresas(?string $companyId = null, ?string $reservoirId = null): array
     {
         /* --------------- 1. cadastro + valores atuais (view vw_resumo_represas) */
-        $e = $this->escopo('r.company_id');
+        $e = $this->escopo('r.id');
         $sql = "SELECT r.id, r.code, r.name, r.company_id, r.city, r.basin, r.lat, r.lng, r.coordinates_label,
                        r.capacity_hm3, r.useful_volume_hm3, r.technical_reserve_hm3, r.daily_consumption_hm3,
                        r.cota_spill_m, r.cota_alert_m, r.cota_min_m, r.cota_max_m,
@@ -188,7 +202,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
         $represas = [];
         foreach ($linhas as $r) {
             $id = (string) $r['id'];
-            $cota = (float) $r['cota_m'];
+            $cota = $this->medido($r['cota_m']);
 
             $represas[] = [
                 'id'                => $id,
@@ -210,22 +224,23 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
                 'cota_min_m'            => $this->numero($r['cota_min_m']),
                 'cota_max_m'            => $this->numero($r['cota_max_m']),
 
-                'level_pct'    => $this->numero($r['level_pct']),
-                'cota_m'       => $this->numero($r['cota_m']),
-                'volume_hm3'   => $this->numero($r['volume_hm3']),
-                'inflow_m3s'   => $this->numero($r['inflow_m3s']),
-                'outflow_m3s'  => $this->numero($r['outflow_m3s']),
-                'ph'           => $this->numero($r['ph']),
-                'water_temp_c' => $this->numero($r['water_temp_c']),
+                // valores medidos: null enquanto a represa não tem leitura daquela grandeza
+                'level_pct'    => $this->medido($r['level_pct']),
+                'cota_m'       => $cota,
+                'volume_hm3'   => $this->medido($r['volume_hm3']),
+                'inflow_m3s'   => $this->medido($r['inflow_m3s']),
+                'outflow_m3s'  => $this->medido($r['outflow_m3s']),
+                'ph'           => $this->medido($r['ph']),
+                'water_temp_c' => $this->medido($r['water_temp_c']),
 
-                'ph_min'             => $this->numero($faixaPh[$id]['min'] ?? $r['ph']),
-                'ph_max'             => $this->numero($faixaPh[$id]['max'] ?? $r['ph']),
-                'rain_24h_mm'        => $this->numero($chuva[$id]['h24'] ?? 0),
-                'rain_prev_24h_mm'   => $this->numero($chuva[$id]['h24_anterior'] ?? 0),
-                'rain_7d_mm'         => $this->numero($chuva[$id]['d7'] ?? 0),
-                'rain_month_mm'      => $this->numero($chuva[$id]['mes'] ?? 0),
-                'cota_variation_m'   => round($cota - ($antes[$id]['cota'] ?? $cota), 1),
-                'inflow_24h_ago_m3s' => $this->numero($antes[$id]['inflow'] ?? $r['inflow_m3s']),
+                'ph_min'             => $this->medido($faixaPh[$id]['min'] ?? $r['ph']),
+                'ph_max'             => $this->medido($faixaPh[$id]['max'] ?? $r['ph']),
+                'rain_24h_mm'        => $this->medido($chuva[$id]['h24'] ?? null),
+                'rain_prev_24h_mm'   => $this->medido($chuva[$id]['h24_anterior'] ?? null),
+                'rain_7d_mm'         => $this->medido($chuva[$id]['d7'] ?? null),
+                'rain_month_mm'      => $this->medido($chuva[$id]['mes'] ?? null),
+                'cota_variation_m'   => $cota === null ? null : round($cota - ($antes[$id]['cota'] ?? $cota), 1),
+                'inflow_24h_ago_m3s' => $this->medido($antes[$id]['inflow'] ?? $r['inflow_m3s']),
 
                 'sensors_online'  => (int) ($equipamentos[$id]['online'] ?? 0),
                 'sensors_total'   => (int) ($equipamentos[$id]['total'] ?? 0),
@@ -704,7 +719,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
 
     public function alerts(string $reservoirId = 'all', string $severity = 'all', string $status = 'all'): array
     {
-        $e = $this->escopo('r.company_id');
+        $e = $this->escopo('r.id');
         $sql = "SELECT a.id, a.reservoir_id, a.sensor_id, a.severity, a.metric, a.status, a.title, a.metric_label,
                        a.detected_at, a.resolved_at, a.owner, a.current_value, a.threshold, a.detail, a.threshold_detail
                   FROM alerts a
@@ -790,7 +805,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
 
     public function openAlertCount(): int
     {
-        $e = $this->escopo('r.company_id');
+        $e = $this->escopo('r.id');
         $stmt = $this->pdo->prepare(
             "SELECT COUNT(*)
                FROM alerts a
@@ -806,7 +821,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
 
     public function reports(string $reservoirId = 'all', string $type = 'all'): array
     {
-        $e = $this->escopo('r.company_id');
+        $e = $this->escopo('r.id');
         $sql = "SELECT p.id, p.reservoir_id, p.name, p.type, p.period_label, p.period_start, p.period_end,
                        p.generated_at, p.owner, p.icon
                   FROM reports p

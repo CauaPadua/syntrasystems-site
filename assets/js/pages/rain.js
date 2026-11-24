@@ -12,7 +12,7 @@
 
   /** Cor do texto conforme a classificação (normal, attention, critical). */
   function cor(status) {
-    return 'var(--aq-' + (status === 'critical' ? 'danger' : (status === 'attention' ? 'warning' : 'success')) + ')';
+    return 'var(--aq-' + ({ normal: 'success', attention: 'warning', critical: 'danger' }[status] || 'text-secondary') + ')';
   }
 
   window.AqMonitorPage({

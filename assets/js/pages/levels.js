@@ -47,7 +47,7 @@
 
     var k = d.kpis;
     var h = d.history;
-    var margem = Math.round((h.cota_spill - k.cota.value) * 10) / 10;   // metros que faltam até a cota de vertimento
+    var margem = k.cota.value === null ? null : Math.round((h.cota_spill - k.cota.value) * 10) / 10;   // metros que faltam até a cota de vertimento
 
     S.fill({
       'cota.value': F.num(k.cota.value, 1), 'cota.foot': k.level.note,
@@ -58,7 +58,7 @@
       'margin.value': F.num(margem, 1), 'margin.foot': 'até o vertimento',
       'status.value': { html: '<span class="aq-kpi__value--text aq-status--' + S.esc(k.level.status.key)
         + '">' + S.esc(k.level.status.label) + '</span>' },
-      'status.foot': k.level.status.key === 'normal' ? 'Dentro da faixa normal' : 'Fora da faixa normal'
+      'status.foot': { normal: 'Dentro da faixa normal', neutral: 'Aguardando a primeira leitura' }[k.level.status.key] || 'Fora da faixa normal'
     });
     S.setRing('used', k.level.value);
 
@@ -99,7 +99,10 @@
 
     /* ------------------------------------------- faixas e marcador */
     var marker = document.querySelector('[data-level-marker]');
-    if (marker) marker.style.bottom = k.level.value + '%';
+    if (marker) {
+      marker.hidden = k.level.value === null;                           // sem leitura não há nível para marcar
+      marker.style.bottom = k.level.value + '%';
+    }
 
     var cores = { normal: 'var(--aq-primary)', attention: 'var(--aq-warning)', critical: 'var(--aq-danger)' };
     document.querySelector('[data-level-bands]').innerHTML = d.capacity.bands.map(function (b) {
@@ -125,7 +128,7 @@
     /* ------- comparativo mensal: maior, média e menor cota diária de cada mês */
     G.guard('grafico-mensal', function () {
       var m = d.monthly;
-      var limites = eixo(m.max.concat(m.min));
+      var limites = eixo(m.max.length ? m.max.concat(m.min) : [h.cota_alert, h.cota_spill]);
 
       G.create('grafico-mensal', {
         type: 'line',

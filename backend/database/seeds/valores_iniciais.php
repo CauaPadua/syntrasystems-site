@@ -21,10 +21,11 @@ return [
 
     // Contas de acesso. Todas usam a mesma senha do usuário de demonstração: o
     // hash é copiado de backend/storage/mock/users.php, sem aparecer aqui.
-    //   companies = empresas que a conta pode consultar (o administrador vê todas)
+    //   reservoirs = represas que a conta pode ver (o administrador vê todas)
     'users' => [
-        ['id' => 1, 'name' => 'Ana Silva',   'email' => 'demo@aquapulse.local',     'role' => 'admin',    'status' => 'active',    'companies' => ['hidrovale', 'aguas-do-norte']],
-        ['id' => 2, 'name' => 'Bruno Lima',  'email' => 'operador@aquapulse.local', 'role' => 'operator', 'status' => 'active',    'companies' => ['hidrovale']],
-        ['id' => 3, 'name' => 'Carla Souza', 'email' => 'suspenso@aquapulse.local', 'role' => 'operator', 'status' => 'suspended', 'companies' => ['hidrovale']],
+        ['name' => 'Ana Silva',   'email' => 'demo@aquapulse.local',     'role' => 'admin',    'status' => 'active',    'reservoirs' => []],
+        ['name' => 'Bruno Lima',  'email' => 'operador@aquapulse.local', 'role' => 'operator', 'status' => 'active',    'reservoirs' => ['santa-clara', 'rio-verde']],
+        ['name' => 'Carla Souza', 'email' => 'suspenso@aquapulse.local', 'role' => 'operator', 'status' => 'suspended', 'reservoirs' => ['santa-clara', 'rio-verde']],
+        ['name' => 'Diego Ramos', 'email' => 'gestor@aquapulse.local',   'role' => 'manager',  'status' => 'active',    'reservoirs' => ['serra-azul']],
     ],
 ];

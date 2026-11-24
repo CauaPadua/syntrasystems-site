@@ -12,7 +12,7 @@
 
   /** Cor do texto conforme o status devolvido pela API. */
   function cor(status) {
-    return 'var(--aq-' + (status === 'normal' ? 'success' : (status === 'critical' ? 'danger' : 'warning')) + ')';
+    return 'var(--aq-' + ({ normal: 'success', attention: 'warning', critical: 'danger' }[status] || 'text-secondary') + ')';
   }
 
   /** Ponto colorido + rótulo do status ({key, label}). */
@@ -81,6 +81,7 @@
       // ponteiro: converte o pH em ângulo (0 = esquerda, 7 = em pé, 14 = direita)
       var needle = document.querySelector('[data-ph-needle]');
       if (needle) {
+        needle.hidden = sc.value === null;                          // sem leitura não há para onde apontar
         var angle = ((sc.value - sc.min) / (sc.max - sc.min)) * 180 - 90;
         needle.style.transform = 'translateX(-50%) rotate(' + angle + 'deg)';
       }

@@ -194,9 +194,14 @@ function aq_legend(array $items, bool $plain = false): string
  * O JavaScript alterna a visibilidade conforme o resultado da requisição.
  *
  * @param string $scope nome do bloco; o JS encontra os estados por data-scope
+ * @param string $vazio título do estado sem dados
+ * @param string $dica  texto do estado sem dados
  */
-function aq_states(string $scope): string
-{
+function aq_states(
+    string $scope,
+    string $vazio = 'Sem dados para o período',
+    string $dica = 'Não há registros para os filtros selecionados. Ajuste o período ou a represa.'
+): string {
     $s = aq_h($scope);
 
     return '<div class="aq-state" data-state="loading" data-scope="' . $s . '" hidden>'      // 1) carregando: esqueleto cinza animado
@@ -207,8 +212,8 @@ function aq_states(string $scope): string
            . '</div>'
          . '<div class="aq-state" data-state="empty" data-scope="' . $s . '" hidden>'         // 2) sem dados para os filtros escolhidos
              . '<span class="aq-state__icon" aria-hidden="true">' . aq_icon('table') . '</span>'
-             . '<p class="aq-state__title">Sem dados para o período</p>'
-             . '<p class="aq-state__text">Não há registros para os filtros selecionados. Ajuste o período ou a represa.</p>'
+             . '<p class="aq-state__title">' . aq_h($vazio) . '</p>'
+             . '<p class="aq-state__text">' . aq_h($dica) . '</p>'
            . '</div>'
          . '<div class="aq-state aq-state--error" data-state="error" data-scope="' . $s . '" hidden>' // 3) erro ao falar com a API
              . '<span class="aq-state__icon" aria-hidden="true">' . aq_icon('alert-triangle') . '</span>'

@@ -60,12 +60,21 @@ SELECT r.name AS represa, COUNT(s.id) AS equipamentos
   LEFT JOIN sensors s ON s.reservoir_id = r.id
  GROUP BY r.id, r.name;
 
--- 2.4 Quais empresas cada conta pode consultar (tabela N:N user_company_access)
-SELECT u.name AS usuario, u.role AS perfil, c.name AS empresa
+-- 2.4 Quais represas cada conta pode ver (tabela N:N user_reservoir_access).
+--     O administrador não aparece: ele vê todas pelo cargo, sem vínculo.
+SELECT u.name AS usuario, u.role AS cargo, r.name AS represa, c.name AS empresa
   FROM users u
-  JOIN user_company_access uca ON uca.user_id = u.id
-  JOIN companies c ON c.id = uca.company_id
- ORDER BY u.name;
+  JOIN user_reservoir_access ura ON ura.user_id = u.id
+  JOIN reservoirs r ON r.id = ura.reservoir_id
+  JOIN companies c ON c.id = r.company_id
+ ORDER BY u.name, r.name;
+
+-- 2.5 Pedidos de acesso e de demonstração, com quem respondeu (LEFT JOIN: os
+--     que ainda esperam resposta não têm administrador)
+SELECT p.id, p.type, p.status, p.name AS pessoa, p.company_name, p.reservoir_name, u.name AS respondido_por, p.decision_note
+  FROM requests p
+  LEFT JOIN users u ON u.id = p.decided_by
+ ORDER BY p.created_at DESC;
 
 
 -- -----------------------------------------------------------------------------
@@ -87,14 +96,14 @@ SELECT s.id, s.type, l.value, l.recorded_at
                          WHERE l2.sensor_id = s.id AND l2.metric = s.type);
 
 -- 3.3 Subconsulta com NOT EXISTS: equipamentos ativos sem nenhuma leitura nos
---     últimos 5 minutos (é assim que o painel decide "sem comunicação")
+--     últimos 2 minutos (é assim que o painel decide "sem comunicação")
 SELECT s.id, s.name, s.reservoir_id
   FROM sensors s
  WHERE s.status = 'active'
    AND NOT EXISTS (SELECT 1
                      FROM readings l
                     WHERE l.sensor_id = s.id
-                      AND l.recorded_at >= NOW() - INTERVAL 5 MINUTE);
+                      AND l.recorded_at >= NOW() - INTERVAL 2 MINUTE);
 
 -- 3.4 Subconsulta no FROM (tabela derivada): chuva acumulada em 24 h por represa,
 --     comparada com o limite de atenção cadastrado

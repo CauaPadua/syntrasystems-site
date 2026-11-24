@@ -10,8 +10,9 @@
  * POST /api/v1/equipment.php  { "action": "delete", "id" }
  *                                                      EXCLUIR    (DELETE)
  *
- * Consultar é permitido a qualquer usuário logado (dentro das empresas que ele
- * pode ver). Cadastrar, editar e excluir exigem perfil de administrador.
+ * Consultar é permitido a qualquer usuário logado (dentro das represas que ele
+ * pode ver). Cadastrar, editar e excluir são do administrador e do gestor — e o
+ * gestor só mexe nos equipamentos das represas dele.
  *
  * As três escritas usam POST com o campo "action" porque algumas hospedagens
  * compartilhadas só aceitam os métodos GET e POST.
@@ -37,13 +38,13 @@ use Aquapulse\Support\Validator;
 $pdo = Container::requireDatabase();
 $equipamentos = new EquipmentRepository($pdo);
 
-$represas = $repo->reservoirs();                             // represas das empresas que o usuário pode ver
+$represas = $repo->reservoirs();                             // represas que o usuário pode ver
 $permitidas = array_column($represas, 'id');
 
 /* --------------------------------------------- POST: cadastrar/editar/excluir */
 
 if (Request::isMethod('POST')) {
-    Guard::requireAdmin($user);
+    Guard::requireCan($user, 'equipment.edit');
 
     $body = aq_json_body();
     $acao = is_string($body['action'] ?? null) ? $body['action'] : '';
@@ -90,7 +91,7 @@ ApiResponse::success([
     'statuses'   => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l],
                               array_keys(EquipmentRules::STATUS), EquipmentRules::STATUS),
     'reservoirs' => array_map(static fn (array $r): array => ['id' => $r['id'], 'name' => $r['name']], $represas),
-    'can_edit'   => Guard::isAdmin($user),
+    'can_edit'   => Guard::can($user, 'equipment.edit'),
     'online_window_minutes' => intdiv(EquipmentRules::ONLINE_WINDOW, 60),
 ], [
     'reservoir_id' => $reservoirId,

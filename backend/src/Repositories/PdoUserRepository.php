@@ -2,7 +2,7 @@
 /**
  * Aquapulse — usuários no banco de dados (PDO).
  *
- * Tabelas: users (contas) e user_company_access (empresas que cada conta pode ver).
+ * Tabelas: users (contas) e user_reservoir_access (represas que cada conta pode ver).
  * Todas as consultas são preparadas: o valor vai em um parâmetro separado do
  * texto SQL, então nunca é interpretado como comando (proteção contra SQL Injection).
  */
@@ -48,10 +48,10 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $this->mapear($stmt->fetch());
     }
 
-    public function companyIds(int $userId): array
+    public function reservoirIds(int $userId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT company_id FROM user_company_access WHERE user_id = :id ORDER BY company_id'
+            'SELECT reservoir_id FROM user_reservoir_access WHERE user_id = :id ORDER BY reservoir_id'
         );
         $stmt->execute(['id' => $userId]);
 
@@ -72,6 +72,12 @@ final class PdoUserRepository implements UserRepositoryInterface
               ORDER BY name'
         )->fetchAll();
 
+        // Os vínculos de todas as contas em uma consulta só (em vez de uma por conta).
+        $vinculos = [];
+        foreach ($this->pdo->query('SELECT user_id, reservoir_id FROM user_reservoir_access ORDER BY reservoir_id')->fetchAll() as $v) {
+            $vinculos[(int) $v['user_id']][] = (string) $v['reservoir_id'];
+        }
+
         return array_map(static fn (array $l): array => [
             'id'            => (int) $l['id'],
             'name'          => (string) $l['name'],
@@ -79,6 +85,7 @@ final class PdoUserRepository implements UserRepositoryInterface
             'role'          => (string) $l['role'],
             'status'        => (string) $l['status'],
             'last_login_at' => $l['last_login_at'] === null ? null : (string) $l['last_login_at'],
+            'reservoir_ids' => $vinculos[(int) $l['id']] ?? [],
         ], $linhas);
     }
 

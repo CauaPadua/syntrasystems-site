@@ -3,7 +3,7 @@
  * Aquapulse — contrato de acesso a usuários.
  *
  * O AuthService e o Guard dependem apenas desta interface. Implementações:
- *   PdoUserRepository   tabelas users e user_company_access do MySQL
+ *   PdoUserRepository   tabelas users e user_reservoir_access do MySQL
  *   MockUserRepository  arquivo backend/storage/mock/users.php (sem banco)
  * Quem escolhe entre elas é Support\Container::users().
  */
@@ -29,19 +29,19 @@ interface UserRepositoryInterface
     public function findById(int $id): ?array;
 
     /**
-     * Empresas que o usuário pode consultar (tabela user_company_access).
+     * Represas vinculadas ao usuário (tabela user_reservoir_access).
      *
-     * @return array<int,string> IDs das empresas; vazio quando não há vínculo
+     * @return array<int,string> IDs das represas; vazio quando não há vínculo
      */
-    public function companyIds(int $userId): array;
+    public function reservoirIds(int $userId): array;
 
     /** Registra o momento do login (coluna users.last_login_at). */
     public function registerLogin(int $userId): void;
 
     /**
-     * Todos os usuários, sem o hash da senha — tela de configurações.
+     * Todos os usuários, sem o hash da senha, com as represas vinculadas — tela de configurações.
      *
-     * @return array<int,array{id:int,name:string,email:string,role:string,status:string,last_login_at:?string}>
+     * @return array<int,array{id:int,name:string,email:string,role:string,status:string,last_login_at:?string,reservoir_ids:array<int,string>}>
      */
     public function all(): array;
 }

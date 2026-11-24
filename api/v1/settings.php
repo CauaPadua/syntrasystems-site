@@ -1,9 +1,10 @@
 <?php
 /**
- * GET /api/v1/settings.php — dados da tela de configurações (somente leitura).
+ * GET /api/v1/settings.php — dados da tela de configurações.
  *
  * Devolve as empresas com suas represas, os limites operacionais em vigor e,
- * para administradores, as contas de acesso.
+ * para o administrador, as contas de acesso e as listas dos formulários. As
+ * gravações usam companies.php, reservoirs.php e users.php.
  *
  * Chamado por assets/js/pages/settings.js (dashboard/configuracoes.php).
  */
@@ -12,6 +13,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_boot.php';
 
+use Aquapulse\Repositories\AccountRepository;
 use Aquapulse\Services\StatusRules;
 use Aquapulse\Support\ApiResponse;
 use Aquapulse\Support\Clock;
@@ -20,31 +22,49 @@ use Aquapulse\Support\Guard;
 
 [$repo, $user] = aq_api_boot();
 
-$companies = array_map(static function (array $c) use ($repo): array {
-    $c['reservoirs'] = array_map(static fn (array $r): array => [
-        'id'             => $r['id'],
-        'name'           => $r['name'],
-        'city'           => $r['city'],
-        'capacity'       => $r['capacity_hm3'],
+$podeCadastrar = Guard::can($user, 'registry.edit');
+
+// Campos do cadastro da represa, com os mesmos nomes do formulário.
+$cadastro = ['id', 'code', 'company_id', 'name', 'city', 'basin', 'lat', 'lng', 'coordinates_label',
+             'capacity_hm3', 'useful_volume_hm3', 'technical_reserve_hm3', 'daily_consumption_hm3',
+             'cota_min_m', 'cota_max_m', 'cota_alert_m', 'cota_spill_m'];
+
+$companies = array_map(static function (array $c) use ($repo, $cadastro): array {
+    $c['reservoirs'] = array_map(static fn (array $r): array => array_intersect_key($r, array_flip($cadastro)) + [
         'sensors_online' => $r['sensors_online'],
         'sensors_total'  => $r['sensors_total'],
-        'status'         => StatusRules::describe(StatusRules::fromLevel((float) $r['level_pct'])),
+        'status'         => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),
     ], $repo->reservoirs($c['id']));
     return $c;
 }, $repo->companies());
 
-// A lista de contas só é entregue a administradores.
+// A lista de contas só é entregue ao administrador.
 $users = [];
-if (Guard::isAdmin($user)) {
+if ($podeCadastrar) {
+    $nomes = array_column($repo->reservoirs(), 'name', 'id');
+
     $users = array_map(static fn (array $u): array => [
+        'id'           => $u['id'],
         'name'         => $u['name'],
         'email'        => $u['email'],
+        'role'         => $u['role'],
         'role_label'   => Guard::roleLabel($u['role']),
         'status'       => $u['status'],
-        'status_label' => $u['status'] === 'active' ? 'Ativo' : 'Suspenso',
+        'status_label' => AccountRepository::STATUS[$u['status']] ?? $u['status'],
         'last_login'   => $u['last_login_at'] === null ? 'Nunca acessou' : Clock::dateTime(Clock::parse($u['last_login_at'])),
+        'reservoirs'   => $u['reservoir_ids'],
+        'reservoir_names' => $u['role'] === 'admin'
+            ? ['Todas']
+            : array_values(array_map(static fn (string $id): string => str_replace('Represa ', '', $nomes[$id] ?? $id), $u['reservoir_ids'])),
+        'is_self'      => $u['id'] === (int) $user['id'],
     ], Container::users()->all());
 }
+
+$opcoes = static fn (array $lista): array => array_map(
+    static fn (string $v, string $l): array => ['value' => $v, 'label' => $l],
+    array_keys($lista),
+    $lista
+);
 
 ApiResponse::success([
     'companies' => $companies,
@@ -56,6 +76,7 @@ ApiResponse::success([
         ['label' => 'Chuva em 24 h — crítico', 'value' => 'a partir de ' . StatusRules::number(StatusRules::rainCritical()) . ' mm'],
     ],
     'users'    => $users,
-    'is_admin' => Guard::isAdmin($user),
-    'profile'  => ['name' => $user['name'], 'email' => $user['email'], 'role_label' => Guard::roleLabel($user['role'])],
+    'can_edit' => $podeCadastrar,
+    'roles'    => $opcoes(Guard::ROLES),
+    'statuses' => $opcoes(AccountRepository::STATUS),
 ]);

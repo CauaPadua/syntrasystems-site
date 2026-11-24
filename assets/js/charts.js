@@ -141,6 +141,7 @@ window.AqCharts = (function () {
         return 'dataset ' + i + ' com ' + valores.length + ' valores para ' + labels.length + ' labels';
       }
       for (var j = 0; j < valores.length; j++) {                         // percorre cada ponto da série
+        if (valores[j] === null) continue;                               // leitura que faltou: o gráfico é desenhado com uma falha ali
         if (!numeroValido(valores[j])) {
           return 'valor não numérico em ' + (serie.label || 'dataset ' + i) + '[' + j + ']: ' + valores[j];
         }
@@ -188,10 +189,10 @@ window.AqCharts = (function () {
 
     var motivo = motivoInvalido(config);                                 // 5. os dados são coerentes?
     if (motivo) {
-      console.error('[AqCharts] "' + id + '" recusado: ' + motivo);
+      var vazio = motivo === 'todas as séries estão vazias';             // sem dados não é defeito: só mostra o aviso no card
+      if (!vazio) console.error('[AqCharts] "' + id + '" recusado: ' + motivo);
       destroy(id);
-      sinalizar(el, motivo === 'todas as séries estão vazias' ? 'empty' : 'error', // séries vazias = "sem dados"; demais problemas = erro
-        'Não foi possível carregar este gráfico.');
+      sinalizar(el, vazio ? 'empty' : 'error', 'Não foi possível carregar este gráfico.');
       return null;
     }
 

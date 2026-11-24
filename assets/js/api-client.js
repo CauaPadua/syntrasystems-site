@@ -141,12 +141,17 @@ window.AqApi = (function () {
     equipment:  function (p) { return get('/equipment.php', p, 'page'); },
     mapMarkers: function (c) { return get('/map/reservoirs.php', { company_id: c }, 'map'); },
     settings:   function ()  { return get('/settings.php', {}, 'page'); },
+    requests:   function (p) { return get('/requests.php', p, 'page'); },
 
     /* gravações */
     saveEquipment:   function (action, fields) { return post('/equipment.php', Object.assign({ action: action }, fields)); },
     alertAction:     function (action, id)     { return post('/alerts.php', { action: action, id: id }); },
     createReport:    function (fields)         { return post('/reports.php', fields); },
     openTicket:      function (fields)         { return post('/monitoring/operation.php', fields); },
+    saveCompany:     function (action, fields) { return post('/companies.php', Object.assign({ action: action }, fields)); },
+    saveReservoir:   function (action, fields) { return post('/reservoirs.php', Object.assign({ action: action }, fields)); },
+    saveAccount:     function (action, fields) { return post('/users.php', Object.assign({ action: action }, fields)); },
+    requestAction:   function (action, fields) { return post('/requests.php', Object.assign({ action: action }, fields)); },
 
     /** Endereço de download do CSV de um relatório. */
     reportUrl: function (id) { return base + '/reports.php?download=' + encodeURIComponent(id); }

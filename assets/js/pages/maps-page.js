@@ -51,13 +51,13 @@
       'sel.basin': m.basin,
       'sel.coords': m.coordinates,
       'sel.level.value': F.num(m.level, 1), 'sel.level.foot': 'Cota: ' + F.unit(m.cota, 'm'),
-      'sel.flow.value': F.num(m.flow, 1), 'sel.flow.foot': 'Média 24h',
+      'sel.flow.value': F.num(m.flow, 1), 'sel.flow.foot': 'Leitura mais recente',
       'sel.ph.value': F.num(m.ph, 1), 'sel.ph.foot': '',
-      'sel.ph.badge': { html: S.badge('Neutro', 'normal') },          // badge fixo "Neutro"
-      'sel.rain.value': F.num(m.rain, 1), 'sel.rain.foot': 'Na bacia',
+      'sel.ph.badge': { html: S.badge(m.ph_status.label, m.ph_status.key) },
+      'sel.rain.value': F.num(m.rain, 1), 'sel.rain.foot': 'Acumulado de 24 h',
       'sel.duration.value': F.int(m.duration), 'sel.duration.foot': 'Volume ÷ consumo médio',
-      'sel.operation.value': { html: '<span style="color:var(--aq-success)">' + m.status.label + '</span>' }, // sempre em verde
-      'sel.operation.foot': 'Todas as condições dentro dos limites'   // texto fixo, mesmo para represa em atenção
+      'sel.operation.value': { html: '<span class="aq-status--' + S.esc(m.status.key) + '">' + S.esc(m.status.label) + '</span>' },
+      'sel.operation.foot': m.status_note                             // frase do servidor, com o limite em vigor
     });
 
     // o link leva ao monitoramento já com a represa escolhida

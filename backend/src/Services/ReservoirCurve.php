@@ -44,9 +44,14 @@ final class ReservoirCurve
      * variação de consumo — é uma conta de referência, não uma previsão.
      *
      * @param array<string,mixed> $reservoir precisa de volume_hm3, technical_reserve_hm3 e daily_consumption_hm3
+     * @return int|null null quando ainda não há leitura do volume
      */
-    public static function durationDays(array $reservoir): int
+    public static function durationDays(array $reservoir): ?int
     {
+        if ($reservoir['volume_hm3'] === null) {
+            return null;
+        }
+
         $consumo = (float) $reservoir['daily_consumption_hm3'];
         if ($consumo <= 0) {
             return 0;

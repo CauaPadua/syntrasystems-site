@@ -9,7 +9,8 @@
  *      Baixa o CSV do relatório, montado na hora a partir das leituras do banco.
  *
  * POST /api/v1/reports.php   { "reservoir_id", "type", "from", "to" }
- *      Registra um novo relatório (tabela reports).
+ *      Registra um novo relatório (tabela reports). Administrador e gestor; o
+ *      operador só consulta e baixa.
  *
  * Chamado por assets/js/pages/reports.js (dashboard/relatorios.php).
  */
@@ -23,6 +24,7 @@ use Aquapulse\Services\ReportService;
 use Aquapulse\Support\ApiResponse;
 use Aquapulse\Support\Clock;
 use Aquapulse\Support\Container;
+use Aquapulse\Support\Guard;
 use Aquapulse\Support\Validator;
 
 [$repo, $user] = aq_api_boot(['GET', 'POST']);
@@ -30,12 +32,13 @@ use Aquapulse\Support\Validator;
 /* --------------------------------------------------- POST: gerar relatório */
 
 if (Request::isMethod('POST')) {
+    Guard::requireCan($user, 'reports.create');
     $pdo = Container::requireDatabase();
     $body = aq_json_body();
 
     $texto = static fn (string $campo): string => is_string($body[$campo] ?? null) ? trim($body[$campo]) : '';
 
-    $represa = $repo->reservoir($texto('reservoir_id'));     // null se não existir ou estiver fora do escopo do usuário
+    $represa = $repo->reservoir($texto('reservoir_id'));     // null se não existir ou não for uma represa do usuário
     if ($represa === null) {
         ApiResponse::error('VALIDATION_ERROR', 'Verifique os campos informados.', 422, ['reservoir_id' => 'Selecione uma represa.']);
     }
