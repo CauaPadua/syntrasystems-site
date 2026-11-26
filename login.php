@@ -19,7 +19,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/config.php';                            // constantes do site (AQ_SITE_NAME...) e funções aq_out() / aq_asset()
 require_once __DIR__ . '/includes/icons.php';                             // aq_the_icon(): ícones SVG embutidos
 
-$aq_version = '1.1.0';                                                    // versão manual dos assets desta página (vai em ?v= para renovar o cache)
+$aq_version = '1.2.0';                                                    // versão manual dos assets desta página (vai em ?v= para renovar o cache)
 
 /** Base relativa da API — funciona na raiz e em subpastas do XAMPP. */
 $aq_api_base = 'api/v1/auth';                                             // caminho relativo: não depende do nome da pasta onde o site está instalado
@@ -155,9 +155,9 @@ $aq_api_base = 'api/v1/auth';                                             // cam
 
             <div class="login-form__row">
               <label class="checkbox">
-                <input class="checkbox__input" type="checkbox" id="remember" name="remember" checked> <?php /* "Lembrar de mim" é visual: o valor não é enviado à API */ ?>
+                <input class="checkbox__input" type="checkbox" id="remember" name="remember"> <?php /* guarda só o e-mail, neste navegador; a sessão continua com o mesmo prazo (login.js) */ ?>
                 <span class="checkbox__box" aria-hidden="true"><?php aq_the_icon('shield-check'); ?></span>
-                <span class="checkbox__label">Lembrar de mim</span>
+                <span class="checkbox__label">Lembrar meu e-mail</span>
               </label>
 
               <button class="login-link" type="button"

@@ -3,7 +3,7 @@
  * Página: dashboard/equipamentos.php
  * API: GET api/v1/equipment.php                       consultar
  *      POST api/v1/equipment.php { action: 'create' } cadastrar
- *      POST api/v1/equipment.php { action: 'update' } editar
+ *      POST api/v1/equipment.php { action: 'update' } mudar a situação
  *      POST api/v1/equipment.php { action: 'delete' } excluir
  *
  * Os botões de cadastro só existem na página para administradores e gestores;
@@ -137,8 +137,13 @@
     S.showErrors(form, {});
     form.reset();
 
-    document.querySelector('[data-form-title]').textContent = e ? 'Editar ' + e.id : 'Novo equipamento';
-    form.elements.id.readOnly = !!e;                            // o código não muda: é a identificação usada nos envios
+    document.querySelector('[data-form-title]').textContent = e ? 'Situação de ' + e.id : 'Novo equipamento';
+
+    // Depois de cadastrado, só a situação muda: código e grandeza identificam as leituras já enviadas.
+    ['id', 'name', 'location', 'type', 'reservoir_id'].forEach(function (campo) {
+      form.elements[campo].disabled = !!e;
+    });
+    document.querySelector('[data-edit-hint]').hidden = !e;
 
     if (e) {
       form.elements.id.value = e.id;
@@ -161,16 +166,20 @@
 
       var acao = editingId ? 'update' : 'create';
 
-      Api.saveEquipment(acao, {
-        id: form.elements.id.value,
-        name: form.elements.name.value,
-        location: form.elements.location.value,
-        type: form.elements.type.value,
-        status: form.elements.status.value,
-        reservoir_id: form.elements.reservoir_id.value
-      }).then(function (r) {
+      var campos = editingId
+        ? { id: editingId, status: form.elements.status.value }
+        : {
+          id: form.elements.id.value,
+          name: form.elements.name.value,
+          location: form.elements.location.value,
+          type: form.elements.type.value,
+          status: form.elements.status.value,
+          reservoir_id: form.elements.reservoir_id.value
+        };
+
+      Api.saveEquipment(acao, campos).then(function (r) {
         S.closeModal('modal-equipamento');
-        S.notify(acao === 'create' ? 'Equipamento cadastrado' : 'Equipamento atualizado', r.data.equipment.id + ' foi gravado no banco.', 'info');
+        S.notify(acao === 'create' ? 'Equipamento cadastrado' : 'Situação atualizada', r.data.equipment.id + ' foi gravado no banco.', 'info');
         return load(true);
       }).catch(function (err) {
         if (err.code === 'VALIDATION_ERROR') {

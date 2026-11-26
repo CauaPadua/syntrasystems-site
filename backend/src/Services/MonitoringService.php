@@ -212,23 +212,19 @@ final class MonitoringService
         }
 
         $serie = $this->repo->series($reservoirId, 'level', $period);
-        $status = StatusRules::fromLevel($r['level_pct']);
+        $status = StatusRules::fromLevel($r['level_pct'], $r);
 
-        $atencao = StatusRules::levelAttention();
-        $critico = StatusRules::levelCritical();
-
-        // As cotas das linhas de limite saem da mesma conta que converte o nível
-        // medido em cota, então linha e leitura nunca se contradizem.
-        $cotaAtencao = ReservoirCurve::cota($r, $atencao);
-        $cotaCritica = ReservoirCurve::cota($r, $critico);
+        // Limites da própria represa: atenção na cota de alerta, crítico na de vertimento.
+        $atencao = StatusRules::levelAttention($r);
+        $critico = StatusRules::levelCritical($r);
 
         $faixas = [
             ['status' => 'critical',  'label' => 'Crítico', 'range' => 'A partir de ' . StatusRules::pct($critico),
-             'text' => 'Risco alto de transbordamento.', 'from' => $critico, 'to' => 100],
+             'text' => 'A água chega à cota de vertimento.', 'from' => $critico, 'to' => 100],
             ['status' => 'attention', 'label' => 'Atenção', 'range' => StatusRules::pct($atencao) . ' a ' . StatusRules::pct($critico),
-             'text' => 'Acompanhar a evolução do nível.', 'from' => $atencao, 'to' => $critico],
+             'text' => 'Entre a cota de alerta e a de vertimento.', 'from' => $atencao, 'to' => $critico],
             ['status' => 'normal',    'label' => 'Normal',  'range' => 'Abaixo de ' . StatusRules::pct($atencao),
-             'text' => 'Nível operacional seguro.', 'from' => 0, 'to' => $atencao],
+             'text' => 'Abaixo da cota de alerta.', 'from' => 0, 'to' => $atencao],
         ];
 
         return [
@@ -246,16 +242,14 @@ final class MonitoringService
                 'current'         => $r['level_pct'],
                 'attention'       => $atencao,
                 'critical'        => $critico,
-                'attention_label' => 'Atenção: ' . StatusRules::pct($atencao) . ' (cota ' . $this->numero($cotaAtencao) . ' m)',
-                'critical_label'  => 'Crítico: ' . StatusRules::pct($critico) . ' (cota ' . $this->numero($cotaCritica) . ' m)',
+                'attention_label' => 'Atenção: ' . StatusRules::pct($atencao) . ' (cota de alerta, ' . $this->numero((float) $r['cota_alert_m']) . ' m)',
+                'critical_label'  => 'Crítico: ' . StatusRules::pct($critico) . ' (cota de vertimento, ' . $this->numero((float) $r['cota_spill_m']) . ' m)',
 
                 // a mesma série em metros, para a tela Níveis
                 'cota'           => array_map(static fn (float $v): float => ReservoirCurve::cota($r, $v), $serie['values']),
                 'cota_current'   => $r['cota_m'],
-                'cota_attention' => $cotaAtencao,
-                'cota_critical'  => $cotaCritica,
-                'cota_spill'     => (float) $r['cota_spill_m'],
-                'cota_alert'     => (float) $r['cota_alert_m'],
+                'cota_alert'     => (float) $r['cota_alert_m'],           // a partir daqui, atenção
+                'cota_spill'     => (float) $r['cota_spill_m'],           // a partir daqui, crítico
             ],
             'capacity' => [
                 'level'  => $r['level_pct'],
@@ -265,8 +259,8 @@ final class MonitoringService
             'bands' => array_reverse($faixas),
             'monthly' => $this->cotaMensal($r),
             'readings' => array_map(
-                static function (array $linha): array {
-                    $linha['status'] = StatusRules::describe(StatusRules::fromLevel((float) $linha['level']));
+                static function (array $linha) use ($r): array {
+                    $linha['status'] = StatusRules::describe(StatusRules::fromLevel((float) $linha['level'], $r));
                     return $linha;
                 },
                 $this->repo->readings($reservoirId, 'level', 5)
@@ -418,8 +412,8 @@ final class MonitoringService
                 ['label' => 'Espaço livre', 'note' => 'Capacidade ainda não ocupada', 'value' => $livre,
                  'pct' => $livre === null ? null : round($livre / $capacidade * 100, 1), 'status' => 'info'],
             ],
-            'history' => array_map(static function (array $linha): array {
-                $linha['status'] = StatusRules::describe($linha['status']);
+            'history' => array_map(static function (array $linha) use ($r): array {
+                $linha['status'] = StatusRules::describe(StatusRules::fromLevel((float) $linha['occupancy'], $r));
                 return $linha;
             }, $this->repo->readings($reservoirId, 'storage', 5)),
             'insight' => [

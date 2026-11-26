@@ -3,8 +3,8 @@
  * Pedidos de acesso e de demonstração — só para o administrador.
  *
  * GET  /api/v1/requests.php?type={all|access|demo}&status={all|pending|approved|rejected}
- * POST /api/v1/requests.php  { "action": "approve",  "id", "role", "reservoirs": [...] }   cria a conta
- * POST /api/v1/requests.php  { "action": "conclude", "id", "note" }                        demonstração atendida
+ * POST /api/v1/requests.php  { "action": "approve",  "id", "role", "reservoirs": [...] }   cria a conta (acesso ou demonstração)
+ * POST /api/v1/requests.php  { "action": "conclude", "id", "note" }                        demonstração antiga, sem senha
  * POST /api/v1/requests.php  { "action": "reject",   "id", "note" }                        recusa com motivo
  * POST /api/v1/requests.php  { "action": "delete",   "id" }                                apaga um já respondido
  *

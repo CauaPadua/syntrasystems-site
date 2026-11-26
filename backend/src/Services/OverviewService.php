@@ -47,7 +47,7 @@ final class OverviewService
             return [];
         }
 
-        $status = StatusRules::fromLevel($r['level_pct']);
+        $status = StatusRules::fromLevel($r['level_pct'], $r);
         $phStatus = StatusRules::fromPh($r['ph']);
 
         $cota = $this->repo->series($reservoirId, 'cota', $period);
@@ -77,7 +77,7 @@ final class OverviewService
                 'rain'    => ['value' => $r['rain_24h_mm'], 'unit' => 'mm',
                               'trend' => $this->trend($r['rain_24h_mm'], $r['rain_prev_24h_mm']), 'trend_label' => 'vs 24 h anteriores', 'note' => 'Acumulado de 24 h'],
                 'duration' => ['value' => ReservoirCurve::durationDays($r), 'unit' => 'dias', 'note' => 'Volume acima da reserva ÷ consumo médio'],
-                'operation' => ['status' => StatusRules::describe($status), 'note' => StatusRules::levelNote($status)],
+                'operation' => ['status' => StatusRules::describe($status), 'note' => StatusRules::levelNote($status, $r)],
             ],
             'level_chart' => [
                 'labels'      => $cota['labels'],
@@ -116,7 +116,7 @@ final class OverviewService
         $online = 0;
 
         foreach ($list as $r) {
-            $byStatus[StatusRules::fromLevel($r['level_pct'])]++;
+            $byStatus[StatusRules::fromLevel($r['level_pct'], $r)]++;
             if ((int) $r['sensors_online'] > 0) {
                 $online++;
             }
@@ -166,7 +166,7 @@ final class OverviewService
                     'id'     => $r['id'],
                     'name'   => $r['name'],
                     'level'  => $r['level_pct'],
-                    'status' => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),
+                    'status' => StatusRules::describe(StatusRules::fromLevel($r['level_pct'], $r)),
                 ];
             }, $list),
             'flow_chart' => [
@@ -189,7 +189,7 @@ final class OverviewService
                     'lat'      => $r['lat'],
                     'lng'      => $r['lng'],
                     'city'     => $r['city'],
-                    'status'   => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),
+                    'status'   => StatusRules::describe(StatusRules::fromLevel($r['level_pct'], $r)),
                 ];
             }, $list),
             'priority_alerts' => array_map([$this, 'alertRow'], array_slice($open, 0, 3)),

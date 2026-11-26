@@ -4,8 +4,10 @@
  * Pedidos enviados pelo formulário público (solicitar.php):
  *   Acesso         colaborador de uma represa: aprovar cria a conta, com o cargo
  *                  e as represas escolhidas aqui;
- *   Demonstração   dono de uma represa: o administrador entra em contato e depois
- *                  cadastra empresa, represa e conta em Configurações.
+ *   Demonstração   dono de uma represa: o administrador entra em contato, cadastra a
+ *                  empresa e a represa (o botão leva os dados do pedido para
+ *                  Configurações) e aprova: a conta de gestor nasce com a senha
+ *                  que o dono escolheu no pedido.
  *
  * Lógica em assets/js/pages/requests.js, que usa api/v1/requests.php. A API
  * confere de novo se quem responde é administrador.
@@ -95,8 +97,26 @@ aq_page_start([
     <p class="aq-note aq-note--warning" style="margin-top:14px" data-request-warning hidden></p>
 
     <form id="form-pedido" novalidate> <?php /* enviado por requests.js; a validação é feita no servidor */ ?>
-      <!-- só para pedidos de acesso em análise -->
-      <div data-when="access" hidden>
+      <!-- dono de represa: primeiro a empresa e a represa precisam existir -->
+      <div class="aq-note" style="margin-top:16px" data-when="demo" hidden>
+        <?php aq_the_icon('info'); ?>
+        <span><strong>Dono de represa:</strong> depois do contato, cadastre a empresa e a represa dele; em seguida
+        marque a represa abaixo e aprove. A conta de gestor é criada com o e-mail e a senha deste pedido.
+        <span data-demo-missing hidden><br><strong>A represa deste pedido ainda não está cadastrada.</strong></span>
+        <button class="aq-btn aq-btn--ghost aq-btn--sm" style="margin-top:8px" type="button" data-action="register">
+          <?php aq_the_icon('plus'); ?><span>Cadastrar empresa e represa deste pedido</span>
+        </button></span>
+      </div>
+
+      <!-- pedido antigo de demonstração, de antes de o formulário pedir senha -->
+      <p class="aq-note" style="margin-top:16px" data-when="legacy" hidden>
+        <?php aq_the_icon('info'); ?>
+        <span>Este pedido chegou antes de o formulário pedir senha: crie a conta em
+        <a href="configuracoes.php#usuarios">Configurações › Usuários</a>, informe a senha à pessoa e marque o pedido como atendido.</span>
+      </p>
+
+      <!-- pedido com senha, em análise: aprovar cria a conta -->
+      <div data-when="approve" hidden>
         <div class="aq-field" style="margin:16px 0 14px">
           <label class="aq-field__label" for="pedido-cargo">Cargo da conta</label>
           <select class="aq-select" id="pedido-cargo" name="role" style="width:100%"></select>
@@ -109,18 +129,10 @@ aq_page_start([
         </fieldset>
       </div>
 
-      <!-- só para pedidos de demonstração em análise -->
-      <p class="aq-note" style="margin-top:16px" data-when="demo" hidden>
-        <?php aq_the_icon('info'); ?>
-        <span><strong>Depois do contato:</strong> cadastre a empresa e a represa em
-        <a href="configuracoes.php#empresas">Configurações › Empresas e represas</a> e crie a conta de gestor em
-        <a href="configuracoes.php#usuarios">Configurações › Usuários</a>.</span>
-      </p>
-
       <div class="aq-field" style="margin-top:14px" data-when="pending" hidden>
         <label class="aq-field__label" for="pedido-nota">Observação (obrigatória para recusar)</label>
         <textarea class="aq-input" id="pedido-nota" name="note" rows="2" maxlength="300"
-                  style="height:auto;padding:10px 14px;width:100%" placeholder="Em um pedido de acesso recusado, a pessoa lê este texto ao tentar entrar"></textarea>
+                  style="height:auto;padding:10px 14px;width:100%" placeholder="Num pedido recusado, a pessoa lê este texto ao tentar entrar"></textarea>
         <span class="aq-field__error" data-error-for="note" hidden></span>
       </div>
 
@@ -128,10 +140,10 @@ aq_page_start([
         <button class="aq-btn aq-btn--ghost" type="button" data-modal-close="modal-pedido">Fechar</button>
         <button class="aq-btn aq-btn--ghost" type="button" data-action="delete" data-when="decided" hidden>Excluir pedido</button>
         <button class="aq-btn aq-btn--danger" type="button" data-action="reject" data-when="pending" hidden>Recusar</button>
-        <button class="aq-btn aq-btn--primary" type="button" data-action="approve" data-when="access" hidden>
+        <button class="aq-btn aq-btn--primary" type="button" data-action="approve" data-when="approve" hidden>
           <?php aq_the_icon('check-circle'); ?><span>Aprovar e criar conta</span>
         </button>
-        <button class="aq-btn aq-btn--primary" type="button" data-action="conclude" data-when="demo" hidden>
+        <button class="aq-btn aq-btn--primary" type="button" data-action="conclude" data-when="legacy" hidden>
           <?php aq_the_icon('check-circle'); ?><span>Marcar como atendida</span>
         </button>
       </div>

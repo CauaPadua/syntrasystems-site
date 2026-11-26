@@ -20,9 +20,10 @@ simulador de sensores  →  estação de telemetria  →  API de ingestão  → 
    JSON à API. Se a comunicação cair, guarda e envia depois, sem perder nada.
 3. **API** (`api/v1/ingest/batch.php`) confere a chave da estação e, em cada
    leitura, o horário, a faixa do valor e se o equipamento está ativo, e grava.
-4. **Banco** guarda a leitura em `readings`. Se o valor passou de um limite
-   (`operational_limits`), abre um alerta em `alerts`. Se um equipamento parar de
-   enviar por 2 min, abre o alerta "Equipamento sem leituras".
+4. **Banco** guarda a leitura em `readings`. Se o valor passou de um limite, abre um
+   alerta em `alerts`: no nível, a cota de alerta (Atenção) e a de vertimento (Crítico) da
+   própria represa; no pH e na chuva, os limites de `operational_limits`. Se um
+   equipamento parar de enviar por 2 min, abre o alerta "Equipamento sem leituras".
 5. **Painel** (`dashboard/`) busca os dados a cada 15 s e mostra leituras, gráficos e alertas.
 
 Peça por peça: [simulador-sensor/README.md](simulador-sensor/README.md) e
@@ -89,10 +90,14 @@ pode ter mais de uma represa. O servidor confere os dois em toda requisição (`
   confere com a empresa e responde em **Solicitações**: aprovar cria a conta com o cargo e as
   represas marcadas; recusar exige um motivo. Antes da resposta, o login avisa "em análise".
 - **Dono de uma represa nova:** página inicial → **Solicitar demonstração** (nome, e-mail,
-  telefone, empresa, represa, cidade). O administrador entra em contato e depois cadastra, em
-  **Configurações**, a empresa, a represa e a conta de gestor. A represa aparece como **"Sem
-  leituras"** até o primeiro sensor transmitir: cadastre os sensores em **Equipamentos**, feche as
-  janelas do simulador e da estação e abra o `iniciar.bat` de novo, para lerem o cadastro.
+  telefone, empresa, represa, cidade) e cria a própria senha. O administrador entra em contato e,
+  em **Solicitações**, usa **Cadastrar empresa e represa deste pedido**: os formulários de
+  Configurações já abrem com os dados do pedido e, ao salvar a represa, a tela volta ao pedido com
+  ela marcada. **Aprovar** cria a conta de gestor com o e-mail e a senha do pedido. A represa
+  aparece como **"Sem leituras"** até o primeiro sensor transmitir: cadastre os sensores em
+  **Equipamentos**, feche as janelas do simulador e da estação e abra o `iniciar.bat` de novo, para
+  lerem o cadastro. Pedidos de demonstração enviados antes de o formulário pedir senha não criam
+  conta: crie-a em **Configurações › Usuários** e marque o pedido como atendido.
 
 O e-mail de um pedido não é verificado: por isso quem aprova é o administrador, depois de confirmar
 por telefone. O formulário público aceita um pedido em análise por e-mail e até 50 por hora.
@@ -142,13 +147,15 @@ api/v1/                     endpoints (respondem JSON)
   requests.php              responder pedidos
   equipment.php             CRUD de equipamentos
   companies.php  reservoirs.php  users.php   cadastro de empresas, represas e contas
+  limits.php                limites de pH e de chuva (só administrador)
   alerts.php  reports.php   tratar alertas e gerar relatórios
   monitoring/               dados de cada tela de monitoramento
 
 backend/
   src/Services/             regras: alertas (inclusive comunicação), ingestão, limites, relatórios, telas
   src/Repositories/         SQL (PdoMonitoringRepository, EquipmentRepository...)
-  src/Support/              conexão, relógio, sessão, validação, respostas
+  src/Auth/                 login e limite de tentativas
+  src/Support/              conexão, relógio, sessão, validação, numeração, respostas
   database/migrations/      criação das tabelas e das views (um arquivo por tabela)
   database/seeds/           dados iniciais (empresas, represas, equipamentos, limites)
   database/consultas_exemplo.sql   exemplos de SELECT, JOIN, subconsulta, views e CRUD
@@ -165,18 +172,20 @@ assets/                     CSS, JavaScript das telas, imagens e bibliotecas (Ch
 
 ## Banco de dados
 
-12 tabelas e 2 views:
+14 tabelas e 2 views:
 
 | Tabela | Para quê |
 | --- | --- |
 | `users`, `user_reservoir_access` | contas (cargo) e quais represas cada uma pode ver |
 | `requests` | pedidos de acesso e de demonstração |
-| `companies`, `reservoirs` | empresas e represas |
+| `companies`, `reservoirs` | empresas e represas (as cotas da represa são os limites do nível) |
 | `sensors` | equipamentos (tabela do CRUD; o simulador de sensores lê daqui) |
 | `readings` | leituras enviadas pela estação |
 | `alerts`, `alert_timeline` | alertas (de valor e de comunicação) e o histórico de tratamento |
-| `operational_limits` | limites Normal / Atenção / Crítico |
-| `reports`, `maintenances` | relatórios gerados e chamados de manutenção |
+| `operational_limits` | limites de pH e de chuva, mudados em *Configurações › Limites* |
+| `sequences` | numeração dos alertas e relatórios, sem repetição |
+| `login_attempts` | tentativas de login dos últimos 15 min (5 por e-mail, 20 por endereço) |
+| `reports`, `maintenances` | relatórios gerados (com a observação que sai no arquivo) e chamados de manutenção |
 
 | View | Para quê |
 | --- | --- |
@@ -187,7 +196,7 @@ Comandos úteis (na pasta do projeto):
 
 ```powershell
 & C:\xampp\php\php.exe backend/database/migrate.php status         # tabelas, views e quantidade de linhas
-& C:\xampp\php\php.exe backend/database/testar_banco.php           # 50 testes: estrutura, CRUD, chaves, views, ingestão, comunicação, acesso
+& C:\xampp\php\php.exe backend/database/testar_banco.php           # 76 testes: estrutura, CRUD, chaves, views, ingestão, comunicação, acesso, limites, login, falhas, ajustes
 & C:\xampp\php\php.exe backend/database/migrate.php completar      # completa o histórico até agora, sem apagar nada
 & C:\xampp\php\php.exe backend/database/migrate.php reset --force  # apaga o banco (depois rode install)
 ```
@@ -201,9 +210,10 @@ Comandos úteis (na pasta do projeto):
    `--pacote` aparece o JSON enviado.
 3. **Tempo real:** entrar como `demo@aquapulse.local`. O que aparece na tela do simulador
    chega ao banco em até 5 s e ao painel em até 15 s ("Última leitura há X s").
-4. **Alerta de valor:** no simulador, `SEN-NIV-01` → **92 % · crítico** (nível crítico) ou
+4. **Alerta de valor:** no simulador, `SEN-NIV-01` → **87 % · crítico** (nível crítico) ou
    `SEN-PLU-01` → **5 mm · temporal** (chuva acumulada). O alerta aparece em *Alertas*;
-   assumir e resolver.
+   assumir e resolver. Resolvido, ele não volta enquanto o valor continua fora da faixa: só
+   abre outro se o valor voltar ao normal e sair de novo, ou se piorar (atenção → crítico).
 5. **Falha "sem resposta":** no simulador, escolher um sensor → **⚠ Sem resposta**. A
    estação mostra "sem leitura"; em 2 min o equipamento fica "Sem comunicação" em
    *Equipamentos* e abre o alerta **"Equipamento sem leituras"**. **✔ Corrigir**: a linha do
@@ -211,24 +221,30 @@ Comandos úteis (na pasta do projeto):
 6. **Falha "valor impossível":** **⚠ Valor impossível** → a cada 3 leituras o sensor manda
    -5; a janela da estação mostra **RECUSADA 422 VALUE_OUT_OF_RANGE** e nada entra no banco
    (`SELECT COUNT(*) FROM readings WHERE value < 0` dá 0).
-7. **CRUD:** em *Equipamentos*, cadastrar, editar, colocar em manutenção e excluir um
-   equipamento (`--equipamento=SEN-VAZ-03 --valor=40` mostra a API recusando um
+7. **CRUD:** em *Equipamentos*, cadastrar, mudar a situação (depois de cadastrado, só ela muda:
+   o código e a grandeza identificam as leituras já enviadas) e excluir um equipamento (`--equipamento=SEN-VAZ-03 --valor=40` mostra a API recusando um
    equipamento em manutenção).
 8. **Cargos:** entrar como gestor (só vê a Serra Azul e cadastra equipamentos nela) e como
    operador (só vê Santa Clara e Rio Verde, não cadastra nem gera relatório); tentar entrar com
    a conta suspensa.
 9. **Pedido de acesso:** no login, **Solicitar acesso** e enviar; tentar entrar ("em análise").
    Como administrador, em *Solicitações*, aprovar escolhendo cargo e represa; entrar com a conta nova.
-10. **Represa nova:** em *Configurações*, cadastrar empresa, represa e conta de gestor; mostrar a
+10. **Limites:** em *Configurações › Limites*, mostrar que cada represa tem o seu limite de nível
+    (a Rio Verde fica crítica em 82,1 %; a Santa Clara, em 85 %) e mudar a faixa ideal do pH.
+11. **Tentativas de login:** errar a senha 5 vezes; a 6ª é recusada por 15 min (use um e-mail que
+    não seja o da apresentação).
+12. **Represa nova:** em *Configurações*, cadastrar empresa, represa e conta de gestor; mostrar a
     represa "Sem leituras" na visão geral e no mapa.
 
 ## Publicação
 
-Cada envio para o branch `main` publica o site na InfinityFree pelo GitHub Actions
-(`.github/workflows/deploy.yml`). O simulador de sensores, a estação e o `iniciar.bat`
+Cada envio para o branch `main` roda os testes e, se todos passarem, publica o site na
+InfinityFree por FTPS, pelo GitHub Actions (`.github/workflows/deploy.yml`). O simulador de sensores, a estação e o `iniciar.bat`
 não são publicados: rodam só no computador. O arquivo `backend/.env` não vai para o
 repositório; no servidor ele precisa ser criado à parte.
 
 A publicação envia só os arquivos: **as tabelas novas não são criadas sozinhas no banco do
-servidor**. Se o site publicado usa banco, importe pelo phpMyAdmin da hospedagem, nesta ordem,
-`backend/database/migrations/012_hierarquia.sql` e `013_solicitacoes.sql`.
+servidor**. Se o site publicado usa banco, importe pelo phpMyAdmin da hospedagem, em ordem,
+as de `backend/database/migrations/` que ele ainda não tem. As mais novas são
+`014_limites_por_represa.sql`, `015_sequencias.sql` e `016_tentativas_de_login.sql`: sem as duas
+últimas, o login e a abertura de alertas não funcionam no servidor.

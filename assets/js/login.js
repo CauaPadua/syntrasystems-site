@@ -7,6 +7,7 @@
  * Regras seguidas aqui:
  *  - a senha nunca é armazenada, registrada em log ou reaproveitada;
  *  - nada de sessão vai para localStorage/sessionStorage (o cookie é HttpOnly);
+ *    o navegador só guarda o e-mail, e só se a pessoa marcar "Lembrar meu e-mail";
  *  - envio duplicado é bloqueado enquanto houver requisição em andamento.
  *
  * Página: login.php. Endpoints usados: GET me.php, POST login.php, POST logout.php.
@@ -24,6 +25,7 @@
   var vistaAuth  = document.querySelector('[data-view="authenticated"]');
   var campoEmail = document.getElementById('email');
   var campoSenha = document.getElementById('password');
+  var lembrar    = document.getElementById('remember');
   var erroEmail  = document.getElementById('erro-email');
   var erroSenha  = document.getElementById('erro-password');
   var alerta     = document.getElementById('login-alert');
@@ -151,17 +153,34 @@
     window.location.replace(destinoPainel());                         // replace: a tela de login não fica no histórico (o botão Voltar não retorna a ela)
   }
 
+  /* ------------------------------------------------------- lembrar o e-mail */
+
+  var CHAVE_EMAIL = 'aquapulse.email';                                // nome do registro em localStorage
+
+  /** Preenche o e-mail guardado neste navegador, se houver. */
+  function preencherEmail() {
+    var email = '';
+    try { email = localStorage.getItem(CHAVE_EMAIL) || ''; } catch (e) { /* navegador sem armazenamento: segue sem lembrar */ }
+    if (email && !campoEmail.value) campoEmail.value = email;         // não apaga o que a pessoa já digitou
+    if (lembrar) lembrar.checked = email !== '';
+  }
+
+  /** Depois do login: guarda o e-mail, ou apaga o que estava guardado se a caixa foi desmarcada. */
+  function guardarEmail(email) {
+    try {
+      if (lembrar && lembrar.checked) localStorage.setItem(CHAVE_EMAIL, email);
+      else localStorage.removeItem(CHAVE_EMAIL);
+    } catch (e) { /* navegador sem armazenamento: segue sem lembrar */ }
+  }
+
+  preencherEmail();
+
   /** Volta a exibir o formulário limpo (usado após encerrar a sessão). */
   function mostrarFormulario() {
     if (vistaAuth) vistaAuth.hidden = true;
     if (vistaForm) vistaForm.hidden = false;
     form.reset();
-    limparErros();
-  }
-  function mostrarFormulario() {                                      // declaração repetida, idêntica à de cima (a segunda substitui a primeira)
-    if (vistaAuth) vistaAuth.hidden = true;
-    if (vistaForm) vistaForm.hidden = false;
-    form.reset();
+    preencherEmail();
     limparErros();
   }
 
@@ -279,6 +298,7 @@
       .then(function (resultado) {
         if (resultado.ok && resultado.corpo.data && resultado.corpo.data.user) { // 200 com usuário: login feito
           campoSenha.value = '';                                      // apaga a senha da memória do campo antes de sair
+          guardarEmail(email);
           irParaPainel();
           return;
         }

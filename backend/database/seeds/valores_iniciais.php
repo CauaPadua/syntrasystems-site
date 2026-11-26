@@ -15,8 +15,8 @@ return [
     // Última leitura de cada grandeza por represa (rain_24h = chuva acumulada em 24 h, em mm).
     'reservoirs' => [
         'santa-clara' => ['level' => 82.4, 'inflow' => 56.2, 'outflow' => 49.8, 'ph' => 7.2, 'water_temp' => 22.6, 'rain_24h' => 18.6],
-        'rio-verde'   => ['level' => 76.1, 'inflow' => 43.8, 'outflow' => 39.6, 'ph' => 7.4, 'water_temp' => 22.1, 'rain_24h' => 12.3],
-        'serra-azul'  => ['level' => 77.3, 'inflow' => 32.5, 'outflow' => 29.1, 'ph' => 7.3, 'water_temp' => 21.8, 'rain_24h' => 8.7],
+        'rio-verde'   => ['level' => 64.1, 'inflow' => 43.8, 'outflow' => 39.6, 'ph' => 7.4, 'water_temp' => 22.1, 'rain_24h' => 12.3],
+        'serra-azul'  => ['level' => 69.3, 'inflow' => 32.5, 'outflow' => 29.1, 'ph' => 7.3, 'water_temp' => 21.8, 'rain_24h' => 8.7],
     ],
 
     // Contas de acesso. Todas usam a mesma senha do usuário de demonstração: o

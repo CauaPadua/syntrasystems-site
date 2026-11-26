@@ -69,7 +69,9 @@
     document.querySelector('[data-rows]').innerHTML = rows.map(function (r) {
       return '<tr>'
         + '<td><span class="aq-table__name"><span class="aq-table__icon">' + icon(r.icon) + '</span>'
-        + S.esc(r.id) + ' · ' + S.esc(r.name) + '</span></td>'
+        + S.esc(r.id) + ' · ' + S.esc(r.name) + '</span>'
+        + (r.note ? '<span class="aq-card__sub" style="display:block;margin-top:4px">Obs.: ' + S.esc(r.note) + '</span>' : '')
+        + '</td>'
         + '<td>' + S.esc(r.type_label) + '</td>'
         + '<td>' + S.esc(r.reservoir) + '</td>'
         + '<td class="is-nowrap">' + S.esc(r.period) + '</td>'
@@ -164,8 +166,10 @@
       reservoir_id: form.elements.reservoir_id.value,
       type: form.elements.type.value,
       from: form.elements.from.value,
-      to: form.elements.to.value
+      to: form.elements.to.value,
+      note: form.elements.note.value
     }).then(function (r) {
+      form.elements.note.value = '';                          // a próxima geração começa sem observação
       S.closeModal('modal-relatorio');
       S.notify('Relatório gerado', r.data.id + ' foi registrado e o download foi iniciado.', 'info');
       window.location.href = Api.reportUrl(r.data.id);   // resposta com "attachment": o navegador baixa sem sair da página

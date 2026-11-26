@@ -55,7 +55,7 @@ $list = array_map(static function (array $r): array {                   // trans
         'company_id' => $r['company_id'],
         'city'       => $r['city'],
         'level'      => $r['level_pct'],
-        'status'     => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),   // {key, label, icon}: mesma regra do sistema todo
+        'status'     => StatusRules::describe(StatusRules::fromLevel($r['level_pct'], $r)),   // {key, label, icon}: mesma regra do sistema todo
     ];
 }, $repo->reservoirs($companyId));                                       // represas filtradas pela empresa
 

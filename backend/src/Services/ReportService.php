@@ -14,6 +14,7 @@ namespace Aquapulse\Services;
 
 use Aquapulse\Support\ApiException;
 use Aquapulse\Support\Clock;
+use Aquapulse\Support\Sequence;
 use DateTimeImmutable;
 use PDO;
 
@@ -56,10 +57,16 @@ final class ReportService
      * @param string $from data inicial (AAAA-MM-DD)
      * @param string $to   data final (AAAA-MM-DD)
      * @param array{id:int,name:string} $user
+     * @param string $note observação de quem gera (opcional), impressa no arquivo
      */
-    public function generate(string $reservoirId, string $type, string $from, string $to, array $user): string
+    public function generate(string $reservoirId, string $type, string $from, string $to, array $user, string $note = ''): string
     {
         $erros = [];
+        $note = trim($note);
+
+        if (mb_strlen($note, 'UTF-8') > 500) {
+            $erros['note'] = 'Use até 500 caracteres.';
+        }
 
         if (!isset(self::TYPES[$type])) {
             $erros['type'] = 'Selecione o tipo de relatório.';
@@ -88,16 +95,13 @@ final class ReportService
             throw new ApiException('VALIDATION_ERROR', 'Verifique os campos informados.', 422, $erros);
         }
 
-        $numero = (int) $this->pdo->query(
-            "SELECT COALESCE(MAX(CAST(SUBSTRING(id, 5) AS UNSIGNED)), 2000) + 1 FROM reports WHERE id LIKE 'REP-%'"
-        )->fetchColumn();
-        $id = 'REP-' . $numero;
+        $id = 'REP-' . Sequence::next($this->pdo, 'report');
         $cfg = self::TYPES[$type];
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO reports (id, reservoir_id, name, type, period_label, period_start, period_end,
-                                  generated_at, owner, icon)
-             VALUES (:id, :rid, :name, :type, :label, :inicio, :fim, :quando, :owner, :icon)'
+                                  generated_at, owner, note, icon)
+             VALUES (:id, :rid, :name, :type, :label, :inicio, :fim, :quando, :owner, :note, :icon)'
         );
         $stmt->execute([
             'id'     => $id,
@@ -109,6 +113,7 @@ final class ReportService
             'fim'    => $fim->format('Y-m-d'),
             'quando' => Clock::sql(),
             'owner'  => $user['name'],
+            'note'   => $note === '' ? null : $note,
             'icon'   => $cfg['icon'],
         ]);
 
@@ -161,6 +166,7 @@ final class ReportService
         $linha(['Represa', $reservoir]);
         $linha(['Período', $report['period']]);
         $linha(['Gerado em', Clock::dateTime(Clock::parse($report['generated_at'])), 'por ' . $report['owner']]);
+        $linha(['Observação', self::textoSeguro((string) ($report['note'] ?? '')) ?: 'Nenhuma']);
         $linha([]);
         $linha(array_merge(['Data'], array_map(static fn (string $m): string => self::COLUNAS[$m], $metricas)));
 
@@ -182,5 +188,15 @@ final class ReportService
         fclose($arquivo);
 
         return "\xEF\xBB\xBF" . $conteudo;                    // BOM: faz o Excel reconhecer os acentos (UTF-8)
+    }
+
+    /**
+     * Texto livre dentro do CSV: o Excel trata como fórmula uma célula que começa com
+     * = + - @, então ela ganha um apóstrofo na frente e é mostrada como texto.
+     */
+    private static function textoSeguro(string $texto): string
+    {
+        $texto = trim((string) preg_replace('/\s+/u', ' ', $texto));     // quebras de linha viram espaço: a observação ocupa uma linha
+        return preg_match('/^[=+\-@]/', $texto) ? "'" . $texto : $texto;
     }
 }

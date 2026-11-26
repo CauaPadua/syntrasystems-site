@@ -39,7 +39,7 @@ $aq_version = (string) max(                                               // max
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <title>Aquapulse — Monitoramento inteligente para represas mais segura</title>
+  <title>Aquapulse — Monitoramento inteligente para represas mais seguras</title>
   <meta name="description" content="O Aquapulse centraliza as informações dos seus reservatórios com dados contínuos, análise inteligente e alertas precisos para decisões seguras e uma gestão eficiente dos recursos hídricos."> <?php /* resumo exibido por buscadores */ ?>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">

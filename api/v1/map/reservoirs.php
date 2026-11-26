@@ -23,7 +23,7 @@ use Aquapulse\Support\Validator;
 $companyId = Validator::companyId($repo->companies());
 
 $markers = array_map(static function (array $r): array {
-    $status = StatusRules::fromLevel($r['level_pct']);
+    $status = StatusRules::fromLevel($r['level_pct'], $r);
 
     return [
         'id'          => $r['id'],
@@ -42,7 +42,7 @@ $markers = array_map(static function (array $r): array {
         'duration'    => ReservoirCurve::durationDays($r),
         'ph_status'   => StatusRules::describe(StatusRules::fromPh($r['ph'])),
         'status'      => StatusRules::describe($status),
-        'status_note' => StatusRules::levelNote($status),
+        'status_note' => StatusRules::levelNote($status, $r),
         'updated_at'  => $r['last_reading_at'] === null ? 'Sem leituras' : Clock::dateTime(Clock::parse($r['last_reading_at'])),
     ];
 }, $repo->reservoirs($companyId));

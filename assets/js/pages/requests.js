@@ -2,8 +2,12 @@
 /*
  * Página: dashboard/solicitacoes.php
  * API: GET  api/v1/requests.php                          listar
- *      POST api/v1/requests.php { action: 'approve' }    aprovar acesso e criar a conta
- *      POST api/v1/requests.php { action: 'conclude' }   demonstração atendida
+ *      POST api/v1/requests.php { action: 'approve' }    aprovar e criar a conta (acesso ou demonstração)
+ *      POST api/v1/requests.php { action: 'conclude' }   demonstração antiga, sem senha, atendida
+ *
+ * "Cadastrar empresa e represa deste pedido" guarda os dados do pedido na aba
+ * (sessionStorage) e abre Configurações, que os usa para preencher os formulários
+ * e depois traz o administrador de volta a este pedido.
  *      POST api/v1/requests.php { action: 'reject' }     recusar com motivo
  *      POST api/v1/requests.php { action: 'delete' }     apagar um já respondido
  */
@@ -79,31 +83,44 @@
       ? 'Já existe uma conta com este e-mail. Ajuste a conta em Configurações › Usuários e recuse este pedido.'
       : 'Já existe uma conta com este e-mail.';
 
+    var pendente = r.status === 'pending';
     var estados = {
-      pending: r.status === 'pending',
-      decided: r.status !== 'pending',
-      access: r.status === 'pending' && r.type === 'access',
-      demo: r.status === 'pending' && r.type === 'demo'
+      pending: pendente,
+      decided: !pendente,
+      approve: pendente && r.has_password,                       // aprovar cria a conta com a senha do pedido
+      demo: pendente && r.type === 'demo' && r.has_password,
+      legacy: pendente && r.type === 'demo' && !r.has_password   // pedido antigo, sem senha
     };
     form.querySelectorAll('[data-when]').forEach(function (el) {
       el.hidden = !estados[el.getAttribute('data-when')];
     });
 
-    if (estados.access) renderReservoirs(r.reservoir_name);
+    if (estados.approve) {
+      var marcou = renderReservoirs(r.reservoir_name);
+      form.elements.role.value = r.type === 'demo' ? 'manager' : 'operator';   // dono de represa = gestor
+      document.querySelector('[data-demo-missing]').hidden = marcou;
+    }
 
     S.openModal('modal-pedido');
   }
 
-  /** Lista de represas para marcar; a que combina com o texto digitado já vem marcada. */
+  /**
+   * Lista de represas para marcar; a que combina com o texto digitado já vem marcada.
+   * @returns {boolean} true se alguma combinou
+   */
   function renderReservoirs(digitado) {
     var alvo = chave(digitado);
+    var algum = false;
 
     document.querySelector('[data-reservoirs]').innerHTML = reservoirs.map(function (v) {
       var nome = chave(v.name);
       var combina = alvo !== '' && (nome === alvo || alvo.indexOf(nome) >= 0);
+      algum = algum || combina;
       return '<label class="aq-checklist__item"><input type="checkbox" name="reservoirs" value="' + S.esc(v.id) + '"'
         + (combina ? ' checked' : '') + '><span>' + S.esc(v.name) + ' <small>' + S.esc(v.company) + '</small></span></label>';
     }).join('');
+
+    return algum;
   }
 
   /* ---------------------------------------------------------- carregar */
@@ -162,6 +179,18 @@
     if (!botao || !current) return;
 
     var acao = botao.getAttribute('data-action');
+
+    if (acao === 'register') {                                    // leva os dados do pedido para o cadastro
+      try {
+        sessionStorage.setItem('aq.pedido', JSON.stringify({
+          id: current.id, company: current.company_name, reservoir: current.reservoir_name,
+          city: current.city || '', manager: current.name
+        }));
+      } catch (erro) { /* sem sessionStorage: os formulários abrem vazios */ }
+      window.location.href = 'configuracoes.php#empresas';
+      return;
+    }
+
     var marcadas = Array.prototype.map.call(form.querySelectorAll('[name="reservoirs"]:checked'), function (c) { return c.value; });
 
     S.showErrors(form, {});
@@ -204,5 +233,17 @@
   S.onRetry('requests', function () { load(); });
   S.onReload(function () { return load(true); });
 
-  load();
+  /** Voltando de Configurações depois de cadastrar a represa: reabre o pedido que estava em análise. */
+  function reabrirPedido() {
+    var id = null;
+    try {
+      id = Number(sessionStorage.getItem('aq.abrirPedido'));
+      sessionStorage.removeItem('aq.abrirPedido');
+    } catch (erro) { return; }
+
+    var pedido = rows.filter(function (r) { return r.id === id; })[0];
+    if (pedido) openRequest(pedido);
+  }
+
+  load().then(reabrirPedido);
 })();

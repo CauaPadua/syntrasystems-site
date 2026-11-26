@@ -8,7 +8,7 @@
  * GET  /api/v1/reports.php?download=REP-2001
  *      Baixa o CSV do relatório, montado na hora a partir das leituras do banco.
  *
- * POST /api/v1/reports.php   { "reservoir_id", "type", "from", "to" }
+ * POST /api/v1/reports.php   { "reservoir_id", "type", "from", "to", "note" }
  *      Registra um novo relatório (tabela reports). Administrador e gestor; o
  *      operador só consulta e baixa.
  *
@@ -43,7 +43,7 @@ if (Request::isMethod('POST')) {
         ApiResponse::error('VALIDATION_ERROR', 'Verifique os campos informados.', 422, ['reservoir_id' => 'Selecione uma represa.']);
     }
 
-    $id = (new ReportService($pdo))->generate($represa['id'], $texto('type'), $texto('from'), $texto('to'), $user);
+    $id = (new ReportService($pdo))->generate($represa['id'], $texto('type'), $texto('from'), $texto('to'), $user, $texto('note'));
 
     ApiResponse::success(['id' => $id], [], 201);
 }
@@ -107,6 +107,7 @@ ApiResponse::success([
             'period'       => $r['period'],
             'generated_at' => Clock::dateTime(Clock::parse($r['generated_at'])),
             'owner'        => $r['owner'],
+            'note'         => $r['note'] ?? '',
             'icon'         => $r['icon'],
         ];
     }, array_values(array_filter($repo->reports($reservoirId, $type), $naEmpresa))),

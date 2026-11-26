@@ -130,6 +130,8 @@ aq_page_start([
           <span class="aq-field__error" data-error-for="status" hidden></span>
         </div>
       </div>
+      <p class="aq-card__sub" style="margin-top:14px" data-edit-hint hidden>Depois de cadastrado, só a situação muda: o código e a
+      grandeza identificam as leituras que o equipamento já enviou. Para corrigir outro dado, exclua e cadastre de novo.</p>
 
       <div class="aq-modal__foot">
         <button class="aq-btn aq-btn--ghost" type="button" data-modal-close="modal-equipamento">Cancelar</button>

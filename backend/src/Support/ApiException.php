@@ -3,8 +3,9 @@
  * Aquapulse — erro de regra de negócio que deve virar uma resposta da API.
  *
  * As classes de serviço não imprimem nada: quando uma validação falha, lançam
- * esta exceção com o código, a mensagem e o status HTTP. O endpoint captura e
- * responde com ApiResponse::error() — ver aq_api_run() em api/v1/_boot.php.
+ * esta exceção com o código, a mensagem e o status HTTP. Quem a transforma em
+ * resposta é o tratador global de exceções, em backend/bootstrap.php; o endpoint
+ * só captura quando precisa continuar (ex.: api/v1/ingest/batch.php).
  */
 
 declare(strict_types=1);

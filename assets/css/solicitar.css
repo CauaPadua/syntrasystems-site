@@ -19,6 +19,12 @@
   resize: vertical;
 }
 
+.request-hint {                                                     /* explica para que serve a senha */
+  margin: -4px 0 0;
+  font-size: .84rem;
+  color: var(--ink-soft);
+}
+
 .request-trap {                                                    /* campo-armadilha para robôs: fora da tela */
   position: absolute;
   left: -9999px;

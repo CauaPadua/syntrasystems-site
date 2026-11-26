@@ -5,8 +5,8 @@
  * GET  /api/v1/equipment.php?reservoir_id={id|all}     CONSULTAR  (SELECT)
  * POST /api/v1/equipment.php  { "action": "create", "id", "name", "location", "type", "status", "reservoir_id" }
  *                                                      CADASTRAR  (INSERT)
- * POST /api/v1/equipment.php  { "action": "update", "id", "name", "location", "type", "status", "reservoir_id" }
- *                                                      EDITAR     (UPDATE)
+ * POST /api/v1/equipment.php  { "action": "update", "id", "status" }
+ *                                                      EDITAR     (UPDATE — só a situação)
  * POST /api/v1/equipment.php  { "action": "delete", "id" }
  *                                                      EXCLUIR    (DELETE)
  *

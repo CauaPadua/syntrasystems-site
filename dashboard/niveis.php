@@ -53,9 +53,8 @@ aq_page_start([
     ]); ?>
     <?php echo aq_legend([
         ['label' => 'Nível observado', 'color' => '#0b5bea'],
-        ['label' => 'Cota de atenção', 'color' => '#f59e0b', 'style' => 'dashed'],
-        ['label' => 'Cota crítica', 'color' => '#ef4444', 'style' => 'dashed'],
-        ['label' => 'Cota de vertimento', 'color' => '#38bdf8', 'style' => 'dashed'],
+        ['label' => 'Cota de alerta (atenção)', 'color' => '#f59e0b', 'style' => 'dashed'],
+        ['label' => 'Cota de vertimento (crítico)', 'color' => '#ef4444', 'style' => 'dashed'],
     ], true); // true = legenda "plain", sem fundo ?>
 
     <div data-content="history" hidden>
@@ -85,15 +84,9 @@ aq_page_start([
     <article class="aq-card">
       <?php echo aq_card_head(['title' => 'Capacidade do reservatório', 'tip' => 'Faixas operacionais e posição do nível atual.']); ?>
       <div style="display:flex;gap:18px;align-items:center">
-        <?php
-        // Coluna de faixas com as proporções dos limites em vigor.
-        $atencao = \Aquapulse\Services\StatusRules::levelAttention();
-        $critico = \Aquapulse\Services\StatusRules::levelCritical();
-        ?>
         <div style="flex:none;width:92px;position:relative;height:250px;border-radius:10px;overflow:hidden;display:flex;flex-direction:column">
-          <div style="flex:<?php echo 100 - $critico; ?>;background:var(--aq-danger)"></div>
-          <div style="flex:<?php echo $critico - $atencao; ?>;background:var(--aq-warning)"></div>
-          <div style="flex:<?php echo $atencao; ?>;background:var(--aq-primary)"></div>
+          <?php /* coluna de faixas: o JS define a altura de cada uma, porque os limites são os da represa escolhida */ ?>
+          <div data-level-column style="position:absolute;inset:0;display:flex;flex-direction:column"></div>
           <?php /* linha que marca o nível atual; o JS define "bottom" com a porcentagem e o CSS anima a mudança */ ?>
           <div data-level-marker
                style="position:absolute;left:-4px;right:-4px;height:2.5px;background:var(--aq-text);transition:bottom 600ms ease"></div>
@@ -142,8 +135,8 @@ aq_page_start([
   </article>
 
   <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Limites configurados', 'tip' => 'Cotas de atenção e crítica calculadas a partir dos limites de nível; alerta e vertimento vêm do cadastro da represa.']); ?>
-    <div data-limits></div> <?php /* lista de cotas: alerta, atenção, crítica e vertimento */ ?>
+    <?php echo aq_card_head(['title' => 'Limites configurados', 'tip' => 'Cotas do cadastro desta represa. A de alerta abre Atenção; a de vertimento abre Crítico.']); ?>
+    <div data-limits></div> <?php /* cotas de vertimento e de alerta, com o nível (%) de cada uma */ ?>
     <p style="margin-top:14px">
       <a class="aq-card__link" href="configuracoes.php#limites">Ver limites operacionais <?php aq_the_icon('arrow-right'); ?></a>
     </p>

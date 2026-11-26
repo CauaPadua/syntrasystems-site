@@ -31,6 +31,24 @@ final class ReservoirCurve
     }
 
     /**
+     * Caminho inverso: o nível (%) que corresponde a uma cota. É como as cotas de
+     * alerta e de vertimento do cadastro viram os limites do nível (StatusRules).
+     *
+     * O resultado é arredondado para baixo, com uma casa (a precisão do sensor de
+     * nível): o aviso sai alguns centímetros antes da cota, nunca depois.
+     *
+     * @param array<string,mixed> $reservoir precisa de cota_min_m e cota_max_m
+     */
+    public static function level(array $reservoir, float $cota): float
+    {
+        $min = (float) $reservoir['cota_min_m'];
+        $max = (float) $reservoir['cota_max_m'];
+        $pct = ($cota - $min) / ($max - $min) * 100;
+
+        return floor(round($pct * 10, 4)) / 10;               // o round interno tira o erro de ponto flutuante (84,99999... é 85)
+    }
+
+    /**
      * @param array<string,mixed> $reservoir precisa de capacity_hm3
      */
     public static function storage(array $reservoir, float $levelPct): float

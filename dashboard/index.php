@@ -76,19 +76,17 @@ aq_page_start([                                                           // abr
     <article class="aq-card">
       <?php echo aq_card_head([
           'title' => 'Comparativo entre represas',
-          'tip'   => 'Capacidade ocupada de cada represa, classificada pela faixa operacional.',
+          'tip'   => 'Capacidade ocupada de cada represa. A cor segue as cotas de alerta e de vertimento da própria represa.',
       ]); ?>
       <p class="aq-card__sub" style="margin-bottom:14px">Capacidade ocupada (%)</p>
       <div data-content="comparison" hidden> <?php /* conteúdo real do card; fica oculto enquanto o estado "carregando" é exibido */ ?>
         <div data-comparison-bars></div> <?php /* barras horizontais geradas pelo JS a partir de data.comparison */ ?>
         <?php
-        // Legenda montada com os limites em vigor (os mesmos usados para classificar as barras).
-        $atencao = \Aquapulse\Services\StatusRules::pct(\Aquapulse\Services\StatusRules::levelAttention());
-        $critico = \Aquapulse\Services\StatusRules::pct(\Aquapulse\Services\StatusRules::levelCritical());
+        // Sem porcentagens: cada barra é classificada pelas cotas da própria represa.
         echo aq_legend([
-            ['label' => 'Normal: abaixo de ' . $atencao, 'color' => '#16a34a', 'style' => 'square'],
-            ['label' => 'Atenção: ' . $atencao . ' a ' . $critico, 'color' => '#f59e0b', 'style' => 'square'],
-            ['label' => 'Crítico: a partir de ' . $critico, 'color' => '#ef4444', 'style' => 'square'],
+            ['label' => 'Normal: abaixo da cota de alerta', 'color' => '#16a34a', 'style' => 'square'],
+            ['label' => 'Atenção: da cota de alerta à de vertimento', 'color' => '#f59e0b', 'style' => 'square'],
+            ['label' => 'Crítico: a partir da cota de vertimento', 'color' => '#ef4444', 'style' => 'square'],
         ]); ?>
       </div>
       <?php echo aq_states('comparison'); // estados carregando / sem dados / erro deste card ?>

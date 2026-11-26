@@ -249,7 +249,6 @@ final class MockMonitoringRepository implements MonitoringRepositoryInterface
                     'volume'    => round($volume[$i], 0),
                     'occupancy' => $nivel[$i],
                     'variation' => round($volume[$i] - $volume[$i + 1], 0),
-                    'status'    => StatusRules::fromLevel($nivel[$i]),
                 ];
             }
             return $linhas;

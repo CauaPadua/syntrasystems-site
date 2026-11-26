@@ -52,7 +52,8 @@ simulador é ligado, os sensores recomeçam dos últimos valores do banco.
 - **Simular falha:** ⚠ Sem resposta, ⚠ Valor impossível, ✔ Corrigir.
 - **Modo automático:** o valor varia sozinho a cada leitura.
 - **Modo manual:** o sensor repete o valor escolhido. Os atalhos provocam alertas (nível
-  92 %, pH 6,0, chuva de 5 mm por leitura...).
+  crítico, pH ácido, chuva de 5 mm por leitura...) e são calculados dos limites de cada
+  sensor, lidos do sistema. Mudou um limite no painel? Clique em "Sincronizar com o sistema".
 - **Configuração:** faixa, variação por leitura e intervalo (1 a 60 s).
 - **Direita:** se a estação está buscando as leituras, o botão "Sincronizar com o
   sistema", o fluxo e o log de eventos.
@@ -71,7 +72,7 @@ E para provocar alertas de valor:
 
 | Na tela do simulador | O que acontece no sistema |
 | --- | --- |
-| `SEN-NIV-01` → **92 % · crítico** | a estação grava 92 % e o alerta de nível fica **crítico** |
+| `SEN-NIV-01` → **87 % · crítico** | a estação grava 87 % (a Santa Clara verte em 85 %) e o alerta de nível fica **crítico** |
 | `SEN-PLU-01` → **5 mm · temporal** | a chuva acumulada em 24 h passa de 20 mm (atenção) e de 60 mm (crítico) em menos de 1 min |
 | `SEN-PH-01` → **6,00 · ácido** | o pH sai da faixa ideal (6,5 a 8,5) e abre alerta de pH |
 

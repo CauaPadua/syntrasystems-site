@@ -472,7 +472,11 @@
       p.push('<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="#17405f"/>');
       p.push('<text x="' + (ml - 8) + '" y="' + (Y(v) + 4) + '" fill="#6f92ad" font-size="11" text-anchor="end">' + num(v, d.casas) + '</text>');
     }
-    var limites = d.type === 'level' ? [[80, '#facc15', 'atenção'], [90, '#f05252', 'crítico']] : (d.type === 'ph' ? [[6.5, '#facc15', 'mín. ideal'], [8.5, '#facc15', 'máx. ideal']] : []);
+    // linhas dos limites do próprio sensor (a chuva não tem: o limite dela vale para a soma de 24 h)
+    var fx = d.type === 'precipitation' ? {} : (d.faixas || {}), limites = [];
+    if (fx.attention) { limites.push([fx.attention.min, '#facc15', 'atenção']); }
+    if (fx.critical) { limites.push([fx.critical.min, '#f05252', 'crítico']); }
+    if (fx.normal) { limites.push([fx.normal.min, '#facc15', 'mín. ideal'], [fx.normal.max, '#facc15', 'máx. ideal']); }
     limites.forEach(function (lm) {
       if (lm[0] > min && lm[0] < max) {
         p.push('<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + Y(lm[0]) + '" y2="' + Y(lm[0]) + '" stroke="' + lm[1] + '" stroke-dasharray="6 5" stroke-opacity=".8"/>');

@@ -2,8 +2,9 @@
 /**
  * Aquapulse — inicialização do back-end.
  *
- * Carregado exclusivamente pelos pontos de entrada em api/. O front-end
- * (login.php, index.php) nunca inclui este arquivo.
+ * Carregado pelos endpoints de api/, pelas páginas de dashboard/ e pelas ferramentas
+ * de linha de comando. As páginas públicas (index.php, login.php, solicitar.php)
+ * não incluem este arquivo.
  *
  * Responsabilidades:
  *  - carregar variáveis de ambiente do arquivo .env, se existir;
@@ -15,8 +16,9 @@
  * Quem inclui este arquivo (com require/require_once):
  *  - api/v1/_boot.php            -> todos os endpoints de dados do dashboard;
  *  - api/v1/auth/*.php           -> login, logout e "quem sou eu";
- *  - dashboard/includes/page.php -> todas as páginas do sistema interno.
- * Ou seja, na prática ele também é a base das páginas do dashboard, não só da API.
+ *  - api/v1/ingest/_auth.php     -> endpoints que recebem as leituras das estações;
+ *  - dashboard/includes/page.php -> todas as páginas do sistema interno;
+ *  - backend/database/*.php      -> instalador e testes do banco.
  */
 
 declare(strict_types=1);                                    // tipos estritos: passar string onde a função espera int gera TypeError em vez de conversão silenciosa

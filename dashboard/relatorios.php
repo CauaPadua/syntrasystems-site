@@ -88,7 +88,7 @@ aq_page_start([
 <div class="aq-note">
   <?php aq_the_icon('info'); ?>
   <span><strong>O que o arquivo contém.</strong> Uma linha por dia do período, com a média das leituras de cada
-  grandeza (para a chuva, o total do dia). Formato CSV com ponto e vírgula, pronto para abrir no Excel.</span>
+  grandeza (para a chuva, o total do dia), com a observação escrita ao gerar. Formato CSV com ponto e vírgula, pronto para abrir no Excel.</span>
 </div>
 
 <?php if ($podeGerar): ?>
@@ -129,6 +129,12 @@ aq_page_start([
           <input class="aq-input" type="date" id="relatorio-fim" name="to" style="width:100%">
           <span class="aq-field__error" data-error-for="to" hidden></span>
         </div>
+      </div>
+      <div class="aq-field" style="margin-top:14px">
+        <label class="aq-field__label" for="relatorio-nota">Observação (opcional)</label>
+        <textarea class="aq-input" id="relatorio-nota" name="note" rows="3" maxlength="500"
+                  style="height:auto;padding:10px 14px;width:100%" placeholder="Sai na linha &quot;Observação&quot; do arquivo. Ex.: comporta 2 em manutenção nesta semana"></textarea>
+        <span class="aq-field__error" data-error-for="note" hidden></span>
       </div>
 
       <div class="aq-modal__foot">

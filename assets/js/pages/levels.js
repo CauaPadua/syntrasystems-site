@@ -65,7 +65,7 @@
     /* --------------------- histórico em cota, com as linhas dos limites */
     G.guard('grafico-niveis', function () {
       var ctx = document.getElementById('grafico-niveis').getContext('2d');
-      var limites = eixo(h.cota.concat([h.cota_alert, h.cota_attention, h.cota_spill, h.cota_critical]));
+      var limites = eixo(h.cota.concat([h.cota_alert, h.cota_spill]));
 
       G.create('grafico-niveis', {
         type: 'line',
@@ -80,10 +80,8 @@
           plugins: G.plugins('m', 1, {
             annotation: {
               annotations: {
-                vertimento: G.limitLine(h.cota_spill, '#38bdf8', 'Cota de vertimento ' + F.num(h.cota_spill, 1) + ' m', 'start'),
-                critico: G.limitLine(h.cota_critical, G.colors.danger, 'Cota crítica ' + F.num(h.cota_critical, 1) + ' m', 'end'),
-                atencao: G.limitLine(h.cota_attention, G.colors.warning, 'Cota de atenção ' + F.num(h.cota_attention, 1) + ' m', 'start', true),
-                alerta: G.limitLine(h.cota_alert, '#fb923c', 'Cota de alerta ' + F.num(h.cota_alert, 1) + ' m', 'end', true)
+                critico: G.limitLine(h.cota_spill, G.colors.danger, 'Cota de vertimento ' + F.num(h.cota_spill, 1) + ' m', 'end'),
+                atencao: G.limitLine(h.cota_alert, G.colors.warning, 'Cota de alerta ' + F.num(h.cota_alert, 1) + ' m', 'end', true)
               }
             }
           })
@@ -105,6 +103,12 @@
     }
 
     var cores = { normal: 'var(--aq-primary)', attention: 'var(--aq-warning)', critical: 'var(--aq-danger)' };
+
+    // coluna de faixas, de cima (crítico) para baixo (normal), na proporção dos limites da represa
+    document.querySelector('[data-level-column]').innerHTML = d.capacity.bands.map(function (b) {
+      return '<div style="flex:' + (b.to - b.from) + ';background:' + cores[b.status] + '"></div>';
+    }).join('');
+
     document.querySelector('[data-level-bands]').innerHTML = d.capacity.bands.map(function (b) {
       return '<li style="display:flex;align-items:flex-start;gap:9px">'
         + '<span style="width:13px;height:13px;border-radius:3px;background:' + cores[b.status] + ';flex:none;margin-top:2px"></span>'
@@ -151,16 +155,14 @@
 
     /* ------------------------------------------- limites em cota */
     document.querySelector('[data-limits]').innerHTML = [
-      { label: 'Cota de vertimento', value: h.cota_spill, color: '#38bdf8' },
-      { label: 'Cota crítica', value: h.cota_critical, color: 'var(--aq-danger)' },
-      { label: 'Cota de atenção', value: h.cota_attention, color: 'var(--aq-warning)' },
-      { label: 'Cota de alerta', value: h.cota_alert, color: '#fb923c' }
+      { label: 'Vertimento (crítico)', value: h.cota_spill, level: h.critical, color: 'var(--aq-danger)' },
+      { label: 'Alerta (atenção)', value: h.cota_alert, level: h.attention, color: 'var(--aq-warning)' }
     ].map(function (l) {
       return '<div class="aq-form-row">'
         + '<span style="display:flex;align-items:center;gap:10px">'
         + '<span class="aq-legend__key aq-legend__key--dashed" style="width:26px;color:' + l.color + '"></span>'
         + S.esc(l.label) + '</span>'
-        + '<strong>' + F.num(l.value, 1) + ' m</strong></div>';
+        + '<strong>' + F.num(l.value, 1) + ' m <span class="aq-card__sub">' + F.num(l.level, 1) + '%</span></strong></div>';
     }).join('');
   }
 

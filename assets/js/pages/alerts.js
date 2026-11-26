@@ -168,9 +168,9 @@
 
       // Com "todas as empresas e represas", os alertas em aberto são os mesmos
       // do contador do menu: ele acompanha a tela sem recarregar a página.
-      var badge = document.querySelector('.aq-nav__badge');
+      var badge = document.querySelector('[data-nav-badge="alerts"]');
       if (badge && ctx.company_id === 'all' && ctx.reservoir_id === 'all') {
-        badge.firstChild.textContent = c.active;
+        badge.querySelector('[data-nav-count]').textContent = c.active;
         badge.hidden = c.active === 0;
       }
 

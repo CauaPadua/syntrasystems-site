@@ -38,7 +38,7 @@ return [
             'lat' => -22.2410, 'lng' => -47.8365, 'coordinates_label' => '22°14\'28" S, 47°50\'11" W',
             'capacity_hm3' => 1288.0, 'useful_volume_hm3' => 838.0, 'technical_reserve_hm3' => 142.0, 'daily_consumption_hm3' => 8.7,
             'cota_spill_m' => 552.0, 'cota_alert_m' => 545.0, 'cota_min_m' => 510.0, 'cota_max_m' => 561.1,
-            'level_pct' => 76.1, 'inflow_m3s' => 43.8, 'outflow_m3s' => 39.6, 'ph' => 7.4, 'water_temp_c' => 22.1, 'rain_24h_mm' => 12.3,
+            'level_pct' => 64.1, 'inflow_m3s' => 43.8, 'outflow_m3s' => 39.6, 'ph' => 7.4, 'water_temp_c' => 22.1, 'rain_24h_mm' => 12.3,
         ],
         [
             'id' => 'serra-azul', 'code' => 'RSA-003', 'name' => 'Represa Serra Azul', 'company_id' => 'aguas-do-norte',
@@ -46,7 +46,7 @@ return [
             'lat' => -22.1958, 'lng' => -47.5487, 'coordinates_label' => '22°11\'45" S, 47°32\'55" W',
             'capacity_hm3' => 957.0, 'useful_volume_hm3' => 632.0, 'technical_reserve_hm3' => 108.0, 'daily_consumption_hm3' => 6.9,
             'cota_spill_m' => 608.0, 'cota_alert_m' => 601.0, 'cota_min_m' => 556.0, 'cota_max_m' => 618.2,
-            'level_pct' => 77.3, 'inflow_m3s' => 32.5, 'outflow_m3s' => 29.1, 'ph' => 7.3, 'water_temp_c' => 21.8, 'rain_24h_mm' => 8.7,
+            'level_pct' => 69.3, 'inflow_m3s' => 32.5, 'outflow_m3s' => 29.1, 'ph' => 7.3, 'water_temp_c' => 21.8, 'rain_24h_mm' => 8.7,
         ],
     ],
 
@@ -80,16 +80,16 @@ return [
         ],
     ],
 
-    /* Alertas de exemplo, coerentes com os valores acima e com os limites padrão. */
+    /* Alertas de exemplo, coerentes com os valores acima e com os limites de cada represa. */
     'alerts' => [
         [
             'id' => 'ALT-1001', 'reservoir_id' => 'santa-clara', 'sensor_id' => 'SEN-NIV-01', 'severity' => 'attention', 'metric_key' => 'level',
             'title' => 'Nível do reservatório em atenção', 'metric' => 'Nível do reservatório',
             'detected_at' => '2024-05-22T08:45:00-03:00', 'resolved_at' => null, 'owner' => 'Não atribuído', 'status' => 'new',
-            'current_value' => '82,4%', 'threshold' => '80%',
-            'detail' => 'Leitura do equipamento SEN-NIV-01', 'threshold_detail' => 'Limite de atenção',
+            'current_value' => '82,4%', 'threshold' => '78%',
+            'detail' => 'Leitura do equipamento SEN-NIV-01', 'threshold_detail' => 'Cota de alerta (558 m)',
             'timeline' => [
-                ['at' => '2024-05-22T08:45:00-03:00', 'text' => 'Alerta aberto automaticamente: 80,1% (limite 80%).'],
+                ['at' => '2024-05-22T08:45:00-03:00', 'text' => 'Alerta aberto automaticamente: 78,1% (limite 78%).'],
             ],
         ],
         [

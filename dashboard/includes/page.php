@@ -195,7 +195,7 @@ function aq_page_start(array $o): void
 <link rel="stylesheet" href="<?php echo $base; ?>assets/css/dashboard.css?v=<?php echo $version; // ?v muda quando o CSS muda, forçando o navegador a baixar de novo ?>">
 <link rel="stylesheet" href="<?php echo $base; ?>assets/css/dashboard-responsive.css?v=<?php echo $version; ?>">
 </head>
-<?php /* data-route: tela atual; data-role: perfil do usuário (o JS esconde ações que ele não pode fazer — a API confere de novo); data-api-base: caminho da API */ ?>
+<?php /* data-route: tela atual; data-role: cargo do usuário, só informativo (quem esconde os botões é o PHP, com Guard::can, e a API confere de novo); data-api-base: caminho da API */ ?>
 <body class="aq-app<?php echo !empty($o['body_class']) ? ' ' . aq_h($o['body_class']) : ''; ?>"
       data-route="<?php aq_e($route); ?>"
       data-role="<?php aq_e($AQ_USER['role']); ?>"

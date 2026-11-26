@@ -14,6 +14,10 @@
  * aparece depois de "Sincronizar com o sistema". Se o site estiver desligado, usa
  * uma lista padrão (18 sensores, 6 por represa) e tenta de novo a cada 20 s.
  *
+ * Os LIMITES (Atenção, Crítico, faixa ideal) também vêm do sistema, para cada
+ * sensor: o nível da Rio Verde não tem os mesmos limites do da Santa Clara. Quem
+ * muda um limite no painel clica em "Sincronizar" para o simulador ler os novos.
+ *
  * Algoritmo de cada sensor (a cada "intervalo" segundos, 5 por padrão):
  *   modo automático   valor = valor anterior + número aleatório entre -variação e +variação,
  *                     limitado à faixa configurada
@@ -58,43 +62,73 @@ final class Sensores
     /* ========================================================== cadastro */
 
     /**
-     * Represas, valores normais e códigos dos sensores (iguais aos do banco).
+     * Represas, valores normais, códigos dos sensores e limites do nível (atenção e
+     * crítico), iguais aos do banco. Só é usado com o site desligado.
      *
-     * @return array<string,array{0:string,1:array<string,float>,2:array<string,string>}>
+     * @return array<string,array{0:string,1:array<string,float>,2:array<string,string>,3:array{0:float,1:float}}>
      */
     private static function represas(): array
     {
         return [
             'santa-clara' => ['Represa Santa Clara',
                 ['level' => 82.4, 'inflow' => 56.2, 'outflow' => 49.8, 'ph' => 7.2, 'water_temp' => 22.6],
-                ['level' => 'SEN-NIV-01', 'inflow' => 'SEN-VAZ-01', 'outflow' => 'SEN-VAZ-02', 'ph' => 'SEN-PH-01', 'water_temp' => 'SEN-TMP-01', 'precipitation' => 'SEN-PLU-01']],
+                ['level' => 'SEN-NIV-01', 'inflow' => 'SEN-VAZ-01', 'outflow' => 'SEN-VAZ-02', 'ph' => 'SEN-PH-01', 'water_temp' => 'SEN-TMP-01', 'precipitation' => 'SEN-PLU-01'],
+                [78.0, 85.0]],
             'rio-verde' => ['Represa Rio Verde',
-                ['level' => 76.1, 'inflow' => 43.8, 'outflow' => 39.6, 'ph' => 7.4, 'water_temp' => 22.1],
-                ['level' => 'SEN-NIV-11', 'inflow' => 'SEN-VAZ-11', 'outflow' => 'SEN-VAZ-12', 'ph' => 'SEN-PH-11', 'water_temp' => 'SEN-TMP-11', 'precipitation' => 'SEN-PLU-11']],
+                ['level' => 64.1, 'inflow' => 43.8, 'outflow' => 39.6, 'ph' => 7.4, 'water_temp' => 22.1],
+                ['level' => 'SEN-NIV-11', 'inflow' => 'SEN-VAZ-11', 'outflow' => 'SEN-VAZ-12', 'ph' => 'SEN-PH-11', 'water_temp' => 'SEN-TMP-11', 'precipitation' => 'SEN-PLU-11'],
+                [68.4, 82.1]],
             'serra-azul' => ['Represa Serra Azul',
-                ['level' => 77.3, 'inflow' => 32.5, 'outflow' => 29.1, 'ph' => 7.3, 'water_temp' => 21.8],
-                ['level' => 'SEN-NIV-21', 'inflow' => 'SEN-VAZ-21', 'outflow' => 'SEN-VAZ-22', 'ph' => 'SEN-PH-21', 'water_temp' => 'SEN-TMP-21', 'precipitation' => 'SEN-PLU-21']],
+                ['level' => 69.3, 'inflow' => 32.5, 'outflow' => 29.1, 'ph' => 7.3, 'water_temp' => 21.8],
+                ['level' => 'SEN-NIV-21', 'inflow' => 'SEN-VAZ-21', 'outflow' => 'SEN-VAZ-22', 'ph' => 'SEN-PH-21', 'water_temp' => 'SEN-TMP-21', 'precipitation' => 'SEN-PLU-21'],
+                [72.3, 83.6]],
         ];
+    }
+
+    /**
+     * Limites usados com o site desligado, no mesmo formato em que a API os entrega.
+     *
+     * @param array{0:float,1:float} $nivel atenção e crítico do nível da represa
+     * @return array<string,array{min:float,max:?float}>
+     */
+    private static function limitesPadrao(string $tipo, array $nivel): array
+    {
+        switch ($tipo) {
+            case 'level':
+                return ['attention' => ['min' => $nivel[0], 'max' => $nivel[1]], 'critical' => ['min' => $nivel[1], 'max' => null]];
+            case 'ph':
+                return ['normal' => ['min' => 6.5, 'max' => 8.5]];
+            case 'precipitation':
+                return ['attention' => ['min' => 20.0, 'max' => 60.0], 'critical' => ['min' => 60.0, 'max' => null]];
+            default:
+                return [];
+        }
     }
 
     /**
      * Características de cada tipo de sensor.
      *   abs_min/abs_max  o que o sensor consegue medir (fora disso a API recusaria)
      *   variacao         variação máxima por leitura no modo automático (no pluviômetro: chance de chuva, em %)
-     *   presets          atalhos da tela para o modo manual
+     *   presets          atalhos da tela para o modo manual (calculados dos limites do sensor)
      *
+     * @param array<string,array{min:?float,max:?float}> $faixas limites do sensor (API do sistema ou limitesPadrao)
      * @return array<string,mixed>
      */
-    private static function tipo(string $tipo, float $inicial): array
+    private static function tipo(string $tipo, float $inicial, array $faixas): array
     {
         $base = ['faixa_min' => null, 'faixa_max' => null, 'intervalo' => 5];
+        $atencao = isset($faixas['attention']['min']) ? (float) $faixas['attention']['min'] : null;
+        $critico = isset($faixas['critical']['min']) ? (float) $faixas['critical']['min'] : null;
 
         switch ($tipo) {
             case 'level':
                 return $base + ['nome' => 'Nível do reservatório', 'equip' => 'Régua de nível', 'unidade' => '%', 'casas' => 1,
                     'abs_min' => 0.0, 'abs_max' => 100.0, 'variacao' => 0.1, 'var_max' => 5.0, 'rotulo_var' => 'Variação por leitura (±)',
-                    'limites' => 'Atenção a partir de 80 %, crítico a partir de 90 %',
-                    'presets' => [['v' => 75, 'r' => 'normal'], ['v' => 85, 'r' => 'atenção'], ['v' => 92, 'r' => 'crítico']]];
+                    'limites' => $atencao === null || $critico === null ? 'Sem limite cadastrado'
+                        : 'Atenção a partir de ' . self::txt($atencao) . ' % (cota de alerta), crítico a partir de ' . self::txt($critico) . ' % (cota de vertimento)',
+                    'presets' => $atencao === null || $critico === null ? [['v' => $inicial, 'r' => 'normal']]
+                        : [['v' => max(0.0, floor($atencao) - 5), 'r' => 'normal'], ['v' => round(($atencao + $critico) / 2, 1), 'r' => 'atenção'],
+                           ['v' => min(100.0, ceil($critico) + 2), 'r' => 'crítico']]];
             case 'inflow':
                 return $base + ['nome' => 'Vazão que entra', 'equip' => 'Afluência principal', 'unidade' => 'm³/s', 'casas' => 1,
                     'abs_min' => 0.0, 'abs_max' => 5000.0, 'variacao' => 0.4, 'var_max' => 100.0, 'rotulo_var' => 'Variação por leitura (±)',
@@ -108,8 +142,11 @@ final class Sensores
             case 'ph':
                 return $base + ['nome' => 'pH da água', 'equip' => 'Sonda de pH', 'unidade' => 'pH', 'casas' => 2,
                     'abs_min' => 0.0, 'abs_max' => 14.0, 'variacao' => 0.02, 'var_max' => 1.0, 'rotulo_var' => 'Variação por leitura (±)',
-                    'limites' => 'Faixa ideal de 6,5 a 8,5; fora dela, atenção',
-                    'presets' => [['v' => 7.2, 'r' => 'neutro'], ['v' => 6.0, 'r' => 'ácido'], ['v' => 9.2, 'r' => 'alcalino']]];
+                    'limites' => isset($faixas['normal']) ? 'Faixa ideal de ' . self::txt((float) $faixas['normal']['min']) . ' a ' . self::txt((float) $faixas['normal']['max']) . '; fora dela, atenção' : 'Sem limite cadastrado',
+                    'presets' => !isset($faixas['normal']) ? [['v' => $inicial, 'r' => 'normal']]
+                        : [['v' => round(($faixas['normal']['min'] + $faixas['normal']['max']) / 2, 1), 'r' => 'ideal'],
+                           ['v' => max(0.0, round($faixas['normal']['min'] - 0.5, 2)), 'r' => 'ácido'],
+                           ['v' => min(14.0, round($faixas['normal']['max'] + 0.7, 2)), 'r' => 'alcalino']]];
             case 'water_temp':
                 return $base + ['nome' => 'Temperatura da água', 'equip' => 'Termômetro da água', 'unidade' => '°C', 'casas' => 1,
                     'abs_min' => 0.0, 'abs_max' => 45.0, 'variacao' => 0.05, 'var_max' => 2.0, 'rotulo_var' => 'Variação por leitura (±)',
@@ -118,7 +155,8 @@ final class Sensores
             default:                                                      // precipitation
                 return $base + ['nome' => 'Chuva', 'equip' => 'Pluviômetro basculante', 'unidade' => 'mm', 'casas' => 1,
                     'abs_min' => 0.0, 'abs_max' => 200.0, 'variacao' => 3.0, 'var_max' => 100.0, 'rotulo_var' => 'Chance de chuva por leitura (%)',
-                    'limites' => 'O servidor soma 24 h: atenção a partir de 20 mm, crítico a partir de 60 mm',
+                    'limites' => $atencao === null || $critico === null ? 'Sem limite cadastrado'
+                        : 'O servidor soma 24 h: atenção a partir de ' . self::txt($atencao) . ' mm, crítico a partir de ' . self::txt($critico) . ' mm',
                     'presets' => [['v' => 0, 'r' => 'sem chuva'], ['v' => 1, 'r' => 'chuva fraca'], ['v' => 5, 'r' => 'temporal']]];
         }
     }
@@ -168,11 +206,15 @@ final class Sensores
         return is_array($lista) && $lista !== [] ? $lista : null;
     }
 
-    /** @return array<string,mixed> um sensor pronto para simular */
-    private static function sensor(string $codigo, string $tipo, string $represaId, string $represa, ?string $equip, float $inicial): array
+    /**
+     * @param array<string,array{min:?float,max:?float}> $faixas limites do sensor
+     * @return array<string,mixed> um sensor pronto para simular
+     */
+    private static function sensor(string $codigo, string $tipo, string $represaId, string $represa, ?string $equip, float $inicial, array $faixas): array
     {
-        $t = self::tipo($tipo, $inicial);
+        $t = self::tipo($tipo, $inicial, $faixas);
         return array_merge($t, [
+            'faixas' => $faixas,
             'codigo' => $codigo, 'tipo' => $tipo, 'represa_id' => $represaId, 'represa' => $represa,
             'equip' => $equip ?? $t['equip'],
             'faixa_min' => $t['abs_min'], 'faixa_max' => $t['abs_max'],
@@ -194,9 +236,9 @@ final class Sensores
         $s['sensores'] = [];
 
         if ($cadastro === null) {
-            foreach (self::represas() as $represaId => [$represaNome, $valores, $codigos]) {
+            foreach (self::represas() as $represaId => [$represaNome, $valores, $codigos, $nivel]) {
                 foreach ($codigos as $tipo => $codigo) {
-                    $s['sensores'][$codigo] = self::sensor($codigo, $tipo, $represaId, $represaNome, null, (float) ($valores[$tipo] ?? 0.0));
+                    $s['sensores'][$codigo] = self::sensor($codigo, $tipo, $represaId, $represaNome, null, (float) ($valores[$tipo] ?? 0.0), self::limitesPadrao($tipo, $nivel));
                 }
             }
             $s['origem'] = 'padrao';
@@ -216,7 +258,7 @@ final class Sensores
             }
             // O pluviômetro começa sem chuva; os demais, do último valor gravado no banco.
             $inicial = $tipo === 'precipitation' ? 0.0 : (float) ($e['current_value'] ?? $padrao[$tipo]);
-            $s['sensores'][$codigo] = self::sensor($codigo, $tipo, (string) $e['reservoir_id'], (string) $e['reservoir_name'], (string) $e['name'], $inicial);
+            $s['sensores'][$codigo] = self::sensor($codigo, $tipo, (string) $e['reservoir_id'], (string) $e['reservoir_name'], (string) $e['name'], $inicial, (array) ($e['limits'] ?? []));
         }
 
         $s['origem'] = 'sistema';
@@ -229,14 +271,25 @@ final class Sensores
         return ['min' => null, 'max' => null, 'soma' => 0.0, 'n' => 0];
     }
 
-    /** Faixa da leitura: 'normal', 'attention' ou 'critical' (mesmos limites do banco). */
-    public static function classificar(string $tipo, float $valor): string
+    /**
+     * Faixa da leitura: 'normal', 'attention' ou 'critical', pelos limites do próprio
+     * sensor e pela mesma regra do sistema (StatusRules::classify). A chuva fica de
+     * fora: o limite dela vale para a soma de 24 h, que só o servidor conhece.
+     *
+     * @param array<string,mixed> $x sensor (usa tipo e faixas)
+     */
+    public static function classificar(array $x, float $valor): string
     {
-        if ($tipo === 'level') {
-            return $valor >= 90 ? 'critical' : ($valor >= 80 ? 'attention' : 'normal');
+        $f = $x['tipo'] === 'precipitation' ? [] : ($x['faixas'] ?? []);
+
+        if (isset($f['critical']['min']) && $valor >= $f['critical']['min']) {
+            return 'critical';
         }
-        if ($tipo === 'ph') {
-            return ($valor < 6.5 || $valor > 8.5) ? 'attention' : 'normal';
+        if (isset($f['attention']['min']) && $valor >= $f['attention']['min']) {
+            return 'attention';
+        }
+        if (isset($f['normal']['min'], $f['normal']['max']) && ($valor < $f['normal']['min'] || $valor > $f['normal']['max'])) {
+            return 'attention';
         }
         return 'normal';
     }
@@ -388,7 +441,7 @@ final class Sensores
         unset($r);
 
         // Registra no log só quando a faixa muda (uma linha por leitura encheria a tela).
-        $classe = self::classificar($x['tipo'], $valor);
+        $classe = self::classificar($x, $valor);
         if ($classe !== $x['classe']) {
             $texto = ['normal' => 'voltou ao normal', 'attention' => 'entrou em ATENÇÃO', 'critical' => 'entrou em CRÍTICO'][$classe];
             $this->log($s, $classe === 'normal' ? 'ok' : ($classe === 'attention' ? 'warn' : 'erro'),
@@ -629,7 +682,7 @@ final class Sensores
                 $detalhe = $this->resumoDoSensor($x, $this->disponibilidade($x)) + [
                     'config'    => ['faixa_min' => $x['faixa_min'], 'faixa_max' => $x['faixa_max'], 'variacao' => $x['variacao'], 'intervalo' => $x['intervalo']],
                     'abs_min'   => $x['abs_min'], 'abs_max' => $x['abs_max'], 'var_max' => $x['var_max'], 'rotulo_var' => $x['rotulo_var'],
-                    'limites'   => $x['limites'], 'presets' => $x['presets'], 'inicial' => $x['inicial'],
+                    'limites'   => $x['limites'], 'faixas' => $x['faixas'] ?? [], 'presets' => $x['presets'], 'inicial' => $x['inicial'],
                     'historico' => $x['hist'],
                     'sessao'    => ['n' => $r['n'], 'min' => $r['min'], 'max' => $r['max'], 'media' => $r['n'] > 0 ? round($r['soma'] / $r['n'], $x['casas']) : null],
                 ];
@@ -656,7 +709,7 @@ final class Sensores
             'code' => $x['codigo'], 'name' => $x['nome'], 'equip' => $x['equip'], 'type' => $x['tipo'],
             'unit' => $x['unidade'], 'casas' => $x['casas'], 'represa_id' => $x['represa_id'], 'represa' => $x['represa'],
             'estado' => $estado, 'modo' => $x['modo'], 'valor' => $x['valor'], 'falha' => $x['falha'],
-            'leitura' => $u === null ? null : ['seq' => $u['seq'], 'value' => $u['value'], 'ts' => $u['ts'], 'classificacao' => self::classificar($x['tipo'], $u['value'])],
+            'leitura' => $u === null ? null : ['seq' => $u['seq'], 'value' => $u['value'], 'ts' => $u['ts'], 'classificacao' => self::classificar($x, (float) $u['value'])],
         ];
     }
 
@@ -684,5 +737,11 @@ final class Sensores
     private function fmt($n, int $casas = 1): string
     {
         return number_format((float) $n, $casas, ',', '.');
+    }
+
+    /** Número sem casas desnecessárias: 78.0 -> "78"; 68.4 -> "68,4". */
+    private static function txt(float $n): string
+    {
+        return rtrim(rtrim(number_format($n, 2, ',', ''), '0'), ',');
     }
 }

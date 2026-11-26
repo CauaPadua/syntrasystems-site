@@ -6,14 +6,19 @@
  * mapa e a geração de alertas chamam classify(), então o mesmo nível nunca é
  * classificado de formas diferentes em telas diferentes.
  *
- * Os limites vêm da tabela operational_limits (carregados uma vez por
- * requisição em Support\Container). Os valores abaixo são o padrão usado no
- * modo demonstração, sem banco.
+ * De onde vêm os limites:
+ *   nível       da própria represa — a cota de alerta abre Atenção e a cota de
+ *               vertimento abre Crítico, porque cada represa verte em um nível;
+ *   pH e chuva  da tabela operational_limits (tela Configurações › Limites), iguais
+ *               para todas as represas e carregados uma vez por requisição em
+ *               Support\Container. Os valores abaixo são o padrão do modo
+ *               demonstração, sem banco.
  *
  * Regra de leitura de um limite:
  *   - "critical" e "attention" valem a partir do seu mínimo (>=);
  *   - "normal" com mínimo e máximo define uma faixa ideal; fora dela é atenção.
- * Exemplo com os valores padrão: nível 79,9% normal, 80% atenção, 90% crítico.
+ * Exemplo (Santa Clara, cotas 480 a 580 m, alerta 558 m, vertimento 565 m):
+ * nível 77,9% normal, 78% atenção, 85% crítico.
  */
 
 declare(strict_types=1);
@@ -27,10 +32,6 @@ final class StatusRules
 
     /** @var array<string,array<string,array{min:?float,max:?float}>> */
     private static array $limits = [
-        'level' => [
-            'attention' => ['min' => 80.0, 'max' => 90.0],
-            'critical'  => ['min' => 90.0, 'max' => null],
-        ],
         'ph' => [
             'normal' => ['min' => 6.5, 'max' => 8.5],
         ],
@@ -52,20 +53,42 @@ final class StatusRules
         }
     }
 
-    /** @return array<string,array<string,array{min:?float,max:?float}>> */
+    /** Limites iguais para todas as represas (pH e chuva). @return array<string,array<string,array{min:?float,max:?float}>> */
     public static function limits(): array
     {
         return self::$limits;
     }
 
     /**
+     * Limites de uma grandeza em uma represa.
+     *
+     * @param array<string,mixed> $reservoir para o nível, precisa das quatro cotas do cadastro
+     * @return array<string,array{min:?float,max:?float}>
+     */
+    public static function limitsFor(string $metric, array $reservoir): array
+    {
+        if ($metric !== 'level') {
+            return self::$limits[$metric] ?? [];
+        }
+
+        $atencao = ReservoirCurve::level($reservoir, (float) $reservoir['cota_alert_m']);
+        $critico = ReservoirCurve::level($reservoir, (float) $reservoir['cota_spill_m']);
+
+        return [
+            'attention' => ['min' => $atencao, 'max' => $critico],
+            'critical'  => ['min' => $critico, 'max' => null],
+        ];
+    }
+
+    /**
      * Classifica um valor de qualquer grandeza.
      *
+     * @param array<string,mixed> $reservoir obrigatória para o nível (ver limitsFor)
      * @return string 'normal' | 'attention' | 'critical'
      */
-    public static function classify(string $metric, float $value): string
+    public static function classify(string $metric, float $value, array $reservoir = []): string
     {
-        $faixas = self::$limits[$metric] ?? [];
+        $faixas = self::limitsFor($metric, $reservoir);
 
         $critico = $faixas['critical']['min'] ?? null;
         if ($critico !== null && $value >= $critico) {
@@ -86,9 +109,10 @@ final class StatusRules
         return 'normal';
     }
 
-    public static function fromLevel(?float $levelPct): string
+    /** @param array<string,mixed> $reservoir represa a que o nível pertence (cotas do cadastro) */
+    public static function fromLevel(?float $levelPct, array $reservoir): string
     {
-        return $levelPct === null ? self::NO_DATA : self::classify('level', $levelPct);
+        return $levelPct === null ? self::NO_DATA : self::classify('level', $levelPct, $reservoir);
     }
 
     public static function fromPh(?float $ph): string
@@ -98,14 +122,16 @@ final class StatusRules
 
     /* ------------------------------------------------ limites em vigor */
 
-    public static function levelAttention(): float
+    /** Nível (%) em que a represa entra em atenção: o da cota de alerta. */
+    public static function levelAttention(array $reservoir): float
     {
-        return (float) (self::$limits['level']['attention']['min'] ?? 80.0);
+        return self::limitsFor('level', $reservoir)['attention']['min'];
     }
 
-    public static function levelCritical(): float
+    /** Nível (%) em que a represa entra em crítico: o da cota de vertimento. */
+    public static function levelCritical(array $reservoir): float
     {
-        return (float) (self::$limits['level']['critical']['min'] ?? 90.0);
+        return self::limitsFor('level', $reservoir)['critical']['min'];
     }
 
     public static function phMin(): float
@@ -130,11 +156,13 @@ final class StatusRules
 
     /**
      * Texto do limite que um valor ultrapassou, para exibir no alerta.
-     * Ex.: "80%" para um nível em atenção, "6,5 – 8,5" para pH fora da faixa.
+     * Ex.: "78%" para um nível em atenção, "6,5 – 8,5" para pH fora da faixa.
+     *
+     * @param array<string,mixed> $reservoir obrigatória para o nível (ver limitsFor)
      */
-    public static function thresholdText(string $metric, string $classification): string
+    public static function thresholdText(string $metric, string $classification, array $reservoir = []): string
     {
-        $faixas = self::$limits[$metric] ?? [];
+        $faixas = self::limitsFor($metric, $reservoir);
 
         if (isset($faixas[$classification]['min'])) {
             return self::number((float) $faixas[$classification]['min']) . self::unit($metric);
@@ -173,17 +201,17 @@ final class StatusRules
     }
 
     /** Frase que acompanha o status do nível; usa os mesmos limites da classificação. */
-    public static function levelNote(string $status): string
+    public static function levelNote(string $status, array $reservoir): string
     {
         switch ($status) {
             case 'critical':
-                return 'Nível a partir de ' . self::pct(self::levelCritical()) . '; ação imediata recomendada';
+                return 'Nível a partir de ' . self::pct(self::levelCritical($reservoir)) . ' (cota de vertimento); ação imediata recomendada';
             case 'attention':
-                return 'Nível a partir de ' . self::pct(self::levelAttention()) . '; acompanhamento recomendado';
+                return 'Nível a partir de ' . self::pct(self::levelAttention($reservoir)) . ' (cota de alerta); acompanhamento recomendado';
             case self::NO_DATA:
                 return 'Aguardando a primeira leitura';
             default:
-                return 'Nível abaixo de ' . self::pct(self::levelAttention());
+                return 'Nível abaixo de ' . self::pct(self::levelAttention($reservoir)) . ' (cota de alerta)';
         }
     }
 

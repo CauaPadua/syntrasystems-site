@@ -673,7 +673,6 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
                 'volume'    => round($volume, 0),
                 'occupancy' => round($ocupacao, 1),
                 'variation' => round($volume - $anterior, 0),
-                'status'    => StatusRules::fromLevel($ocupacao),
             ];
         }
         return $linhas;
@@ -823,7 +822,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
     {
         $e = $this->escopo('r.id');
         $sql = "SELECT p.id, p.reservoir_id, p.name, p.type, p.period_label, p.period_start, p.period_end,
-                       p.generated_at, p.owner, p.icon
+                       p.generated_at, p.owner, p.note, p.icon
                   FROM reports p
                   JOIN reservoirs r ON r.id = p.reservoir_id
                  WHERE 1 = 1{$e['sql']}";
@@ -855,6 +854,7 @@ final class PdoMonitoringRepository implements MonitoringRepositoryInterface
                 'period_end'   => $l['period_end'] === null ? null : (string) $l['period_end'],
                 'generated_at' => Clock::iso(Clock::parse((string) $l['generated_at'])),
                 'owner'        => (string) $l['owner'],
+                'note'         => $l['note'] === null ? '' : (string) $l['note'],
                 'icon'         => (string) $l['icon'],
             ];
         }

@@ -423,7 +423,7 @@ body.aq-app {                                                      /* <body clas
   border-color: var(--aq-primary);
   box-shadow: 0 0 0 3px rgba(11, 91, 234, 0.16);                   /* anel de foco de 3px */
 }
-.aq-select:disabled { background-color: var(--aq-bg); color: var(--aq-text-muted); cursor: not-allowed; } /* campo desabilitado: fundo acinzentado e cursor de bloqueio */
+.aq-select:disabled, .aq-input:disabled { background-color: var(--aq-bg); color: var(--aq-text-muted); cursor: not-allowed; } /* campo desabilitado: fundo acinzentado e cursor de bloqueio */
 
 /* variante compacta: cabe no cabeçalho de um cartão, ao lado do título */
 .aq-select--sm {
@@ -1013,7 +1013,7 @@ body.aq-app {                                                      /* <body clas
 .aq-checklist__item + .aq-checklist__item { margin-top: 7px; }
 .aq-checklist__item:hover { border-color: #cfdcee; }
 .aq-checklist__item input { width: 17px; height: 17px; flex: none; accent-color: var(--aq-primary); }
-.aq-field[hidden], .aq-btn[hidden], .aq-note[hidden] { display: none; } /* o atributo hidden vence o display definido nessas classes */
+.aq-field[hidden], .aq-btn[hidden], .aq-note[hidden], [data-when][hidden] { display: none; } /* o atributo hidden vence o display definido nessas classes */
 .aq-checklist__item small { display: block; font-size: 0.78rem; color: var(--aq-text-secondary); }
 
 /* ------------------------------------------------- 15. modal e feedback */

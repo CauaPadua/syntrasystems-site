@@ -2,9 +2,11 @@
 /**
  * Aquapulse — pedidos de quem ainda não tem conta (tabela requests).
  *
- * Dois tipos, no mesmo lugar:
- *   access  colaborador de uma represa monitorada: ao ser aprovado, vira conta;
- *   demo    dono de uma represa: o administrador entra em contato e cadastra.
+ * Dois tipos, no mesmo lugar, e os dois já chegam com a senha da pessoa:
+ *   access  colaborador de uma represa monitorada: aprovar cria a conta;
+ *   demo    dono de uma represa: o administrador cadastra a empresa e a represa
+ *           e, ao aprovar, a conta de gestor é criada com a senha escolhida.
+ * Pedidos de demonstração anteriores à senha só podem ser marcados como atendidos.
  *
  * Quem usa:
  *   api/v1/public/request.php   create()       formulário público (solicitar.php)
@@ -69,15 +71,15 @@ final class RequestRepository
             'password_hash'  => null,
         ];
 
+        $senha = $f->password('password');                     // é com ela que a pessoa entra depois de aprovada
+        if (!$f->hasError('password') && ($dados['password_confirm'] ?? '') !== $senha) {
+            $f->error('password_confirm', 'As senhas não são iguais.');
+        }
+
         if ($type === 'access') {
             $campos['registration'] = $f->text('registration', 1, 40, 'Informe sua matrícula na empresa.');
             $campos['manager_name'] = $f->text('manager_name', 3, 120, 'Informe o nome do seu gestor direto.');
             $campos['message'] = $f->text('message', 10, 500, 'Explique por que precisa do acesso (10 a 500 caracteres).');
-
-            $senha = $f->password('password');
-            if (!$f->hasError('password') && ($dados['password_confirm'] ?? '') !== $senha) {
-                $f->error('password_confirm', 'As senhas não são iguais.');
-            }
         } else {
             $campos['phone'] = $f->pattern('phone', '/^(?=(?:\D*\d){8})[0-9 ()+\-]{8,30}$/', 'Informe um telefone com DDD.');
             $campos['city'] = $f->text('city', 2, 120, 'Informe a cidade.');
@@ -86,10 +88,7 @@ final class RequestRepository
         $f->check();
 
         $this->conferirLimites($type, $campos['email']);
-
-        if ($type === 'access') {
-            $campos['password_hash'] = password_hash($senha, PASSWORD_DEFAULT);
-        }
+        $campos['password_hash'] = password_hash($senha, PASSWORD_DEFAULT);
 
         $this->pdo->prepare(
             'INSERT INTO requests (type, name, email, phone, registration, company_name, reservoir_name, city,
@@ -109,23 +108,35 @@ final class RequestRepository
      */
     public function loginNotice(string $email, string $password): ?array
     {
+        // A mesma pessoa pode ter um pedido de acesso e um de demonstração, com senhas
+        // diferentes: vale o mais recente cuja senha confere.
         $stmt = $this->pdo->prepare(
             "SELECT status, password_hash, decision_note
                FROM requests
-              WHERE email = :email AND type = 'access' AND password_hash IS NOT NULL
+              WHERE email = :email AND password_hash IS NOT NULL
               ORDER BY id DESC
-              LIMIT 1"
+              LIMIT 3"
         );
         $stmt->execute(['email' => $email]);
-        $pedido = $stmt->fetch();
+        $pedidos = $stmt->fetchAll();
 
-        if (!password_verify($password, $pedido === false ? self::DUMMY_HASH : (string) $pedido['password_hash'])) {
+        $pedido = null;
+        foreach ($pedidos as $p) {
+            if (password_verify($password, (string) $p['password_hash'])) {
+                $pedido = $p;
+                break;
+            }
+        }
+        if ($pedidos === []) {
+            password_verify($password, self::DUMMY_HASH);                 // mesmo tempo de resposta de quem tem pedido
+        }
+        if ($pedido === null) {
             return null;
         }
 
         return $pedido['status'] === 'rejected'
-            ? ['code' => 'REQUEST_REJECTED', 'message' => 'Seu pedido de acesso foi recusado: ' . rtrim((string) $pedido['decision_note'], '.') . '.']
-            : ['code' => 'REQUEST_PENDING', 'message' => 'Seu pedido de acesso está em análise. Assim que for aprovado, você entra com esta mesma senha.'];
+            ? ['code' => 'REQUEST_REJECTED', 'message' => 'Seu pedido foi recusado: ' . rtrim((string) $pedido['decision_note'], '.') . '.']
+            : ['code' => 'REQUEST_PENDING', 'message' => 'Seu pedido está em análise. Assim que for aprovado, você entra com esta mesma senha.'];
     }
 
     /* ---------------------------------------------------------- administrador */
@@ -176,8 +187,9 @@ final class RequestRepository
     }
 
     /**
-     * Aprova um pedido de acesso: cria a conta com a senha que a pessoa escolheu
-     * e liga às represas. Tudo em uma transação: ou a conta nasce completa, ou nada muda.
+     * Aprova um pedido (de acesso ou de demonstração): cria a conta com a senha que a
+     * pessoa escolheu e liga às represas. Tudo em uma transação: ou a conta nasce
+     * completa, ou nada muda.
      *
      * @param array<string,mixed> $dados role, reservoirs
      */
@@ -190,10 +202,16 @@ final class RequestRepository
         $represas = $f->options('reservoirs', $contas->allReservoirIds(), 'Selecione ao menos uma represa.');
         $f->check();
 
-        $this->pdo->beginTransaction();
+        $propria = !$this->pdo->inTransaction();                  // dentro de uma transação maior (testes), usa a dela
+        if ($propria) {
+            $this->pdo->beginTransaction();
+        }
         try {
-            $pedido = $this->pendente($id, 'access');
+            $pedido = $this->pendente($id);
 
+            if ($pedido['password_hash'] === null) {
+                throw new ApiException('NO_PASSWORD', 'Este pedido foi enviado antes de o formulário pedir senha. Crie a conta em Configurações › Usuários e marque o pedido como atendido.', 409);
+            }
             if ($contas->emailExists($pedido['email'])) {
                 throw new ApiException('ACCOUNT_EXISTS', 'Já existe uma conta com este e-mail. Ajuste a conta em Configurações › Usuários e recuse este pedido.', 409);
             }
@@ -204,22 +222,33 @@ final class RequestRepository
             ], $pedido['password_hash']);
 
             $nomes = $this->nomesDasRepresas($represas);
-            $this->decidir($id, 'approved', Guard::roleLabel($role) . ' em ' . implode(', ', $nomes), $adminId);
-            $this->pdo->commit();
+            $this->decidir($id, 'approved', 'Conta criada: ' . Guard::roleLabel($role) . ' em ' . implode(', ', $nomes), $adminId);
+            if ($propria) {
+                $this->pdo->commit();
+            }
         } catch (\Throwable $e) {
-            $this->pdo->rollBack();
+            if ($propria) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
     }
 
-    /** Marca um pedido de demonstração como atendido. @param array<string,mixed> $dados note (opcional) */
+    /**
+     * Marca como atendido um pedido de demonstração que chegou sem senha (anterior a
+     * ela). Com senha, o caminho é aprovar, que cria a conta.
+     *
+     * @param array<string,mixed> $dados note (opcional)
+     */
     public function conclude(int $id, array $dados, int $adminId): void
     {
         $f = new Fields($dados);
         $nota = $f->text('note', 0, 300, 'Use até 300 caracteres.');
         $f->check();
 
-        $this->pendente($id, 'demo');
+        if ($this->pendente($id, 'demo')['password_hash'] !== null) {
+            throw new ApiException('USE_APPROVE', 'Este pedido tem senha: aprove-o para criar a conta do dono da represa.', 409);
+        }
         $this->decidir($id, 'approved', $nota === '' ? 'Contato feito' : $nota, $adminId);
     }
 
@@ -319,6 +348,7 @@ final class RequestRepository
         // LEFT JOIN: o pedido aparece mesmo sem conta com o e-mail dele e mesmo sem resposta
         return 'SELECT p.id, p.type, p.status, p.name, p.email, p.phone, p.registration, p.company_name, p.reservoir_name,
                        p.city, p.manager_name, p.message, p.decided_at, p.decision_note, p.created_at,
+                       p.password_hash IS NOT NULL AS has_password,
                        a.name AS decided_by, c.id AS account_id
                   FROM requests p
                   LEFT JOIN users a ON a.id = p.decided_by
@@ -336,7 +366,7 @@ final class RequestRepository
             'type'           => $type,
             'type_label'     => self::TYPES[$type] ?? $type,
             'status'         => $status,
-            'status_label'   => $type === 'demo' && $status === 'approved' ? 'Atendido' : (self::STATUS[$status] ?? $status),
+            'status_label'   => $type === 'demo' && $status === 'approved' && $l['account_id'] === null ? 'Atendido' : (self::STATUS[$status] ?? $status),
             'name'           => (string) $l['name'],
             'email'          => (string) $l['email'],
             'phone'          => $l['phone'],
@@ -347,6 +377,7 @@ final class RequestRepository
             'manager_name'   => $l['manager_name'],
             'message'        => (string) $l['message'],
             'has_account'    => $l['account_id'] !== null,
+            'has_password'   => (bool) $l['has_password'],          // pode ser aprovado (a conta nasce com esta senha)
             'created_at'     => Clock::dateTime(Clock::parse((string) $l['created_at'])),
             'decided_at'     => $l['decided_at'] === null ? null : Clock::dateTime(Clock::parse((string) $l['decided_at'])),
             'decided_by'     => $l['decided_by'],

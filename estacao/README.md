@@ -78,11 +78,11 @@ Para ver o pacote de verdade: `php estacao/estacao.php --represa=santa-clara --p
 ESTAÇÃO      REPRESA        NÍVEL   ENTRADA     SAÍDA     pH   ÁGUA   CHUVA   ENVIO
                                 %      m³/s      m³/s            °C      mm
 -- ciclo 12 · 13:02:31
-EST-RSC-001  Santa Clara     92,0      56,1      49,7   7,20   22,8     0,0   6 gravadas
-     Nível do reservatório 92,0 % [CRÍTICO]  ->  alerta ALT-1001
+EST-RSC-001  Santa Clara     87,0      56,1      49,7   7,20   22,8     0,0   6 gravadas
+     Nível do reservatório 87,0 % [CRÍTICO]  ->  alerta ALT-1001
 EST-RRV-002  Rio Verde       -5,0      44,2      39,3   7,44   22,1     5,0   5 gravadas, 1 RECUSADA
      RECUSADA: SEN-NIV-11 = -5,00 -> 422 VALUE_OUT_OF_RANGE: Valor fora da faixa aceita...
-EST-RSA-003  Serra Azul      77,3      30,6        ---   7,29   21,9     0,0   5 gravadas
+EST-RSA-003  Serra Azul      69,3      30,6        ---   7,29   21,9     0,0   5 gravadas
      sem leitura: SEN-VAZ-22: sem resposta (falha no sensor)
      ALERTA ALT-1003: SEN-VAZ-22 está sem enviar leituras há mais de 2 min (Equipamento sem leituras)
 ```

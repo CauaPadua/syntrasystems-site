@@ -4,7 +4,7 @@
  *
  *   CREATE  create()   INSERT INTO sensors ...
  *   READ    all() / find()   SELECT na view vw_ultimas_medicoes
- *   UPDATE  update()   UPDATE sensors SET ... WHERE id = ...
+ *   UPDATE  update()   UPDATE sensors SET status = ... WHERE id = ...  (só a situação)
  *   DELETE  delete()   DELETE FROM sensors WHERE id = ...
  *
  * As regras de preenchimento ficam em validar(); o banco reforça as mesmas
@@ -92,7 +92,7 @@ final class EquipmentRepository
      */
     public function create(array $dados, array $reservoirIds): array
     {
-        $campos = $this->validar($dados, $reservoirIds, true);
+        $campos = $this->validar($dados, $reservoirIds);
 
         if ($this->find($campos['id']) !== null) {
             throw new ApiException('VALIDATION_ERROR', 'Verifique os campos informados.', 422, [
@@ -112,10 +112,11 @@ final class EquipmentRepository
     /* -------------------------------------------------------------- UPDATE */
 
     /**
-     * Altera nome, local, grandeza, represa e situação. O código não muda: é a
-     * identificação que o equipamento usa ao enviar leituras.
+     * Muda a situação (ativo, em manutenção, desativado). Os demais dados ficam como
+     * foram cadastrados: o código e a grandeza identificam as leituras que o
+     * equipamento já enviou. Para corrigir um deles, exclua e cadastre de novo.
      *
-     * @param array<string,mixed> $dados
+     * @param array<string,mixed> $dados só "status" é usado
      * @param array<int,string>   $reservoirIds
      */
     public function update(string $id, array $dados, array $reservoirIds): array
@@ -125,15 +126,14 @@ final class EquipmentRepository
             throw new ApiException('EQUIPMENT_NOT_FOUND', 'Equipamento não encontrado.', 404);
         }
 
-        $campos = $this->validar(['id' => $id] + $dados, $reservoirIds, false);
+        $status = is_string($dados['status'] ?? null) ? trim($dados['status']) : '';
+        if (!isset(EquipmentRules::STATUS[$status])) {
+            throw new ApiException('VALIDATION_ERROR', 'Verifique os campos informados.', 422, [
+                'status' => 'Selecione a situação do equipamento.',
+            ]);
+        }
 
-        $stmt = $this->pdo->prepare(
-            'UPDATE sensors
-                SET reservoir_id = :reservoir_id, name = :name, location = :location,
-                    type = :type, status = :status
-              WHERE id = :id'
-        );
-        $stmt->execute($campos);
+        $this->pdo->prepare('UPDATE sensors SET status = :status WHERE id = :id')->execute(['status' => $status, 'id' => $id]);
 
         return $this->find($id);
     }
@@ -167,7 +167,7 @@ final class EquipmentRepository
      * @param array<int,string>   $reservoirIds
      * @return array{id:string,reservoir_id:string,name:string,location:string,type:string,status:string}
      */
-    private function validar(array $dados, array $reservoirIds, bool $novo): array
+    private function validar(array $dados, array $reservoirIds): array
     {
         $texto = static fn (string $chave): string => is_string($dados[$chave] ?? null) ? trim($dados[$chave]) : '';
 
@@ -182,7 +182,7 @@ final class EquipmentRepository
 
         $erros = [];
 
-        if ($novo && !preg_match('/^[A-Z0-9][A-Z0-9-]{2,29}$/', $campos['id'])) {
+        if (!preg_match('/^[A-Z0-9][A-Z0-9-]{2,29}$/', $campos['id'])) {
             $erros['id'] = 'Use de 3 a 30 caracteres: letras, números e hífen (ex.: SEN-NIV-04).';
         }
         if (mb_strlen($campos['name'], 'UTF-8') < 3 || mb_strlen($campos['name'], 'UTF-8') > 120) {

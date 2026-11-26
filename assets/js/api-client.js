@@ -151,6 +151,7 @@ window.AqApi = (function () {
     saveCompany:     function (action, fields) { return post('/companies.php', Object.assign({ action: action }, fields)); },
     saveReservoir:   function (action, fields) { return post('/reservoirs.php', Object.assign({ action: action }, fields)); },
     saveAccount:     function (action, fields) { return post('/users.php', Object.assign({ action: action }, fields)); },
+    saveLimits:      function (fields)         { return post('/limits.php', fields); },
     requestAction:   function (action, fields) { return post('/requests.php', Object.assign({ action: action }, fields)); },
 
     /** Endereço de download do CSV de um relatório. */

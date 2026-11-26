@@ -5,8 +5,8 @@
  * da sessão. Dados de GET api/v1/settings.php, desenhados por
  * assets/js/pages/settings.js.
  *
- * Só o administrador vê as contas e os botões de cadastro (empresa, represa e
- * conta); a API confere o cargo de novo a cada gravação.
+ * Só o administrador vê as contas e os botões de cadastro (empresa, represa,
+ * limites e conta); a API confere o cargo de novo a cada gravação.
  */
 
 declare(strict_types=1);
@@ -93,16 +93,32 @@ $sessao = aq_session_config();                                            // mes
 
 <!-- ================================================= aba: Limites ======== -->
 <div class="aq-tabpanel" id="painel-limites" role="tabpanel" aria-labelledby="tab-limites" hidden>
-  <article class="aq-card">
-    <?php echo aq_card_head(['title' => 'Limites operacionais em vigor', 'tip' => 'Valores lidos da tabela operational_limits.']); ?>
-    <div data-limits></div>
-    <div class="aq-note" style="margin-top:14px">
-      <?php aq_the_icon('info'); ?>
-      <span>Estes limites classificam os valores em todas as telas (Normal, Atenção, Crítico) e decidem quando um
-      alerta é aberto. Ficam na tabela <code>operational_limits</code> do banco e são carregados pelo arquivo
-      <code>backend/database/seeds/004_limits.sql</code>.</span>
-    </div>
-  </article>
+  <div class="aq-grid aq-grid--2-1">
+    <article class="aq-card">
+      <?php echo aq_card_head(['title' => 'Nível — limites de cada represa',
+                               'tip' => 'Calculados das cotas do cadastro: a de alerta abre Atenção e a de vertimento abre Crítico.']); ?>
+      <?php echo aq_table_open('Limites de nível de cada represa'); ?>
+      <table class="aq-table">
+        <thead>
+          <tr><th scope="col">Represa</th><th scope="col">Atenção a partir de</th><th scope="col">Crítico a partir de</th><?php if ($podeCadastrar): ?><th scope="col"><span class="aq-visually-hidden">Editar</span></th><?php endif; ?></tr>
+        </thead>
+        <tbody data-level-limits></tbody>
+      </table>
+      <?php echo aq_table_close(); ?>
+    </article>
+
+    <article class="aq-card">
+      <?php echo aq_card_head(['title' => 'pH e chuva — todas as represas', 'tip' => 'Valores lidos da tabela operational_limits.',
+                               'actions' => $botao('data-edit-limits', 'edit', 'Alterar')]); ?>
+      <div data-limits></div>
+    </article>
+  </div>
+
+  <div class="aq-note" style="margin-top:14px">
+    <?php aq_the_icon('info'); ?>
+    <span>Estes limites classificam os valores em todas as telas (Normal, Atenção, Crítico) e decidem quando um
+    alerta é aberto. Uma mudança vale a partir da próxima leitura; os alertas já abertos continuam abertos.</span>
+  </div>
 </div>
 
 <!-- ================================================= aba: Usuários ======= -->
@@ -175,7 +191,7 @@ $lista = static function (string $form, string $nome, string $rotulo, array $opc
         </div>
 <?php };
 
-/** Abertura e fechamento comuns das três janelas de cadastro. */
+/** Abertura e fechamento comuns das janelas de cadastro. */
 $abrir = static function (string $id, string $icone, bool $larga = false): void { ?>
 <div class="aq-modal" id="modal-<?php aq_e($id); ?>" role="dialog" aria-modal="true" aria-labelledby="modal-<?php aq_e($id); ?>-titulo" hidden>
   <div class="aq-modal__box<?php echo $larga ? ' aq-modal__box--wide' : ''; ?>">
@@ -239,6 +255,27 @@ $abrir('represa', 'waves', true);
       <p class="aq-card__sub" data-reservoir-hint></p>
 <?php
 $fechar('represa');
+
+/* --------------------------------------------------------- janela: limites */
+$abrir('limites', 'sliders');
+?>
+      <p class="aq-field__label">pH — faixa ideal</p>
+      <div class="aq-grid aq-grid--2">
+        <?php
+        $campo('limites', 'ph_min', 'Mínimo', 'text', 'Ex.: 6,5', 'inputmode="decimal"');
+        $campo('limites', 'ph_max', 'Máximo', 'text', 'Ex.: 8,5', 'inputmode="decimal"');
+        ?>
+      </div>
+      <p class="aq-field__label">Chuva acumulada em 24 h (mm)</p>
+      <div class="aq-grid aq-grid--2">
+        <?php
+        $campo('limites', 'rain_attention', 'Atenção a partir de', 'text', 'Ex.: 20', 'inputmode="decimal"');
+        $campo('limites', 'rain_critical', 'Crítico a partir de', 'text', 'Ex.: 60', 'inputmode="decimal"');
+        ?>
+      </div>
+      <p class="aq-card__sub">Vale para todas as represas, a partir da próxima leitura.</p>
+<?php
+$fechar('limites');
 
 /* ----------------------------------------------------------- janela: conta */
 $abrir('conta', 'user-cog');

@@ -106,7 +106,8 @@ interface MonitoringRepositoryInterface
     public function maintenances(string $reservoirId): array;
 
     /**
-     * Limites operacionais em vigor, no formato usado por StatusRules::configure().
+     * Limites operacionais de pH e chuva em vigor, no formato usado por
+     * StatusRules::configure(). Os do nível saem das cotas de cada represa.
      *
      * @return array<string,array<string,array{min:?float,max:?float}>>
      */

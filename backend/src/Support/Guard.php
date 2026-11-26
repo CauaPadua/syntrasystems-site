@@ -40,6 +40,7 @@ final class Guard
         'reports.create'  => ['admin', 'manager'],   // gerar relatórios
         'requests.manage' => ['admin'],              // aprovar ou recusar pedidos
         'registry.edit'   => ['admin'],              // cadastrar empresas, represas e contas
+        'limits.edit'     => ['admin'],              // mudar os limites de pH e de chuva
     ];
 
     /**

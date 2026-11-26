@@ -169,10 +169,12 @@ function aq_campo_senha(string $nome, string $rotulo, string $exemplo): void
                 <p class="field__error" id="erro-message" data-error-for="message" hidden></p>
               </div>
 
-              <?php if (!$demo) {
-                  aq_campo_senha('password', 'Crie uma senha', 'Mín. 8 caracteres');
-                  aq_campo_senha('password_confirm', 'Repita a senha', 'A mesma senha');
-              } ?>
+              <?php
+              aq_campo_senha('password', 'Crie uma senha', 'Mín. 8 caracteres');
+              aq_campo_senha('password_confirm', 'Repita a senha', 'A mesma senha');
+              ?>
+              <p class="request-grid__full request-hint">Com este e-mail e esta senha você entra no sistema depois que o
+              pedido for aprovado<?php echo $demo ? ' e a sua represa estiver cadastrada' : ''; ?>.</p>
             </div>
 
             <?php /* armadilha para robôs: fica fora da tela e da navegação por teclado */ ?>
@@ -219,16 +221,17 @@ function aq_campo_senha(string $nome, string $rotulo, string $exemplo): void
 
           <p class="request-done">
             <?php if ($demo): ?>
-              Nossa equipe entra em contato pelo telefone ou pelo e-mail informado para apresentar o sistema.
-              Depois disso, cadastramos a sua represa e criamos o seu acesso de gestor.
+              Nossa equipe entra em contato pelo telefone ou pelo e-mail informado para apresentar o sistema e
+              cadastrar a sua represa. Quando o pedido for aprovado, entre com o seu e-mail e a senha que você acabou
+              de criar. Até lá, a tela de login informa se o pedido ainda está em análise.
             <?php else: ?>
               O administrador vai conferir seus dados com a empresa. Quando o acesso for liberado, entre com o seu e-mail e a
               senha que você acabou de criar. Até lá, a tela de login informa se o pedido ainda está em análise.
             <?php endif; ?>
           </p>
 
-          <a class="btn btn--primary btn--block" href="<?php echo $demo ? 'index.php' : 'login.php'; ?>">
-            <span><?php echo $demo ? 'Voltar para o site' : 'Ir para o login'; ?></span>
+          <a class="btn btn--primary btn--block" href="login.php">
+            <span>Ir para o login</span>
           </a>
         </div>
 

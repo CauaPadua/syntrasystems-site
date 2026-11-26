@@ -3,7 +3,8 @@
  * Página: dashboard/configuracoes.php
  * API: GET  api/v1/settings.php      empresas, represas, limites e contas
  *      POST api/v1/companies.php     cadastrar e editar empresa
- *      POST api/v1/reservoirs.php    cadastrar e editar represa
+ *      POST api/v1/reservoirs.php    cadastrar e editar represa (inclusive os limites de nível)
+ *      POST api/v1/limits.php        mudar os limites de pH e de chuva
  *      POST api/v1/users.php         cadastrar e editar conta
  *
  * Os botões e as janelas de cadastro só existem na página do administrador; a
@@ -19,11 +20,21 @@
   var companies = [];           // empresas com a lista de represas de cada uma
   var selectedCompany = null;   // empresa aberta nos cards de detalhe
   var users = [];               // contas de acesso (só administrador)
+  var limitValues = {};         // limites de pH e chuva em números, para o formulário
   var canEdit = false;          // informado pela API: pode cadastrar?
 
   var formCompany = document.getElementById('form-empresa');      // null para quem não é administrador
   var formReservoir = document.getElementById('form-represa');
+  var formLimits = document.getElementById('form-limites');
   var formAccount = document.getElementById('form-conta');
+
+  // Dados de um pedido de demonstração, quando o administrador chega pelo botão
+  // "Cadastrar empresa e represa deste pedido" (dashboard/solicitacoes.php).
+  var pedido = null;
+  try {
+    pedido = JSON.parse(sessionStorage.getItem('aq.pedido') || 'null');
+    sessionStorage.removeItem('aq.pedido');
+  } catch (erro) { pedido = null; }
 
   /* ------------------------------------------------------------ abas */
 
@@ -106,8 +117,24 @@
     }).join('') || '<p class="aq-card__sub">Nenhuma represa vinculada a esta empresa.</p>';
   }
 
-  /** Limites em vigor (aba "Limites operacionais"). */
+  /** Um limite de nível: a porcentagem e, embaixo, a cota de onde ela sai. */
+  function limitCell(pct, origem, cota) {
+    return '<strong>' + F.num(pct, 1) + '%</strong><span class="aq-card__sub" style="display:block;white-space:nowrap">'
+      + origem + ': ' + F.num(cota, 1) + ' m</span>';
+  }
+
+  /** Limites em vigor (aba "Limites operacionais"): nível por represa; pH e chuva para todas. */
   function renderLimits(limits) {
+    var represas = companies.reduce(function (lista, c) { return lista.concat(c.reservoirs); }, []);
+
+    document.querySelector('[data-level-limits]').innerHTML = represas.map(function (r) {
+      return '<tr><td>' + S.esc(r.name) + '</td>'
+        + '<td>' + limitCell(r.level_attention, 'cota de alerta', r.cota_alert_m) + '</td>'
+        + '<td>' + limitCell(r.level_critical, 'cota de vertimento', r.cota_spill_m) + '</td>'
+        + (canEdit ? '<td><button class="aq-btn aq-btn--ghost aq-btn--sm" type="button" data-edit-reservoir="' + S.esc(r.id) + '">Editar</button></td>' : '')
+        + '</tr>';
+    }).join('') || '<tr><td colspan="4">Nenhuma represa vinculada à sua conta.</td></tr>';
+
     document.querySelector('[data-limits]').innerHTML = limits.map(function (l) {
       return '<div class="aq-form-row"><span>' + S.esc(l.label) + '</span><strong>' + S.esc(l.value) + '</strong></div>';
     }).join('');
@@ -135,6 +162,7 @@
     return Api.settings().then(function (r) {
       companies = r.data.companies;
       users = r.data.users;
+      limitValues = r.data.limit_values;
       canEdit = r.data.can_edit;
 
       // listas fixas dos formulários (só na primeira carga)
@@ -176,7 +204,7 @@
 
   /**
    * Abre uma janela de cadastro, vazia ou preenchida com um registro.
-   * @param {string} id     empresa, represa ou conta
+   * @param {string} id     empresa, represa, limites ou conta
    * @param {object} values valores dos campos (chave = nome do campo)
    */
   function openForm(id, title, form, values) {
@@ -205,14 +233,18 @@
     return promise.then(function () {
       S.closeModal('modal-' + id);
       S.notify(title, text, 'info');
-      return load();
+      return load().then(function () { return true; });
     }).catch(function (err) {
       if (err.code === 'VALIDATION_ERROR') {
         S.showErrors(form, err.details);
       } else {
         S.notify('Não foi possível salvar', err.message, 'error');
       }
-    }).then(function () { botao.disabled = false; });
+      return false;
+    }).then(function (gravou) {
+      botao.disabled = false;
+      return gravou;                                              // true quando gravou
+    });
   }
 
   /** Campos do formulário em um objeto (sem botões nem caixas de seleção). */
@@ -228,39 +260,99 @@
 
   /* ------------------------------------------------------------ empresa */
 
-  function openCompany(c) {
+  /** @param {object} [preset] valores iniciais de um cadastro novo */
+  function openCompany(c, preset) {
     editing.company = c ? c.id : null;
-    openForm('empresa', c ? 'Editar ' + c.name : 'Nova empresa', formCompany, c || { status: 'active' });
+    openForm('empresa', c ? 'Editar ' + c.name : 'Nova empresa', formCompany, c || preset || { status: 'active' });
   }
 
   if (formCompany) formCompany.addEventListener('submit', function (e) {
     e.preventDefault();
+    var nova = !editing.company;
+    var gravada = null;
+
     submit('empresa', formCompany,
       Api.saveCompany(editing.company ? 'update' : 'create', Object.assign(values(formCompany), { id: editing.company || '' }))
-        .then(function (r) { selectedCompany = { id: r.data.id }; }),   // a empresa gravada fica selecionada
-      editing.company ? 'Empresa atualizada' : 'Empresa cadastrada', 'Os dados foram gravados no banco.');
+        .then(function (r) {
+          gravada = r.data.id;
+          selectedCompany = { id: r.data.id };                    // a empresa gravada fica selecionada
+        }),
+      editing.company ? 'Empresa atualizada' : 'Empresa cadastrada', 'Os dados foram gravados no banco.')
+      .then(function (gravou) {
+        if (gravou && nova && pedido) openReservoirFromRequest(gravada);   // do pedido: segue para a represa
+      });
   });
 
   /* ------------------------------------------------------------ represa */
 
-  function openReservoir(r) {
+  /** @param {object} [preset] valores iniciais de um cadastro novo */
+  function openReservoir(r, preset) {
     editing.reservoir = r ? r.id : null;
     formReservoir.elements.company_id.innerHTML = options(companies, 'id', 'name');
     document.querySelector('[data-reservoir-hint]').textContent = r
-      ? 'Mudar a capacidade ou as cotas vale para as próximas leituras; o histórico já gravado não muda.'
+      ? 'As cotas de alerta e de vertimento são os limites de Atenção e Crítico do nível. Mudar a capacidade ou as cotas vale para as próximas leituras; o histórico já gravado não muda.'
       : 'Depois de salvar: cadastre os sensores em Equipamentos, ligue as contas na aba Usuários e, por fim, feche as janelas do simulador e da estação e abra o iniciar.bat de novo, para lerem os sensores novos.';
     openForm('represa', r ? 'Editar ' + r.name : 'Nova represa', formReservoir,
-      r || { company_id: selectedCompany ? selectedCompany.id : '' });
+      r || preset || { company_id: selectedCompany ? selectedCompany.id : '' });
   }
 
   if (formReservoir) formReservoir.addEventListener('submit', function (e) {
     e.preventDefault();
     var dados = values(formReservoir);
+    var nova = !editing.reservoir;
+
     submit('represa', formReservoir,
       Api.saveReservoir(editing.reservoir ? 'update' : 'create', Object.assign(dados, { id: editing.reservoir || '' }))
         .then(function () { selectedCompany = { id: dados.company_id }; }),
       editing.reservoir ? 'Represa atualizada' : 'Represa cadastrada',
-      editing.reservoir ? 'Os dados foram gravados no banco.' : 'Ela aparece como "Sem leituras" até o primeiro equipamento transmitir.');
+      editing.reservoir ? 'Os dados foram gravados no banco.' : 'Ela aparece como "Sem leituras" até o primeiro equipamento transmitir.')
+      .then(function (gravou) {
+        if (!(gravou && nova && pedido)) return;
+
+        // do pedido: volta para Solicitações com o pedido aberto, pronto para aprovar
+        try { sessionStorage.setItem('aq.abrirPedido', String(pedido.id)); } catch (erro) { /* abre a lista */ }
+        S.notify('Represa cadastrada', 'Voltando ao pedido nº ' + pedido.id + ' para aprovar a conta do dono.', 'info');
+        window.setTimeout(function () { window.location.href = 'solicitacoes.php'; }, 1500);
+      });
+  });
+
+  /* ------------------------------------------- cadastro vindo de um pedido */
+
+  /** "Represa Santa Clara" e "santa clara" contam como o mesmo nome. */
+  function mesmoNome(a, b) {
+    var limpar = function (t) {
+      return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .replace(/\b(represa|barragem|usina|reservatorio)\b/g, '').replace(/\s+/g, ' ').trim();
+    };
+    return limpar(a) !== '' && limpar(a) === limpar(b);
+  }
+
+  function openReservoirFromRequest(companyId) {
+    openReservoir(null, { company_id: companyId, name: pedido.reservoir, city: pedido.city });
+  }
+
+  /** Empresa já cadastrada: vai direto para a represa. Senão, começa pela empresa. */
+  function followRequest() {
+    if (!pedido || !formCompany) return;
+
+    var empresa = companies.filter(function (c) { return mesmoNome(c.name, pedido.company); })[0];
+    if (empresa) {
+      selectedCompany = empresa;
+      renderCompanies();
+      renderCompanyDetail();
+      openReservoirFromRequest(empresa.id);
+    } else {
+      openCompany(null, { name: pedido.company, manager: pedido.manager, status: 'active' });
+    }
+    S.notify('Cadastro do pedido nº ' + pedido.id, 'Os campos já vêm com os dados que o dono informou. Complete e salve.', 'info');
+  }
+
+  /* ------------------------------------------------------------ limites */
+
+  if (formLimits) formLimits.addEventListener('submit', function (e) {
+    e.preventDefault();
+    submit('limites', formLimits, Api.saveLimits(values(formLimits)),
+      'Limites atualizados', 'Valem a partir da próxima leitura.');
   });
 
   /* -------------------------------------------------------------- conta */
@@ -309,6 +401,7 @@
     if (e.target.closest('[data-new-company]')) { openCompany(null); return; }
     if (e.target.closest('[data-edit-company]') && selectedCompany) { openCompany(selectedCompany); return; }
     if (e.target.closest('[data-new-account]')) { openAccount(null); return; }
+    if (e.target.closest('[data-edit-limits]')) { openForm('limites', 'Limites de pH e chuva', formLimits, limitValues); return; }
 
     if (e.target.closest('[data-new-reservoir]')) {
       if (companies.length) { openReservoir(null); } else { S.notify('Cadastre uma empresa primeiro', 'Toda represa pertence a uma empresa.', 'error'); }
@@ -316,8 +409,10 @@
     }
 
     var represa = e.target.closest('[data-edit-reservoir]');
-    if (represa && selectedCompany) {
-      openReservoir(selectedCompany.reservoirs.filter(function (r) { return r.id === represa.getAttribute('data-edit-reservoir'); })[0]);
+    if (represa) {                                                  // da lista da empresa ou da tabela de limites (todas as empresas)
+      companies.forEach(function (c) {
+        c.reservoirs.forEach(function (r) { if (r.id === represa.getAttribute('data-edit-reservoir')) openReservoir(r); });
+      });
       return;
     }
 
@@ -344,5 +439,5 @@
 
   S.onReload(load);
 
-  load();
+  load().then(followRequest);
 })();

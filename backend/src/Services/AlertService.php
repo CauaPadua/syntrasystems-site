@@ -7,6 +7,12 @@
  * aberto para aquela grandeza na represa, um alerta é criado; se já há, ele é
  * atualizado (e agravado, quando o valor passa de atenção para crítico).
  *
+ * Um alerta resolvido não reabre sozinho: enquanto o valor continua fora da faixa,
+ * o problema é o mesmo que alguém já tratou. Um alerta novo só nasce depois que o
+ * valor volta ao normal (normalized_at) e sai de novo, ou se ele piora (atenção ->
+ * crítico). Do mesmo jeito, um equipamento parado só ganha alerta novo se voltar
+ * a transmitir e parar outra vez.
+ *
  * Há também o alerta de COMUNICAÇÃO: um equipamento ativo que já transmitiu e
  * ficou mais de EquipmentRules::ONLINE_WINDOW sem nenhuma leitura aceita
  * (sensor com defeito, cabo rompido, sem energia) ganha o alerta "Equipamento
@@ -22,6 +28,7 @@ namespace Aquapulse\Services;
 
 use Aquapulse\Support\ApiException;
 use Aquapulse\Support\Clock;
+use Aquapulse\Support\Sequence;
 use DateTimeImmutable;
 use PDO;
 
@@ -50,35 +57,42 @@ final class AlertService
      */
     public function evaluate(string $reservoirId, ?string $sensorId, string $metric, float $value, DateTimeImmutable $when): array
     {
-        $classificacao = StatusRules::classify($metric, $value);
+        $represa = $metric === 'level' ? $this->cotas($reservoirId) : [];       // os limites do nível são os da represa
+        $classificacao = StatusRules::classify($metric, $value, $represa);
 
         if ($classificacao === 'normal') {
+            $this->normalizou($reservoirId, $metric, $when);
             return ['classification' => 'normal', 'alert_id' => null];
         }
 
         $aberto = $this->alertaAberto($reservoirId, $metric);
 
         if ($aberto === null) {
-            $id = $this->abrir($reservoirId, $sensorId, $metric, $value, $classificacao, $when);
+            if ($this->jaTratado($reservoirId, $metric, $classificacao)) {
+                return ['classification' => $classificacao, 'alert_id' => null];   // resolvido e ainda sem voltar ao normal
+            }
+            $id = $this->abrir($reservoirId, $sensorId, $metric, $value, $classificacao, $represa, $when);
             return ['classification' => $classificacao, 'alert_id' => $id];
         }
 
         // Já existe alerta em aberto: atualiza o valor e só agrava, nunca rebaixa
-        // sozinho — quem encerra o alerta é o operador.
+        // sozinho — quem encerra o alerta é o operador. O limite mostrado é o que está
+        // em vigor (ele pode ter mudado); o da abertura fica na linha do tempo.
         $agravou = $classificacao === 'critical' && $aberto['severity'] !== 'critical';
+        $gravidade = $agravou ? 'critical' : (string) $aberto['severity'];
 
         $stmt = $this->pdo->prepare(
             'UPDATE alerts
                 SET current_value = :valor, severity = :sev, title = :titulo,
-                    threshold = :limite, threshold_detail = :detalhe
+                    threshold = :limite, threshold_detail = :detalhe, normalized_at = NULL
               WHERE id = :id'
         );
         $stmt->execute([
             'valor'   => $this->formatar($metric, $value),
-            'sev'     => $agravou ? 'critical' : $aberto['severity'],
+            'sev'     => $gravidade,
             'titulo'  => $agravou ? $this->titulo($metric, 'critical') : $aberto['title'],
-            'limite'  => $agravou ? StatusRules::thresholdText($metric, 'critical') : $aberto['threshold'],
-            'detalhe' => $agravou ? $this->detalheDoLimite($metric, 'critical') : $aberto['threshold_detail'],
+            'limite'  => StatusRules::thresholdText($metric, $gravidade, $represa),
+            'detalhe' => $this->detalheDoLimite($metric, $gravidade, $represa),
             'id'      => $aberto['id'],
         ]);
 
@@ -131,6 +145,10 @@ final class AlertService
             $sensor = (string) $e['id'];
             $parado = $ultima === null ? 'nenhuma leitura recebida' : 'sem leitura desde ' . $ultima->format('H:i:s');
             $aberto = $this->alertaDeComunicacao($sensor);
+
+            if ($aberto === null && $this->paradaJaTratada($sensor, $ultima)) {
+                continue;                                         // a mesma parada já foi resolvida por alguém
+            }
 
             if ($aberto !== null) {
                 // Já existe alerta. Se ele tinha voltado e parou de novo, registra.
@@ -251,11 +269,76 @@ final class AlertService
         return $alerta;
     }
 
+    /** Cotas do cadastro da represa: é delas que saem os limites do nível (StatusRules::limitsFor). */
+    private function cotas(string $reservoirId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT cota_min_m, cota_max_m, cota_alert_m, cota_spill_m FROM reservoirs WHERE id = :id');
+        $stmt->execute(['id' => $reservoirId]);
+        $cotas = $stmt->fetch();
+
+        if ($cotas === false) {
+            throw new ApiException('RESERVOIR_NOT_FOUND', 'Represa não encontrada.', 404);
+        }
+        return $cotas;
+    }
+
+    /** O valor voltou ao normal: registra nos alertas da grandeza que ainda não sabiam disso. */
+    private function normalizou(string $reservoirId, string $metric, DateTimeImmutable $when): void
+    {
+        $this->pdo->prepare(
+            'UPDATE alerts SET normalized_at = :quando
+              WHERE reservoir_id = :rid AND metric = :metric AND normalized_at IS NULL'
+        )->execute(['quando' => Clock::sql($when), 'rid' => $reservoirId, 'metric' => $metric]);
+    }
+
+    /**
+     * O último alerta da grandeza foi resolvido e o valor não voltou ao normal desde
+     * então? Se o valor agora é mais grave que o daquele alerta, não conta como tratado.
+     */
+    private function jaTratado(string $reservoirId, string $metric, string $classificacao): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT status, severity, normalized_at
+               FROM alerts
+              WHERE reservoir_id = :rid AND metric = :metric
+              ORDER BY detected_at DESC, id DESC
+              LIMIT 1'
+        );
+        $stmt->execute(['rid' => $reservoirId, 'metric' => $metric]);
+        $ultimo = $stmt->fetch();
+
+        $peso = ['attention' => 1, 'critical' => 2];
+
+        return $ultimo !== false
+            && $ultimo['status'] === 'resolved'
+            && $ultimo['normalized_at'] === null
+            && ($peso[$ultimo['severity']] ?? 0) >= ($peso[$classificacao] ?? 0);
+    }
+
+    /** O último alerta de comunicação do equipamento foi resolvido e ele não transmitiu desde então? */
+    private function paradaJaTratada(string $sensorId, ?DateTimeImmutable $ultimaLeitura): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT resolved_at
+               FROM alerts
+              WHERE sensor_id = :sid AND metric = :metric
+              ORDER BY detected_at DESC, id DESC
+              LIMIT 1'
+        );
+        $stmt->execute(['sid' => $sensorId, 'metric' => self::COMUNICACAO]);
+        $resolvido = $stmt->fetchColumn();
+
+        if ($resolvido === false || $resolvido === null) {
+            return false;                                         // nunca teve alerta, ou o último ainda está aberto
+        }
+        return $ultimaLeitura === null || $ultimaLeitura <= new DateTimeImmutable((string) $resolvido, Clock::timezone());
+    }
+
     /** Alerta ainda não resolvido da mesma grandeza na mesma represa, se houver. */
     private function alertaAberto(string $reservoirId, string $metric): ?array
     {
         $stmt = $this->pdo->prepare(
-            "SELECT id, severity, title, threshold, threshold_detail
+            "SELECT id, severity, title
                FROM alerts
               WHERE reservoir_id = :rid AND metric = :metric AND status <> 'resolved'
               ORDER BY detected_at DESC
@@ -285,20 +368,19 @@ final class AlertService
         return (string) $stmt->fetchColumn();
     }
 
-    /** Código sequencial no formato ALT-1001: pega o maior número já usado e soma 1. */
+    /** Código sequencial no formato ALT-1001. */
     private function proximoId(): string
     {
-        return 'ALT-' . (int) $this->pdo->query(
-            "SELECT COALESCE(MAX(CAST(SUBSTRING(id, 5) AS UNSIGNED)), 1000) + 1 FROM alerts WHERE id LIKE 'ALT-%'"
-        )->fetchColumn();
+        return 'ALT-' . Sequence::next($this->pdo, 'alert');
     }
 
-    private function abrir(string $reservoirId, ?string $sensorId, string $metric, float $value, string $classificacao, DateTimeImmutable $when): string
+    /** @param array<string,mixed> $represa cotas da represa, quando a grandeza é o nível */
+    private function abrir(string $reservoirId, ?string $sensorId, string $metric, float $value, string $classificacao, array $represa, DateTimeImmutable $when): string
     {
         $id = $this->proximoId();
 
         $valor = $this->formatar($metric, $value);
-        $limite = StatusRules::thresholdText($metric, $classificacao);
+        $limite = StatusRules::thresholdText($metric, $classificacao, $represa);
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO alerts (id, reservoir_id, sensor_id, severity, metric, status, title, metric_label,
@@ -320,7 +402,7 @@ final class AlertService
             'valor'          => $valor,
             'limite'         => $limite,
             'detalhe'        => $metric === 'precipitation' ? 'Acumulado das últimas 24 h' : ($sensorId === null ? 'Leitura da represa' : 'Leitura do equipamento ' . $sensorId),
-            'detalhe_limite' => $this->detalheDoLimite($metric, $classificacao),
+            'detalhe_limite' => $this->detalheDoLimite($metric, $classificacao, $represa),
         ]);
 
         $this->etapa($id, 'Alerta aberto automaticamente: ' . $valor . ' (limite ' . $limite . ').', $when);
@@ -328,10 +410,14 @@ final class AlertService
         return $id;
     }
 
-    /** Acrescenta uma etapa concluída ao fim da linha do tempo do alerta. */
+    /**
+     * Acrescenta uma etapa concluída ao fim da linha do tempo do alerta.
+     * FOR UPDATE: se a estação e um operador mexem no mesmo alerta ao mesmo tempo,
+     * um espera o outro e as duas etapas recebem números diferentes.
+     */
     private function etapa(string $alertId, string $texto, DateTimeImmutable $quando): void
     {
-        $stmt = $this->pdo->prepare('SELECT COALESCE(MAX(step_order), 0) + 1 FROM alert_timeline WHERE alert_id = :id');
+        $stmt = $this->pdo->prepare('SELECT COALESCE(MAX(step_order), 0) + 1 FROM alert_timeline WHERE alert_id = :id FOR UPDATE');
         $stmt->execute(['id' => $alertId]);
         $ordem = (int) $stmt->fetchColumn();
 
@@ -358,10 +444,16 @@ final class AlertService
         }
     }
 
-    private function detalheDoLimite(string $metric, string $classificacao): string
+    /** @param array<string,mixed> $represa cotas da represa, quando a grandeza é o nível */
+    private function detalheDoLimite(string $metric, string $classificacao, array $represa): string
     {
         if ($metric === 'ph') {
             return 'Faixa ideal';
+        }
+        if ($metric === 'level') {
+            return $classificacao === 'critical'
+                ? 'Cota de vertimento (' . StatusRules::number((float) $represa['cota_spill_m']) . ' m)'
+                : 'Cota de alerta (' . StatusRules::number((float) $represa['cota_alert_m']) . ' m)';
         }
         return $classificacao === 'critical' ? 'Limite crítico' : 'Limite de atenção';
     }

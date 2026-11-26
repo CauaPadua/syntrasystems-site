@@ -33,7 +33,7 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Histórico do nível', 'tip' => 'Nível observado com as linhas de atenção e crítico marcadas no gráfico.']); ?>
     <div data-content="history" hidden>
-      <?php echo aq_chart(['id' => 'grafico-historico-nivel', 'size' => 'lg', 'axis' => '% da capacidade', 'desc' => 'Histórico do nível do reservatório com limites operacionais.']); // data.history com linhas em 80% e 90% ?>
+      <?php echo aq_chart(['id' => 'grafico-historico-nivel', 'size' => 'lg', 'axis' => '% da capacidade', 'desc' => 'Histórico do nível do reservatório com limites operacionais.']); // data.history com as linhas dos limites da represa ?>
       <?php echo aq_legend([
           ['label' => 'Nível observado (%)', 'color' => '#0b5bea'],
           ['label' => 'Limite de atenção', 'color' => '#f59e0b', 'style' => 'dashed'],
@@ -76,7 +76,7 @@ echo aq_monitor_bar(['periods' => ['7d' => 'Últimos 7 dias', '30d' => 'Últimos
   <article class="aq-card">
     <?php echo aq_card_head(['title' => 'Faixas operacionais', 'tip' => 'Regras de classificação usadas em todo o sistema e na abertura de alertas.']); ?>
     <div class="aq-list" data-bands></div> <?php /* data.bands: normal, atenção e crítico com a descrição de cada uma */ ?>
-    <p class="aq-card__sub" style="margin-top:12px">Faixas lidas dos limites operacionais cadastrados no banco.</p>
+    <p class="aq-card__sub" style="margin-top:12px">Faixas calculadas das cotas de alerta e de vertimento desta represa.</p>
   </article>
 
   <article class="aq-card">

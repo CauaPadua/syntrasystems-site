@@ -1,7 +1,9 @@
 # Aquapulse — publicação automática do site (GitHub Actions).
 # Toda vez que um commit chega à branch main, o GitHub executa este fluxo:
-# baixa o código do repositório e envia os arquivos por FTP para a hospedagem
-# InfinityFree. Não há etapa de build: o site é PHP, publicado como está.
+#   1. testes: confere a sintaxe de todos os arquivos PHP, instala o banco em um
+#      MariaDB descartável e roda backend/database/testar_banco.php;
+#   2. deploy: só se os testes passarem, envia os arquivos por FTPS para a
+#      hospedagem InfinityFree. Não há etapa de build: o site é PHP, publicado como está.
 name: Deploy para InfinityFree
 
 # Gatilho: quando o fluxo roda.
@@ -11,9 +13,55 @@ on:
     branches:
       - main
 
-# Tarefas executadas pelo fluxo (aqui, uma só: deploy).
+# Tarefas executadas pelo fluxo: testes e, se eles passarem, deploy.
 jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    # Banco só para o teste: nasce vazio a cada execução e some no fim dela. É a mesma
+    # versão do XAMPP. A senha abaixo não protege nada: o banco só existe nesta máquina.
+    services:
+      banco:
+        image: mariadb:10.4
+        env:
+          MYSQL_ROOT_PASSWORD: teste
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pteste"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    # Lidas por backend/bootstrap.php no lugar do arquivo .env.
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_NAME: aquapulse_ci
+      DB_USER: root
+      DB_PASS: teste
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: PHP 8.0
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+
+      - name: Sintaxe de todos os arquivos PHP
+        run: git ls-files -z '*.php' | xargs -0 -n 1 php -l
+
+      - name: Instala o banco (migrations e dados de exemplo)
+        run: php backend/database/migrate.php install
+
+      - name: Testes do banco e das regras
+        run: php backend/database/testar_banco.php
+
   deploy:
+    # Só publica se a tarefa "testes" terminou bem.
+    needs: testes
     # Máquina virtual Linux fornecida pelo GitHub para rodar os passos.
     runs-on: ubuntu-latest
 
@@ -23,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
 
       # Passo 2: envia os arquivos para o servidor com uma ação pronta da comunidade.
-      - name: Deploy via FTP
+      - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           # Endereço, usuário e senha do FTP NÃO ficam no arquivo: vêm dos "secrets"
@@ -32,9 +80,11 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # FTP comum na porta 21 (sem criptografia no transporte).
-          protocol: ftp
+          # FTPS: FTP com criptografia (TLS) na porta 21. "strict" confere o certificado do
+          # servidor, então FTP_SERVER precisa ser o nome dele (ftpupload.net), não o IP.
+          protocol: ftps
           port: 21
+          security: strict
 
           # Pasta pública da hospedagem (htdocs) e pasta local enviada (a raiz do repositório).
           server-dir: /htdocs/

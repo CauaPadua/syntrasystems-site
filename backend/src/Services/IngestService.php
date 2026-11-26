@@ -23,6 +23,7 @@ use Aquapulse\Support\Clock;
 use DateTimeImmutable;
 use PDO;
 use PDOException;
+use Throwable;
 
 final class IngestService
 {
@@ -119,13 +120,11 @@ final class IngestService
             if ($propria) {
                 $this->pdo->commit();
             }
-        } catch (PDOException $e) {
-            if ($propria) {
+        } catch (Throwable $e) {
+            // Qualquer erro desfaz tudo, não só os do banco: a transação aberta seria
+            // reaproveitada pela leitura seguinte do pacote, e nenhuma seria gravada.
+            if ($propria && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
-            }
-
-            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {     // 1062 = violação de chave única
-                throw new ApiException('DUPLICATE_READING', 'Este equipamento já enviou uma leitura para este mesmo instante.', 409);
             }
             throw $e;
         }
@@ -152,6 +151,7 @@ final class IngestService
     public function equipmentList(?string $equipmentId = null, ?string $reservoirId = null): array
     {
         $sql = "SELECT s.id, s.name, s.type, s.status, s.reservoir_id, r.name AS reservoir_name, r.code AS reservoir_code, r.capacity_hm3,
+                       r.cota_min_m, r.cota_max_m, r.cota_alert_m, r.cota_spill_m,
                        (SELECT l.value
                           FROM readings l
                          WHERE l.reservoir_id = s.reservoir_id AND l.metric = s.type
@@ -176,7 +176,6 @@ final class IngestService
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
 
-        $limites = StatusRules::limits();
         $lista = [];
 
         foreach ($stmt->fetchAll() as $l) {
@@ -198,7 +197,7 @@ final class IngestService
                 'reservoir_code' => (string) $l['reservoir_code'],
                 'capacity_hm3'   => (float) $l['capacity_hm3'],
                 'current_value'  => $l['current_value'] === null ? null : (float) $l['current_value'],
-                'limits'         => $limites[$tipo] ?? [],
+                'limits'         => StatusRules::limitsFor($tipo, $l),          // do nível: os da represa
             ];
         }
         return $lista;
@@ -261,13 +260,23 @@ final class IngestService
             'INSERT INTO readings (sensor_id, reservoir_id, metric, value, recorded_at)
              VALUES (:sensor, :represa, :grandeza, :valor, :quando)'
         );
-        $stmt->execute([
-            'sensor'   => $sensor,
-            'represa'  => $represa,
-            'grandeza' => $grandeza,
-            'valor'    => $valor,
-            'quando'   => Clock::sql($quando),
-        ]);
+
+        try {
+            $stmt->execute([
+                'sensor'   => $sensor,
+                'represa'  => $represa,
+                'grandeza' => $grandeza,
+                'valor'    => $valor,
+                'quando'   => Clock::sql($quando),
+            ]);
+        } catch (PDOException $e) {
+            // 1062 = chave única repetida. Só conta como leitura duplicada aqui, na tabela
+            // readings: em outra tabela é falha nossa, e a estação precisa tentar de novo.
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                throw new ApiException('DUPLICATE_READING', 'Este equipamento já enviou uma leitura para este mesmo instante.', 409);
+            }
+            throw $e;
+        }
     }
 
     /** Chuva acumulada na represa nas 24 h que terminam no instante informado. */

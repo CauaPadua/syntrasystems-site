@@ -2,9 +2,10 @@
 /**
  * GET /api/v1/settings.php — dados da tela de configurações.
  *
- * Devolve as empresas com suas represas, os limites operacionais em vigor e,
- * para o administrador, as contas de acesso e as listas dos formulários. As
- * gravações usam companies.php, reservoirs.php e users.php.
+ * Devolve as empresas com suas represas (e os limites de nível de cada uma), os
+ * limites de pH e chuva em vigor e, para o administrador, as contas de acesso e as
+ * listas dos formulários. As gravações usam companies.php, reservoirs.php,
+ * limits.php e users.php.
  *
  * Chamado por assets/js/pages/settings.js (dashboard/configuracoes.php).
  */
@@ -31,9 +32,11 @@ $cadastro = ['id', 'code', 'company_id', 'name', 'city', 'basin', 'lat', 'lng', 
 
 $companies = array_map(static function (array $c) use ($repo, $cadastro): array {
     $c['reservoirs'] = array_map(static fn (array $r): array => array_intersect_key($r, array_flip($cadastro)) + [
-        'sensors_online' => $r['sensors_online'],
-        'sensors_total'  => $r['sensors_total'],
-        'status'         => StatusRules::describe(StatusRules::fromLevel($r['level_pct'])),
+        'sensors_online'  => $r['sensors_online'],
+        'sensors_total'   => $r['sensors_total'],
+        'status'          => StatusRules::describe(StatusRules::fromLevel($r['level_pct'], $r)),
+        'level_attention' => StatusRules::levelAttention($r),
+        'level_critical'  => StatusRules::levelCritical($r),
     ], $repo->reservoirs($c['id']));
     return $c;
 }, $repo->companies());
@@ -69,11 +72,16 @@ $opcoes = static fn (array $lista): array => array_map(
 ApiResponse::success([
     'companies' => $companies,
     'limits'    => [
-        ['label' => 'Nível — atenção',  'value' => 'a partir de ' . StatusRules::pct(StatusRules::levelAttention())],
-        ['label' => 'Nível — crítico',  'value' => 'a partir de ' . StatusRules::pct(StatusRules::levelCritical())],
         ['label' => 'pH — faixa ideal', 'value' => StatusRules::number(StatusRules::phMin()) . ' a ' . StatusRules::number(StatusRules::phMax())],
         ['label' => 'Chuva em 24 h — atenção', 'value' => 'a partir de ' . StatusRules::number(StatusRules::rainAttention()) . ' mm'],
         ['label' => 'Chuva em 24 h — crítico', 'value' => 'a partir de ' . StatusRules::number(StatusRules::rainCritical()) . ' mm'],
+    ],
+    // os mesmos limites como números, para preencher o formulário
+    'limit_values' => [
+        'ph_min'         => StatusRules::phMin(),
+        'ph_max'         => StatusRules::phMax(),
+        'rain_attention' => StatusRules::rainAttention(),
+        'rain_critical'  => StatusRules::rainCritical(),
     ],
     'users'    => $users,
     'can_edit' => $podeCadastrar,

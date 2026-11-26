@@ -16,6 +16,7 @@
  *   403 REQUEST_PENDING / REQUEST_REJECTED   -> senha de um pedido de acesso ainda não aprovado
  *   405 METHOD_NOT_ALLOWED                   -> método diferente de POST
  *   422 VALIDATION_ERROR (+ details por campo) -> campos vazios ou e-mail inválido
+ *   429 TOO_MANY_ATTEMPTS                    -> tentativas demais em 15 minutos (Auth\LoginThrottle)
  */
 
 declare(strict_types=1);
@@ -23,9 +24,11 @@ declare(strict_types=1);
 require dirname(__DIR__, 3) . '/backend/bootstrap.php';                  // sobe 3 pastas (auth -> v1 -> api -> raiz) e carrega o back-end
 
 use Aquapulse\Auth\AuthService;
+use Aquapulse\Auth\LoginThrottle;
 use Aquapulse\Http\JsonResponse;
 use Aquapulse\Http\Request;
 use Aquapulse\Repositories\RequestRepository;
+use Aquapulse\Support\ApiException;
 use Aquapulse\Support\Container;
 use Aquapulse\Support\Database;
 
@@ -76,17 +79,32 @@ aq_start_session();                                                       // a s
 // PdoUserRepository (tabela users do MySQL); sem ele, o MockUserRepository.
 $auth = new AuthService(Container::users());
 
+// Limite de tentativas: conta antes de conferir a senha. Sem banco (modo demonstração) não há onde contar.
+$limite = Database::configurado() ? new LoginThrottle(Database::conexao()) : null;
+if ($limite !== null) {
+    try {
+        $limite->hit($email, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    } catch (ApiException $e) {
+        JsonResponse::error($e->errorCode(), $e->getMessage(), $e->status());
+    }
+}
+
 $user = $auth->attempt($email, $password);                                // confere e-mail e senha; null se não conferirem
 
 if ($user === null) {
     // Quem pediu acesso e digitou a senha do próprio pedido fica sabendo em que pé ele está.
     $aviso = Database::configurado() ? (new RequestRepository(Database::conexao()))->loginNotice($email, $password) : null;
     if ($aviso !== null) {
+        $limite->clear($email);                                           // a senha estava certa: não é alguém adivinhando
         JsonResponse::error($aviso['code'], $aviso['message'], 403);
     }
 
     // Mensagem genérica: não revela se o e-mail existe.
     JsonResponse::error('INVALID_CREDENTIALS', 'E-mail ou senha inválidos.', 401);
+}
+
+if ($limite !== null) {
+    $limite->clear($email);                                               // senha certa: zera as tentativas deste e-mail
 }
 
 // Conta suspensa não entra. A mensagem só aparece para quem acertou a senha,
